@@ -12,12 +12,16 @@ if (fs.existsSync(envPath) && typeof process.loadEnvFile === 'function') {
   }
 }
 
+const defaultAppUrl = process.env.APP_URL || process.env.RENDER_EXTERNAL_URL || (process.env.NODE_ENV === 'production' ? 'https://markdriller.com' : 'http://127.0.0.1:5009');
+const defaultClientUrl = process.env.CLIENT_URL || process.env.RENDER_EXTERNAL_URL || (process.env.NODE_ENV === 'production' ? 'https://markdriller.com' : 'http://127.0.0.1:3009');
+const defaultCorsOrigin = process.env.CORS_ORIGIN || process.env.RENDER_EXTERNAL_URL || (process.env.NODE_ENV === 'production' ? 'https://markdriller.com' : 'http://localhost:3009');
+
 export const envSchema = z.object({
   PORT: z.string().default('5009').transform((val) => parseInt(val, 10)),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-  APP_URL: z.string().default('http://127.0.0.1:5009'),
-  CLIENT_URL: z.string().default('http://127.0.0.1:3009'),
-  CORS_ORIGIN: z.string().default('http://localhost:3009'),
+  APP_URL: z.string().default(defaultAppUrl),
+  CLIENT_URL: z.string().default(defaultClientUrl),
+  CORS_ORIGIN: z.string().default(defaultCorsOrigin),
   MONGODB_URI: z.string().default('mongodb://127.0.0.1:27017/markdriller'),
   // Administrator Email Authorization (Required server-side configuration)
   ADMIN_EMAIL: z

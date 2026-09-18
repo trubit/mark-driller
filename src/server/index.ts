@@ -34,7 +34,16 @@ app.use(
       directives: {
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'", "'unsafe-inline'", 'https://js.paystack.co'],
-        connectSrc: ["'self'", 'https://api.paystack.co', 'https://api.cloudinary.com', env.CLIENT_URL, env.CORS_ORIGIN].filter(Boolean),
+        connectSrc: [
+          "'self'",
+          'https://api.paystack.co',
+          'https://api.cloudinary.com',
+          'https://*.onrender.com',
+          'https://markdriller.com',
+          'https://www.markdriller.com',
+          env.CLIENT_URL,
+          env.CORS_ORIGIN,
+        ].filter(Boolean),
         frameSrc: ["'self'", 'https://checkout.paystack.com'],
         imgSrc: ["'self'", 'data:', 'https:', 'blob:'],
         styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
@@ -54,18 +63,25 @@ app.use(
 const allowedOrigins = [
   env.CLIENT_URL,
   env.CORS_ORIGIN,
+  process.env.RENDER_EXTERNAL_URL,
+  'https://markdriller.com',
+  'https://www.markdriller.com',
   'http://127.0.0.1:3009',
   'http://localhost:3009',
   'http://127.0.0.1:5009',
   'http://localhost:5009',
-].filter(Boolean);
+].filter(Boolean) as string[];
 
 app.use(
   cors({
     origin: (origin, callback) => {
       // Allow requests with no origin (mobile clients, curl, server-to-server)
       if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin) || (env.NODE_ENV !== 'production' && (origin.includes('localhost') || origin.includes('127.0.0.1')))) {
+      if (
+        allowedOrigins.includes(origin) ||
+        origin.endsWith('.onrender.com') ||
+        (env.NODE_ENV !== 'production' && (origin.includes('localhost') || origin.includes('127.0.0.1')))
+      ) {
         return callback(null, true);
       }
       return callback(new Error('CORS access denied: origin not authorized.'));

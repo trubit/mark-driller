@@ -1,0 +1,61 @@
+# ==============================================================================
+# MarkDriller Full-Stack Production Blueprint for Render
+# Documentation: https://render.com/docs/blueprint-spec
+# ==============================================================================
+
+services:
+  # User-Facing Full-Stack Production Service (Express API + Vite React SPA)
+  - type: web
+    name: markdriller
+    runtime: node
+    plan: starter
+    region: oregon
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm run start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: 22.14.0
+      - key: PORT
+        value: 10000
+      - key: APP_URL
+        value: https://markdriller.com
+      - key: CLIENT_URL
+        value: https://markdriller.com
+      - key: CORS_ORIGIN
+        value: https://markdriller.com
+      - key: ADMIN_EMAIL
+        value: admin@markdriller.com
+      - key: JWT_SECRET
+        generateValue: true
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: MONGODB_URI
+        sync: false
+      - key: PAYSTACK_SECRET_KEY
+        sync: false
+      - key: PAYSTACK_PUBLIC_KEY
+        sync: false
+      - key: PAYSTACK_WEBHOOK_SECRET
+        sync: false
+      - key: STORAGE_PROVIDER
+        value: cloudinary
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: CLOUDINARY_FOLDER
+        value: markdriller/materials
+      - key: EMAIL_PROVIDER
+        value: brevo
+      - key: BREVO_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        value: '"MarkDriller Academic Support" <support@markdriller.com>'
+      - key: QUESTION_SYNC_ENABLED
+        value: "false"
