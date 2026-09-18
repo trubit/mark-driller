@@ -17,6 +17,7 @@ jobs:
   build-and-deploy:
     name: Build Container & Deploy to Kubernetes
     runs-on: ubuntu-latest
+    if: ${{ secrets.AWS_DEPLOY_ROLE_ARN != '' }}
     environment: production
     timeout-minutes: 20
 
