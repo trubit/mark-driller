@@ -1,69 +1,60 @@
-# Deploying MarkDriller on Render (Complete Guide)
+# Deploying MarkDriller on Render (Everything Self-Hosted on Render)
 
-MarkDriller is architected as a high-performance, unified full-stack application. In production, the compiled Node.js/Express server serves both the high-concurrency REST API (`/api/*`) and the pre-rendered React Single Page Application (`dist/`) on port 10000.
+MarkDriller is configured to run **100% on Render**. You do **not** need a MongoDB Atlas account, AWS account, or any external database provider.
 
----
-
-## 🚀 Quick Deploy via Render Blueprint (Recommended)
-
-MarkDriller includes a production [`render.yaml`](./render.yaml) blueprint file.
-
-### Step 1: Connect Repository to Render
-1. Log in to your [Render Dashboard](https://dashboard.render.com).
-2. Click **New +** in the top navigation and select **Blueprint**.
-3. Connect your GitHub repository: `https://github.com/trubit/mark-driller`.
-4. Render will detect `render.yaml` and configure the **markdriller** Web Service automatically.
+Render hosts both:
+1. **The Web Application (`markdriller`)**: Node.js 22 LTS serving the React SPA and Express REST API.
+2. **The MongoDB Database (`markdriller-mongodb`)**: Official `mongo:7.0` container with a 10 GB persistent Render Disk (`/data/db`), connected privately inside Render's secure internal network.
 
 ---
 
-## 🔑 Required Environment Variables
+## 🚀 1-Click Deploy via Render Blueprint
 
-When creating the Blueprint or Web Service, Render will prompt you for the following secrets:
+MarkDriller includes a complete [`render.yaml`](./render.yaml) Blueprint that provisions both the web service and the MongoDB database automatically.
 
-| Variable | Description | Example / Source |
-| :--- | :--- | :--- |
-| `MONGODB_URI` | Production MongoDB connection string | `mongodb+srv://user:pass@cluster0.mongodb.net/markdriller?retryWrites=true&w=majority` |
-| `PAYSTACK_SECRET_KEY` | Paystack Live Secret Key | `sk_live_...` (from Paystack Dashboard > Settings > API Keys) |
-| `PAYSTACK_PUBLIC_KEY` | Paystack Live Public Key | `pk_live_...` (from Paystack Dashboard > Settings > API Keys) |
-| `PAYSTACK_WEBHOOK_SECRET`| Paystack Live Secret Key or Webhook secret | Used to verify HMAC signatures for real-time payments |
-| `CLOUDINARY_CLOUD_NAME` | Cloudinary account cloud name | For uploaded study materials and syllabus PDFs |
-| `CLOUDINARY_API_KEY` | Cloudinary API Key | Cloudinary Dashboard |
-| `CLOUDINARY_API_SECRET` | Cloudinary API Secret | Cloudinary Dashboard |
-| `BREVO_API_KEY` | Brevo (Sendinblue) Transactional API Key | For student registration OTPs and password resets |
+### Step 1: Open Render Blueprint
+1. Go to your **[Render Dashboard](https://dashboard.render.com)**.
+2. Click **New +** in the top-right corner and choose **Blueprint**.
+3. Select your repository: **`trubit/mark-driller`** (branch: `main`).
 
-### Auto-Generated Variables (Zero Manual Setup)
-- `JWT_SECRET`: Render generates a cryptographically secure string automatically.
-- `SESSION_SECRET`: Render generates a cryptographically secure string automatically.
-- `PORT`: Automatically set to `10000`.
-- `NODE_ENV`: Set to `production`.
+### Step 2: Review Services
+Render will automatically detect `render.yaml` and show:
+- **`markdriller`**: Web Service (Node.js 22, Port 10000, connected to internal MongoDB).
+- **`markdriller-mongodb`**: Private Service (Docker `mongo:7.0` with 10 GB persistent disk).
+
+### Step 3: Enter Only Your Service Keys
+Render will auto-configure `MONGODB_URI` to `mongodb://markdriller-mongodb:27017/markdriller`.
+You only need to enter:
+1. `PAYSTACK_SECRET_KEY`: `sk_live_...`
+2. `PAYSTACK_PUBLIC_KEY`: `pk_live_...`
+3. `PAYSTACK_WEBHOOK_SECRET`: Your Paystack secret key
+4. `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`: For PDF past question uploads
+5. `BREVO_API_KEY`: For sending verification email OTPs
+
+> [!NOTE]
+> `MONGODB_URI`, `JWT_SECRET`, `SESSION_SECRET`, `NODE_ENV`, and `PORT` are configured automatically by Render with zero manual entry required!
+
+### Step 4: Click "Apply"
+Click **Apply**. Render will:
+1. Start `markdriller-mongodb` and mount the 10GB persistent storage disk.
+2. Build the MarkDriller application (`npm ci --include=dev && npm run build`).
+3. Connect `markdriller` to `markdriller-mongodb` inside Render's internal private network.
+4. Launch the live service!
 
 ---
 
-## 🌐 Custom Domain Setup (`markdriller.com`)
+## 🌐 Connect Your Custom Domain (`markdriller.com`)
 
-1. In the Render Dashboard, open your **markdriller** Web Service.
+1. Open your **markdriller** Web Service in Render.
 2. Go to **Settings** > **Custom Domains**.
 3. Add `markdriller.com` and `www.markdriller.com`.
-4. Render will provide DNS records (ANAME / ALIAS for apex domain and CNAME for `www`).
-5. Update your domain DNS records at your domain registrar.
-6. Render automatically provisions and renews **free Let's Encrypt SSL/TLS certificates**.
+4. Point your domain DNS records to Render (ANAME / ALIAS to `markdriller.onrender.com` and CNAME for `www`).
+5. Render automatically issues and renews free SSL certificates!
 
 ---
 
-## ⚡ Paystack Webhook Configuration
+## ⚡ Paystack Live Webhook
 
-1. Go to your [Paystack Dashboard](https://dashboard.paystack.com/#/settings/developer).
-2. Under **Webhook URL**, enter:
-   ```text
-   https://markdriller.com/api/subscriptions/webhook
-   ```
-   *(or `https://<your-render-subdomain>.onrender.com/api/subscriptions/webhook` before custom domain activation)*
-3. Set your webhook events: `charge.success`, `subscription.create`, `subscription.disable`.
-
----
-
-## 🩺 Health Check & Monitoring
-
-- **Health Endpoint**: `https://markdriller.com/api/health`
-- Returns HTTP 200 with database connectivity status and uptime.
-- Render actively pings this endpoint to manage zero-downtime rolling deploys.
+In your [Paystack Dashboard](https://dashboard.paystack.com/#/settings/developer):
+- **Live Webhook URL**: `https://markdriller.com/api/subscriptions/webhook`
+- **Events**: `charge.success`, `subscription.create`, `subscription.disable`

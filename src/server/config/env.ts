@@ -15,6 +15,7 @@ if (fs.existsSync(envPath) && typeof process.loadEnvFile === 'function') {
 const defaultAppUrl = process.env.APP_URL || process.env.RENDER_EXTERNAL_URL || (process.env.NODE_ENV === 'production' ? 'https://markdriller.com' : 'http://127.0.0.1:5009');
 const defaultClientUrl = process.env.CLIENT_URL || process.env.RENDER_EXTERNAL_URL || (process.env.NODE_ENV === 'production' ? 'https://markdriller.com' : 'http://127.0.0.1:3009');
 const defaultCorsOrigin = process.env.CORS_ORIGIN || process.env.RENDER_EXTERNAL_URL || (process.env.NODE_ENV === 'production' ? 'https://markdriller.com' : 'http://localhost:3009');
+const defaultMongoUri = process.env.MONGODB_URI || (process.env.NODE_ENV === 'production' ? 'mongodb://markdriller-mongodb:27017/markdriller' : 'mongodb://127.0.0.1:27017/markdriller');
 
 export const envSchema = z.object({
   PORT: z.string().default('5009').transform((val) => parseInt(val, 10)),
@@ -22,7 +23,7 @@ export const envSchema = z.object({
   APP_URL: z.string().default(defaultAppUrl),
   CLIENT_URL: z.string().default(defaultClientUrl),
   CORS_ORIGIN: z.string().default(defaultCorsOrigin),
-  MONGODB_URI: z.string().default('mongodb://127.0.0.1:27017/markdriller'),
+  MONGODB_URI: z.string().default(defaultMongoUri),
   // Administrator Email Authorization (Required server-side configuration)
   ADMIN_EMAIL: z
     .string()
@@ -97,7 +98,7 @@ export const envSchema = z.object({
   }
 ).refine(
   (data) => {
-    if (data.NODE_ENV === 'production') {
+    if (data.NODE_ENV === 'production' && process.env.ALLOW_LOCAL_DB !== 'true') {
       if (data.MONGODB_URI.includes('127.0.0.1') || data.MONGODB_URI.includes('localhost')) {
         return false;
       }
@@ -105,7 +106,7 @@ export const envSchema = z.object({
     return true;
   },
   {
-    message: 'CRITICAL CONFIGURATION ERROR: Production MONGODB_URI must not point to localhost or 127.0.0.1.',
+    message: 'CRITICAL CONFIGURATION ERROR: Production MONGODB_URI must not point to localhost or 127.0.0.1 unless ALLOW_LOCAL_DB=true is set.',
     path: ['MONGODB_URI'],
   }
 ).refine(

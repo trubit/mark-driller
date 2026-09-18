@@ -1,10 +1,13 @@
 # ==============================================================================
-# MarkDriller Full-Stack Production Blueprint for Render
+# MarkDriller Full-Stack & Native Render MongoDB Production Blueprint
+# Everything hosted on Render — Zero external database providers required
 # Documentation: https://render.com/docs/blueprint-spec
 # ==============================================================================
 
 services:
-  # User-Facing Full-Stack Production Service (Express API + Vite React SPA)
+  # ----------------------------------------------------------------------------
+  # 1. Full-Stack Web Application (Express REST API + Vite React SPA)
+  # ----------------------------------------------------------------------------
   - type: web
     name: markdriller
     runtime: node
@@ -21,6 +24,12 @@ services:
         value: 22.14.0
       - key: PORT
         value: 10000
+
+      # Internal Render MongoDB Connection (Self-Hosted on Render)
+      - key: MONGODB_URI
+        value: mongodb://markdriller-mongodb:27017/markdriller
+
+      # Application & Domain Routing
       - key: APP_URL
         value: https://markdriller.com
       - key: CLIENT_URL
@@ -29,18 +38,22 @@ services:
         value: https://markdriller.com
       - key: ADMIN_EMAIL
         value: admin@markdriller.com
+
+      # Auto-Generated Cryptographic Keys (No manual input needed)
       - key: JWT_SECRET
         generateValue: true
       - key: SESSION_SECRET
         generateValue: true
-      - key: MONGODB_URI
-        sync: false
+
+      # Payment Gateway Configuration (Paystack Live)
       - key: PAYSTACK_SECRET_KEY
         sync: false
       - key: PAYSTACK_PUBLIC_KEY
         sync: false
       - key: PAYSTACK_WEBHOOK_SECRET
         sync: false
+
+      # Cloudinary Storage for Study Materials & Syllabi
       - key: STORAGE_PROVIDER
         value: cloudinary
       - key: CLOUDINARY_CLOUD_NAME
@@ -51,6 +64,8 @@ services:
         sync: false
       - key: CLOUDINARY_FOLDER
         value: markdriller/materials
+
+      # Transactional Email (Brevo)
       - key: EMAIL_PROVIDER
         value: brevo
       - key: BREVO_API_KEY
@@ -59,3 +74,20 @@ services:
         value: '"MarkDriller Academic Support" <support@markdriller.com>'
       - key: QUESTION_SYNC_ENABLED
         value: "false"
+
+  # ----------------------------------------------------------------------------
+  # 2. Native MongoDB Database Service (Hosted Directly on Render)
+  # Isolated inside Render Private Network — No Atlas or external host needed
+  # ----------------------------------------------------------------------------
+  - type: pserv
+    name: markdriller-mongodb
+    runtime: image
+    image:
+      url: mongo:7.0
+    plan: starter
+    region: oregon
+    autoDeploy: false
+    disk:
+      name: mongodb-data
+      mountPath: /data/db
+      sizeGB: 10
