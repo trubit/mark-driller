@@ -26,7 +26,11 @@ export async function connectDatabase(options: { maxPoolSize?: number; minPoolSi
     return connection;
   } catch (error) {
     console.error('❌ Failed to connect to MongoDB:', error);
-    process.exit(1);
+    console.warn('⚠️ Server will remain running and operational. Retrying MongoDB connection in 10 seconds...');
+    setTimeout(() => {
+      connectDatabase(options).catch(() => {});
+    }, 10000);
+    throw error;
   }
 }
 

@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import mongoose from 'mongoose';
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -122,9 +123,17 @@ const dbPromise = connectDatabase()
   });
 
 
-app.use('/api', async (_req, _res, next) => {
-  if (!dbReady) {
-    await dbPromise;
+app.use('/api', async (req, res, next) => {
+  if (req.path === '/health' || req.path === '/health/') {
+    return next();
+  }
+  if (!dbReady && mongoose.connection.readyState !== 1) {
+    return res.status(503).json({
+      success: false,
+      error: {
+        message: 'Database connection is initializing. Please retry in a few moments.',
+      },
+    });
   }
   next();
 });
