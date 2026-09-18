@@ -1,17 +1,13 @@
 # ==============================================================================
-# MarkDriller Full-Stack & Native Render MongoDB Production Blueprint
-# Everything hosted on Render — Zero external database providers required
+# MarkDriller 100% Free Tier Render Blueprint ($0 / month — No Credit Card)
 # Documentation: https://render.com/docs/blueprint-spec
 # ==============================================================================
 
 services:
-  # ----------------------------------------------------------------------------
-  # 1. Full-Stack Web Application (Express REST API + Vite React SPA)
-  # ----------------------------------------------------------------------------
   - type: web
     name: markdriller
     runtime: node
-    plan: starter
+    plan: free # 100% Free tier ($0 / month — No payment required)
     region: oregon
     buildCommand: npm ci --include=dev && npm run build
     startCommand: npm run start
@@ -25,9 +21,9 @@ services:
       - key: PORT
         value: 10000
 
-      # Internal Render MongoDB Connection (Self-Hosted on Render)
+      # Database Connection
       - key: MONGODB_URI
-        value: mongodb://markdriller-mongodb:27017/markdriller
+        sync: false
 
       # Application & Domain Routing
       - key: APP_URL
@@ -74,20 +70,3 @@ services:
         value: '"MarkDriller Academic Support" <support@markdriller.com>'
       - key: QUESTION_SYNC_ENABLED
         value: "false"
-
-  # ----------------------------------------------------------------------------
-  # 2. Native MongoDB Database Service (Hosted Directly on Render)
-  # Isolated inside Render Private Network — No Atlas or external host needed
-  # ----------------------------------------------------------------------------
-  - type: pserv
-    name: markdriller-mongodb
-    runtime: image
-    image:
-      url: mongo:7.0
-    plan: starter
-    region: oregon
-    autoDeploy: false
-    disk:
-      name: mongodb-data
-      mountPath: /data/db
-      sizeGB: 10
