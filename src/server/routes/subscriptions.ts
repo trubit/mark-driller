@@ -81,7 +81,7 @@ router.post('/webhook', async (req: Request, res: Response): Promise<void> => {
 
     // Cryptographically verify signature
     const isValidSignature = PaystackService.verifyWebhookSignature(rawBody, signature);
-    if (!isValidSignature && !PaystackService.isMockKey(env.PAYSTACK_SECRET_KEY)) {
+    if (!isValidSignature) {
       res.status(401).json({ success: false, error: { message: 'Invalid webhook signature.' } });
       return;
     }
