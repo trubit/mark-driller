@@ -209,18 +209,6 @@ async function runVerification() {
     if (res.ok) serverRunning = true;
   } catch {}
 
-  if (!serverRunning) {
-    try {
-      console.log('[Setup] Starting in-process MarkDriller server on port 5009...');
-      await import('../src/server/index.js');
-      await new Promise((r) => setTimeout(r, 2000));
-      const res = await fetch('http://localhost:5009/api/health');
-      if (res.ok) serverRunning = true;
-    } catch (e: any) {
-      console.log('[Notice] In-process server bootstrap deferred:', e?.message || e);
-    }
-  }
-
   if (serverRunning) {
     try {
       const healthRes = await fetch('http://localhost:5009/api/health');
@@ -289,6 +277,8 @@ async function runVerification() {
 
   if (!allPassed) {
     process.exit(1);
+  } else {
+    process.exit(0);
   }
 }
 
