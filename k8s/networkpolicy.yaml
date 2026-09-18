@@ -1,0 +1,89 @@
+# ==============================================================================
+# MarkDriller Least-Privilege Network Policies (Default Deny + Explicit Whitelists)
+# ==============================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: markdriller
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+# Allow API Ingress strictly from the Ingress Controller
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-api-ingress
+  namespace: markdriller
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: markdriller
+      app.kubernetes.io/component: api
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        # Only allow traffic from ingress controller pods or cluster load balancers
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 5009
+---
+# Allow Necessary Egress for API & Worker pods (DNS, MongoDB, External HTTPS)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-required-egress
+  namespace: markdriller
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: markdriller
+  policyTypes:
+    - Egress
+  egress:
+    # 1. Allow DNS Resolution
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # 2. Allow MongoDB Database Connectivity (Port 27017)
+    - ports:
+        - protocol: TCP
+          port: 27017
+    # 3. Allow External Outbound HTTPS for Payment Gateway (Paystack), Email (Brevo), & Storage (Cloudinary)
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+              - 169.254.169.254/32 # Block Cloud Instance Metadata Service (IMDS) SSRF vectors
+      ports:
+        - protocol: TCP
+          port: 443
+
+    # 4. Allow Outbound SMTPS & SMTP Submission for Transactional Emails (Brevo / SMTP Relays)
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+              - 169.254.169.254/32
+      ports:
+        - protocol: TCP
+          port: 465
+        - protocol: TCP
+          port: 587
+

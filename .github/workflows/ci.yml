@@ -1,0 +1,72 @@
+name: Continuous Integration & Security Verification
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+# Enforce least-privilege permissions at workflow level
+permissions:
+  contents: read
+
+# Concurrency management: Cancel in-progress runs on same branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-and-test:
+    name: Build, Typecheck & Automated Headless Verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      mongodb:
+        image: mongo:7.0
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.runCommand({ping: 1})'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js Runtime
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "npm"
+
+      - name: Install Dependencies (Deterministic Lockfile)
+        run: npm ci
+
+      - name: Static TypeScript Verification
+        run: npm run type-check
+
+      - name: Production Bundle Compilation
+        run: npm run build
+
+      - name: Headless Expansion & Layout Isolation Verification
+        run: npm run test:expansion
+
+      - name: Headless Paystack Payment & E2E Security Verification
+        run: npm run test:paystack
+        env:
+          NODE_ENV: test
+          MONGODB_URI: mongodb://localhost:27017/markdriller_test
+
+      - name: Headless Student Lifecycle Journey Verification
+        run: npm run test:journey
+        env:
+          NODE_ENV: test
+          MONGODB_URI: mongodb://localhost:27017/markdriller_test
+
+      - name: Supply Chain Dependency Audit
+        run: npm audit --audit-level=critical

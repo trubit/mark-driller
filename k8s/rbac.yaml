@@ -1,0 +1,29 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: markdriller-app-role
+  namespace: markdriller
+  labels:
+    app.kubernetes.io/name: markdriller
+rules:
+  # Least-privilege: Application pods do not require cluster manipulation
+  # Explicit read-only access limited strictly to its own configmaps for dynamic reload
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "watch", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: markdriller-app-rolebinding
+  namespace: markdriller
+  labels:
+    app.kubernetes.io/name: markdriller
+subjects:
+  - kind: ServiceAccount
+    name: markdriller-sa
+    namespace: markdriller
+roleRef:
+  kind: Role
+  name: markdriller-app-role
+  apiGroup: rbac.authorization.k8s.io

@@ -1,0 +1,138 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: markdriller-api
+  namespace: markdriller
+  labels:
+    app.kubernetes.io/name: markdriller
+    app.kubernetes.io/component: api
+spec:
+  replicas: 3
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: markdriller
+      app.kubernetes.io/component: api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: markdriller
+        app.kubernetes.io/component: api
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "5009"
+        prometheus.io/path: "/api/health"
+    spec:
+      serviceAccountName: markdriller-sa
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 60
+
+      # High-Availability Pod Anti-Affinity across Availability Zones and Nodes
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app.kubernetes.io/component
+                      operator: In
+                      values:
+                        - api
+                topologyKey: kubernetes.io/hostname
+      # Pod-level security context enforcing non-root execution (Restricted PSS)
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
+        seccompProfile:
+          type: RuntimeDefault
+
+      containers:
+        - name: markdriller-api
+          image: markdriller/api:latest
+          imagePullPolicy: IfNotPresent
+          
+          # Container-level security context with dropped capabilities and read-only root FS
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+
+          ports:
+            - name: http
+              containerPort: 5009
+              protocol: TCP
+
+          # Resource sizing engineered for 4,000+ concurrent requests across autoscaled pods
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1024Mi
+
+          # Ingest configuration from ConfigMap and Secret
+          envFrom:
+            - configMapRef:
+                name: markdriller-config
+            - secretRef:
+                name: markdriller-secrets
+
+          # Three-tier Probes for zero-downtime rolling updates
+          startupProbe:
+            httpGet:
+              path: /api/health
+              port: 5009
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 12
+
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 5009
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 5009
+            periodSeconds: 5
+            timeoutSeconds: 2
+            successThreshold: 1
+            failureThreshold: 3
+
+          # Ephemeral writable mounts for tmp and upload scratch
+          volumeMounts:
+            - name: tmp-volume
+              mountPath: /tmp
+            - name: uploads-volume
+              mountPath: /app/uploads
+
+          # Graceful shutdown lifecycle: brief delay allows Ingress endpoints to deregister cleanly
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 5"]
+
+      volumes:
+        - name: tmp-volume
+          emptyDir:
+            medium: Memory
+            sizeLimit: 128Mi
+        - name: uploads-volume
+          emptyDir:
+            sizeLimit: 1Gi

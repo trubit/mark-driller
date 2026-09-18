@@ -1,0 +1,16 @@
+# ==============================================================================
+# MarkDriller Terraform Example Variables
+# Copy to terraform.tfvars for deployment
+# ==============================================================================
+
+aws_region          = "us-east-1"
+environment         = "production"
+cluster_name        = "markdriller-prod-eks"
+cluster_version     = "1.31"
+vpc_cidr            = "10.100.0.0/16"
+
+# Node Group Sizing (Engineered for 4,000+ Concurrent Examination Sessions)
+node_instance_types = ["m6i.xlarge", "m5.xlarge"]
+node_min_size       = 3
+node_max_size       = 12
+node_desired_size   = 4

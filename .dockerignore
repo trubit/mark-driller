@@ -1,0 +1,40 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Environment & Local Secrets
+.env
+.env.*
+!.env.example
+
+# Node
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Build and Dist
+dist
+dist-ssr
+.vite
+
+# Development & Test Scratch
+scratch/
+uploads/
+coverage/
+*.tsbuildinfo
+
+# Infrastructure
+k8s/
+terraform/
+.github/
+
+# Documentation & IDE
+README.md
+*.md
+.vscode
+.idea
+.DS_Store
+Thumbs.db

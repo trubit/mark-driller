@@ -1,0 +1,62 @@
+name: Infrastructure Validation (Terraform & Kubernetes)
+
+on:
+  push:
+    paths:
+      - 'terraform/**'
+      - 'k8s/**'
+      - '.github/workflows/infra-validate.yml'
+  pull_request:
+    paths:
+      - 'terraform/**'
+      - 'k8s/**'
+      - '.github/workflows/infra-validate.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate-terraform:
+    name: Terraform Format & Lint Verification
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: terraform
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup HashiCorp Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.5"
+
+      - name: Verify Formatting (terraform fmt)
+        run: terraform fmt -check -diff
+
+      - name: Initialize Terraform (Backend Disabled for Validation)
+        run: terraform init -backend=false
+
+      - name: Validate Syntax & Types (terraform validate)
+        run: terraform validate
+
+  validate-kubernetes:
+    name: Kubernetes Manifest Schema Verification
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Kubeval Schema Validator
+        run: |
+          wget https://github.com/instrumenta/kubeval/releases/latest/download/kubeval-linux-amd64.tar.gz
+          tar xf kubeval-linux-amd64.tar.gz
+          sudo mv kubeval /usr/local/bin/
+
+      - name: Validate Kubernetes Manifests
+        run: |
+          kubeval --strict --ignore-missing-schemas k8s/*.yaml

@@ -1,0 +1,14 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: markdriller-api-pdb
+  namespace: markdriller
+  labels:
+    app.kubernetes.io/name: markdriller
+    app.kubernetes.io/component: pdb
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: markdriller
+      app.kubernetes.io/component: api

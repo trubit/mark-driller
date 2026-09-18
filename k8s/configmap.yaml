@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: markdriller-config
+  namespace: markdriller
+  labels:
+    app.kubernetes.io/name: markdriller
+    app.kubernetes.io/component: configuration
+data:
+  PORT: "5009"
+  NODE_ENV: "production"
+  APP_URL: "https://markdriller.com"
+  CLIENT_URL: "https://markdriller.com"
+  CORS_ORIGIN: "https://markdriller.com"
+  ADMIN_EMAIL: "admin@markdriller.com"
+  JWT_EXPIRES_IN: "24h"
+  EMAIL_PROVIDER: "smtp"
+  EMAIL_HOST: "smtp-relay.brevo.com"
+  EMAIL_PORT: "465"
+  EMAIL_FROM: '"MarkDriller Academic Support" <support@markdriller.com>'
+  OTP_EXPIRATION_MINUTES: "15"
+  OTP_MAX_ATTEMPTS: "5"
+  OTP_RESEND_COOLDOWN_SECONDS: "60"
+  STORAGE_PROVIDER: "cloudinary"
+  STORAGE_DIR: "uploads/materials"
+  QUESTION_SYNC_ENABLED: "true"
+  QUESTION_SYNC_INTERVAL_HOURS: "6"
+  QUESTION_SOURCE_TIMEOUT_MS: "10000"
+  QUESTION_SOURCE_BATCH_SIZE: "50"
+  QUESTION_AUTO_PUBLISH: "false"
