@@ -17,7 +17,6 @@ jobs:
   build-and-deploy:
     name: Build Container & Deploy to Kubernetes
     runs-on: ubuntu-latest
-    if: ${{ secrets.AWS_DEPLOY_ROLE_ARN != '' }}
     environment: production
     timeout-minutes: 20
 
@@ -27,31 +26,66 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Detect AWS Deployment Target
+        id: aws-check
+        run: |
+          if [ -n "${{ secrets.AWS_DEPLOY_ROLE_ARN }}" ]; then
+            echo "has_role=true" >> $GITHUB_OUTPUT
+            echo "AWS OIDC Role ARN configured. Performing full cloud push and EKS rollout."
+          else
+            echo "has_role=false" >> $GITHUB_OUTPUT
+            echo "::notice title=Deployment Mode::AWS_DEPLOY_ROLE_ARN secret not configured. Running container build verification and Kubernetes client-side validation."
+          fi
+
+      - name: Build Production Multi-Stage Container Image
+        run: |
+          docker build -t markdriller-api:latest -t markdriller-api:${{ github.sha }} .
+
+      - name: Client-Side Kubernetes Manifest Validation
+        run: |
+          kubectl apply --dry-run=client -f k8s/namespace.yaml
+          kubectl apply --dry-run=client -f k8s/serviceaccount.yaml
+          kubectl apply --dry-run=client -f k8s/rbac.yaml
+          kubectl apply --dry-run=client -f k8s/configmap.yaml
+          kubectl apply --dry-run=client -f k8s/networkpolicy.yaml
+          kubectl apply --dry-run=client -f k8s/service.yaml
+          kubectl apply --dry-run=client -f k8s/ingress.yaml
+          kubectl apply --dry-run=client -f k8s/hpa.yaml
+          kubectl apply --dry-run=client -f k8s/pdb.yaml
+          kubectl apply --dry-run=client -f k8s/api-deployment.yaml
+          kubectl apply --dry-run=client -f k8s/worker-deployment.yaml
+
       - name: Configure AWS Credentials via GitHub OIDC
+        if: steps.aws-check.outputs.has_role == 'true'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
 
       - name: Login to Amazon ECR
+        if: steps.aws-check.outputs.has_role == 'true'
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build, Tag & Push Multi-Stage Production Image
+      - name: Tag & Push Multi-Stage Production Image to ECR
+        if: steps.aws-check.outputs.has_role == 'true'
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: markdriller-api
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
+          docker tag markdriller-api:latest $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker tag markdriller-api:latest $ECR_REGISTRY/$ECR_REPOSITORY:latest
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
       - name: Update Kubeconfig for EKS Cluster
+        if: steps.aws-check.outputs.has_role == 'true'
         run: |
           aws eks update-kubeconfig --region us-east-1 --name markdriller-prod-eks
 
       - name: Deploy Kubernetes Manifests & Verify Zero-Downtime Rollout
+        if: steps.aws-check.outputs.has_role == 'true'
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: markdriller-api
@@ -75,3 +109,11 @@ jobs:
           # Verify rolling update status
           kubectl rollout status deployment/markdriller-api -n markdriller --timeout=180s
           kubectl rollout status deployment/markdriller-worker -n markdriller --timeout=180s
+
+      - name: Production Deployment Summary
+        run: |
+          if [ "${{ steps.aws-check.outputs.has_role }}" = "true" ]; then
+            echo "::notice title=Production Deployed::MarkDriller production workloads deployed to AWS EKS cluster successfully."
+          else
+            echo "::notice title=Production Verified::Production container build and Kubernetes infrastructure manifests verified successfully. To deploy live to AWS EKS, configure AWS_DEPLOY_ROLE_ARN in GitHub Secrets."
+          fi
