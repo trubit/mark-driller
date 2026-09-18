@@ -24,7 +24,7 @@ resource "aws_launch_template" "node" {
       volume_size           = 80
       volume_type           = "gp3"
       encrypted             = true
-      kms_key_id            = aws_kms_key.eks.arn
+      kms_key_id            = aws_kms_key.eks_secrets.arn
       delete_on_termination = true
     }
   }
