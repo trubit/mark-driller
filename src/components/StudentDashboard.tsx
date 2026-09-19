@@ -35,12 +35,24 @@ export const StudentDashboard: React.FC = () => {
   const currentUser = userData?.user || user;
   const currentTargetExamId = (currentUser?.targetExam as any)?._id || (currentUser?.targetExam as any);
 
+  // Resolved active examination object (guaranteed to match an existing board)
+  const currentExamObj = exams?.find((ex) => ex._id === currentTargetExamId) || (exams && exams[0]);
+  const activeExamId = currentExamObj?._id || '';
+
   // Load subjects for the active target exam
-  const { data: subjects, isLoading: subjectsLoading } = useExamSubjectsQuery(
-    currentTargetExamId || (exams && exams[0]?._id)
-  );
+  const { data: subjects, isLoading: subjectsLoading } = useExamSubjectsQuery(activeExamId);
 
   const { notifySuccess, notifyError } = useNotificationStore();
+
+  // Auto-sync valid exam to student profile if none is set or if previous ID is obsolete
+  React.useEffect(() => {
+    if (exams && exams.length > 0) {
+      const isValid = exams.some((ex) => ex._id === currentTargetExamId);
+      if (!isValid && exams[0]?._id) {
+        updateTargetExam.mutate({ examId: exams[0]._id });
+      }
+    }
+  }, [exams, currentTargetExamId]);
 
   const handleTargetExamChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newExamId = e.target.value;
@@ -49,7 +61,7 @@ export const StudentDashboard: React.FC = () => {
     try {
       await updateTargetExam.mutateAsync({ examId: newExamId });
       setExamChangeSuccess('Target examination updated successfully.');
-      notifySuccess('Your target curriculum has been updated.');
+      notifySuccess('Active examination updated. Syllabus and drill questions synced.');
       setTimeout(() => setExamChangeSuccess(null), 3000);
     } catch (err: any) {
       notifyError(err.message || 'We could not update your target examination. Please try again.');
@@ -59,8 +71,6 @@ export const StudentDashboard: React.FC = () => {
   if (!currentUser) {
     return null;
   }
-
-  const currentExamObj = exams?.find((ex) => ex._id === currentTargetExamId) || exams?.[0];
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: 'var(--paper)', display: 'flex', flexDirection: 'column' }}>
@@ -119,7 +129,7 @@ export const StudentDashboard: React.FC = () => {
               </label>
               <select
                 id="targetExamSelect"
-                value={currentTargetExamId || currentExamObj?._id || ''}
+                value={activeExamId}
                 onChange={handleTargetExamChange}
                 disabled={updateTargetExam.isPending || examsLoading}
                 style={{
@@ -136,9 +146,11 @@ export const StudentDashboard: React.FC = () => {
                 }}
               >
                 {examsLoading ? (
-                  <option>Loading examinations...</option>
+                  <option value="">Loading examinations...</option>
+                ) : (!exams || exams.length === 0) ? (
+                  <option value="" disabled>No examinations available</option>
                 ) : (
-                  exams?.map((exam) => (
+                  exams.map((exam) => (
                     <option key={exam._id} value={exam._id}>
                       {exam.shortCode} — {exam.name}
                     </option>
@@ -330,7 +342,7 @@ export const StudentDashboard: React.FC = () => {
             <h3>Past Questions Drill</h3>
             <p>Drill topic-by-topic with detailed marking schemes, step-by-step worked steps, and instant explanations.</p>
             <Link
-              to="/questions"
+              to={activeExamId ? `/questions?examId=${activeExamId}` : '/questions'}
               className="btn-custom btn-custom-ghost"
               style={{ marginTop: 'auto', alignSelf: 'flex-start', textDecoration: 'none' }}
             >
@@ -343,7 +355,7 @@ export const StudentDashboard: React.FC = () => {
             <h3>Study Materials</h3>
             <p>Syllabus-aligned revision notes, downloadable PDF formulas, and official examination guides.</p>
             <Link
-              to="/materials"
+              to={activeExamId ? `/materials?examId=${activeExamId}` : '/materials'}
               className="btn-custom btn-custom-ghost"
               style={{ marginTop: 'auto', alignSelf: 'flex-start', textDecoration: 'none' }}
             >
@@ -368,11 +380,8 @@ export const StudentDashboard: React.FC = () => {
         {/* Interactive Syllabus Subject & Topic Hierarchy */}
         <div style={{ marginBottom: '48px' }}>
           <div className="section-head" style={{ marginBottom: '24px' }}>
-            <span className="eyebrow">Database Syllabus Breakdown</span>
             <h2>{currentExamObj?.name || 'Target Examination'} — Core Subjects & Topics</h2>
-            <p style={{ color: 'var(--ink-soft)', fontSize: '15px' }}>
-              Click on any subject below to inspect its official curriculum topics and begin practice drills.
-            </p>
+            <p>Accredited examination topics with targeted past question drill counts.</p>
           </div>
 
           {subjectsLoading ? (
@@ -392,7 +401,7 @@ export const StudentDashboard: React.FC = () => {
                 <SyllabusSubjectCard
                   key={subject._id}
                   subject={subject}
-                  examId={currentTargetExamId}
+                  examId={activeExamId}
                 />
               ))}
             </div>
@@ -412,7 +421,7 @@ export const StudentDashboard: React.FC = () => {
       <CbtSetupModal
         isOpen={isCbtModalOpen}
         onClose={() => setIsCbtModalOpen(false)}
-        defaultExamId={currentTargetExamId}
+        defaultExamId={activeExamId}
       />
     </div>
   );

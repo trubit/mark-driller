@@ -41,7 +41,8 @@ export function useExamsQuery() {
   return useQuery<ExamItem[]>({
     queryKey: ['exams'],
     queryFn: () => apiClient<ExamItem[]>('/api/exams'),
-    staleTime: 1000 * 60 * 15,
+    staleTime: 1000 * 60 * 2,
+    refetchOnMount: 'always',
   });
 }
 
@@ -50,7 +51,8 @@ export function useExamSubjectsQuery(examId?: string) {
     queryKey: ['subjects', examId],
     queryFn: () => apiClient<SubjectItem[]>(`/api/exams/${examId}/subjects`),
     enabled: !!examId,
-    staleTime: 1000 * 60 * 10,
+    staleTime: 1000 * 60 * 2,
+    refetchOnMount: 'always',
   });
 }
 

@@ -304,9 +304,9 @@ export const QuestionCatalog: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { isAuthenticated } = useAuthStore();
 
-  const selectedExamId = searchParams.get('exam') || '';
-  const selectedSubjectId = searchParams.get('subject') || '';
-  const selectedTopicId = searchParams.get('topic') || '';
+  const selectedExamId = searchParams.get('exam') || searchParams.get('examId') || '';
+  const selectedSubjectId = searchParams.get('subject') || searchParams.get('subjectId') || '';
+  const selectedTopicId = searchParams.get('topic') || searchParams.get('topicId') || '';
   const selectedYear = searchParams.get('year') || '';
   const selectedDifficulty = searchParams.get('difficulty') || '';
   const searchQuery = searchParams.get('q') || searchParams.get('search') || '';

@@ -26,10 +26,14 @@ export const CbtSetupModal: React.FC<CbtSetupModalProps> = ({ isOpen, onClose, d
   const [questionCount, setQuestionCount] = useState(10);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Keep selected exam initialized
+  // Keep selected exam initialized and validated against available exams
   React.useEffect(() => {
-    if (!selectedExamId && exams && exams.length > 0) {
-      setSelectedExamId(defaultExamId || exams[0]._id);
+    if (exams && exams.length > 0) {
+      const isSelectedValid = exams.some((e) => e._id === selectedExamId);
+      const isDefaultValid = defaultExamId && exams.some((e) => e._id === defaultExamId);
+      if (!isSelectedValid) {
+        setSelectedExamId(isDefaultValid ? defaultExamId : exams[0]._id);
+      }
     }
   }, [exams, defaultExamId, selectedExamId]);
 
