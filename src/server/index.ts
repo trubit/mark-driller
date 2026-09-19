@@ -115,7 +115,6 @@ app.use('/api', apiLimiter);
 app.use('/api/health', healthRouter);
 
 // Ensure API requests wait for database connection and curriculum verification
-let dbReady = false;
 const dbPromise = connectDatabase()
   .then(async () => {
     try {
@@ -125,8 +124,6 @@ const dbPromise = connectDatabase()
       console.log('✅ Production curriculum, past questions, and examination boards are verified & ready.');
     } catch (err) {
       console.error('❌ Error during curriculum seed verification:', err);
-    } finally {
-      dbReady = true;
     }
   })
   .catch((err) => {
@@ -138,7 +135,6 @@ app.use('/api', async (req, res, next) => {
     return next();
   }
   if (mongoose.connection.readyState === 1) {
-    dbReady = true;
     return next();
   }
   return res.status(503).json({
