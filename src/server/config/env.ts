@@ -15,7 +15,8 @@ if (fs.existsSync(envPath) && typeof process.loadEnvFile === 'function') {
 const defaultAppUrl = process.env.APP_URL || process.env.RENDER_EXTERNAL_URL || (process.env.NODE_ENV === 'production' ? 'https://markdriller.com' : 'http://127.0.0.1:5009');
 const defaultClientUrl = process.env.CLIENT_URL || process.env.RENDER_EXTERNAL_URL || (process.env.NODE_ENV === 'production' ? 'https://markdriller.com' : 'http://127.0.0.1:3009');
 const defaultCorsOrigin = process.env.CORS_ORIGIN || process.env.RENDER_EXTERNAL_URL || (process.env.NODE_ENV === 'production' ? 'https://markdriller.com' : 'http://localhost:3009');
-const defaultMongoUri = process.env.MONGODB_URI || (process.env.ALLOW_LOCAL_DB === 'true' ? 'mongodb://127.0.0.1:27017/markdriller' : (process.env.NODE_ENV === 'production' ? 'mongodb://markdriller-mongodb:27017/markdriller' : 'mongodb://127.0.0.1:27017/markdriller'));
+const rawMongoUri = process.env.MONGODB_URI || process.env.MONGODB_URL;
+const defaultMongoUri = rawMongoUri || (process.env.ALLOW_LOCAL_DB === 'true' ? 'mongodb://127.0.0.1:27017/markdriller' : (process.env.NODE_ENV === 'production' ? 'mongodb://markdriller-mongodb:27017/markdriller' : 'mongodb://127.0.0.1:27017/markdriller'));
 
 export const envSchema = z.object({
   PORT: z.string().default('5009').transform((val) => parseInt(val, 10)),
