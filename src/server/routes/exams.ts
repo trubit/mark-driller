@@ -27,7 +27,9 @@ router.get('/', async (_req: Request, res: Response, next: NextFunction): Promis
     }
 
     const exams = await Exam.find({ isActive: true }).sort({ order: 1 }).lean();
-    metadataCache.set(cacheKey, exams, 300);
+    if (exams.length > 0) {
+      metadataCache.set(cacheKey, exams, 300);
+    }
     res.status(200).json({ success: true, data: exams });
   } catch (error) {
     next(error);
@@ -50,7 +52,6 @@ router.get('/:examId/subjects', async (req: Request, res: Response, next: NextFu
 
     const subjects = await Subject.find({ examId }).sort({ order: 1 }).lean();
     if (subjects.length === 0) {
-      metadataCache.set(cacheKey, [], 300);
       res.status(200).json({ success: true, data: [] });
       return;
     }

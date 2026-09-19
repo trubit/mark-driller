@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { env } from './config/env.js';
 import { connectDatabase, disconnectDatabase } from './config/database.js';
 import { seedInitialData } from './utils/seedData.js';
+import { metadataCache } from './utils/cache.js';
 import { apiLimiter } from './middleware/rateLimiter.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import healthRouter from './routes/health.js';
@@ -109,29 +110,34 @@ app.use('/api', apiLimiter);
 // so liveness probes and startup sequencing scripts answer immediately
 app.use('/api/health', healthRouter);
 
-// Ensure API requests wait for database connection to be ready
+// Ensure API requests wait for database connection and curriculum verification
 let dbReady = false;
 const dbPromise = connectDatabase()
-  .then(() => {
-    dbReady = true;
-    if (env.NODE_ENV !== 'production') {
-      seedInitialData().catch((err) => console.error('Seed error:', err));
+  .then(async () => {
+    try {
+      console.log('🌱 Checking and seeding production curriculum & past questions dataset...');
+      await seedInitialData();
+      metadataCache.clear();
+      console.log('✅ Production curriculum, past questions, and examination boards are verified & ready.');
+    } catch (err) {
+      console.error('❌ Error during curriculum seed verification:', err);
+    } finally {
+      dbReady = true;
     }
   })
   .catch((err) => {
     console.error('❌ Database connection error during startup:', err);
   });
 
-
 app.use('/api', async (req, res, next) => {
   if (req.path === '/health' || req.path === '/health/') {
     return next();
   }
-  if (!dbReady && mongoose.connection.readyState !== 1) {
+  if (!dbReady || mongoose.connection.readyState !== 1) {
     return res.status(503).json({
       success: false,
       error: {
-        message: 'Database connection is initializing. Please retry in a few moments.',
+        message: 'Database connection and curriculum are initializing. Please retry in a few moments.',
       },
     });
   }
