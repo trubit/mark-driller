@@ -50,28 +50,27 @@ export async function sendViaBrevoApi(options: {
   html: string;
 }): Promise<boolean> {
   if (!env.BREVO_API_KEY) {
+    console.error('❌ [BREVO API ERROR] BREVO_API_KEY is not set in environment variables. Please add it to your Render Environment tab.');
     return false;
   }
 
-  // Parse configured sender
-  let sender = parseSender(env.EMAIL_FROM);
-
   // Brevo strictly requires sender.email to be a verified address in the Brevo account.
-  // If unverified, using unconfigured domain, or default placeholder, use verified sender oliversmith2140@gmail.com
-  const verifiedBrevoEmail = 'oliversmith2140@gmail.com';
-  if (!sender.email || sender.email.includes('@markdriller.com') || sender.email.includes('localhost') || sender.email.includes('127.0.0.1')) {
-    sender = { name: sender.name || 'MarkDriller', email: verifiedBrevoEmail };
-  }
+  // The verified address in this account is oliversmith2140@gmail.com.
+  const sender = {
+    name: 'MarkDriller',
+    email: 'oliversmith2140@gmail.com',
+  };
 
   const payload: any = {
     sender,
+    replyTo: { email: 'support@markdriller.com', name: 'MarkDriller Academic Support' },
     to: [{ email: options.to, name: options.toName || options.to.split('@')[0] }],
     subject: options.subject,
     htmlContent: options.html,
   };
 
   try {
-    let response = await fetch('https://api.brevo.com/v3/smtp/email', {
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
       headers: {
         'accept': 'application/json',
@@ -80,21 +79,6 @@ export async function sendViaBrevoApi(options: {
       },
       body: JSON.stringify(payload),
     });
-
-    // If Brevo rejects sender as unauthorized, auto-retry with verified sender email
-    if (!response.ok && response.status === 400 && sender.email !== verifiedBrevoEmail) {
-      console.warn(`⚠️ [BREVO API] Sender "${sender.email}" unauthorized. Retrying with verified account email "${verifiedBrevoEmail}"...`);
-      payload.sender = { name: 'MarkDriller', email: verifiedBrevoEmail };
-      response = await fetch('https://api.brevo.com/v3/smtp/email', {
-        method: 'POST',
-        headers: {
-          'accept': 'application/json',
-          'api-key': env.BREVO_API_KEY,
-          'content-type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-    }
 
     if (response.ok) {
       const data = await response.json().catch(() => ({}));
@@ -120,7 +104,7 @@ export async function dispatchEmail(options: {
   subject: string;
   html: string;
 }): Promise<boolean> {
-  // 1. If Brevo API key is available, use HTTPS REST API first (fast, reliable, immune to cloud SMTP port blocking)
+  // 1. Primary: Brevo HTTPS REST API on port 443 (fast, reliable, immune to cloud SMTP port blocking)
   if (env.BREVO_API_KEY) {
     try {
       const apiSuccess = await sendViaBrevoApi(options);
@@ -147,8 +131,8 @@ export async function dispatchEmail(options: {
     }
   }
 
-  // 3. In local development/test without credentials, stream mock transporter
-  if (!env.EMAIL_USER && !env.BREVO_API_KEY) {
+  // 3. If running in local development without credentials, log clearly
+  if (env.NODE_ENV === 'development') {
     try {
       const t = getTransporter();
       await t.sendMail({
@@ -157,14 +141,14 @@ export async function dispatchEmail(options: {
         subject: options.subject,
         html: options.html,
       });
-      console.log(`📧 [EMAIL MOCK/STREAM] Processed email for ${options.to}: ${options.subject}`);
+      console.log(`📧 [EMAIL DEV STREAM] Processed local email for ${options.to}: ${options.subject}`);
       return true;
     } catch (err: any) {
       console.error('❌ Stream transport error:', err);
     }
   }
 
-  console.error(`❌ All email delivery mechanisms failed for ${options.to}`);
+  console.error(`❌ [EMAIL DISPATCH FAILURE] Could not send email to ${options.to}. Ensure BREVO_API_KEY is configured in your Render environment variables.`);
   return false;
 }
 
@@ -218,7 +202,7 @@ export async function sendVerificationEmail(
   fullName: string,
   otp: string,
   expiresMinutes: number = 15
-): Promise<void> {
+): Promise<boolean> {
   const subject = `Verify Your MarkDriller Account — OTP: ${otp}`;
   const content = `
     <h2 style="font-size: 20px; margin: 0 0 12px; color: #14181c;">Confirm Your Email Address</h2>
@@ -245,7 +229,7 @@ export async function sendVerificationEmail(
   console.log(`Expires:   ${expiresMinutes} minutes`);
   console.log('============================================================\n');
 
-  await dispatchEmail({ to, toName: fullName, subject, html });
+  return await dispatchEmail({ to, toName: fullName, subject, html });
 }
 
 /**
@@ -256,7 +240,7 @@ export async function sendPasswordResetEmail(
   fullName: string,
   otp: string,
   expiresMinutes: number = 15
-): Promise<void> {
+): Promise<boolean> {
   const subject = `Reset Your MarkDriller Password — OTP: ${otp}`;
   const content = `
     <h2 style="font-size: 20px; margin: 0 0 12px; color: #14181c;">Password Reset Request</h2>
@@ -283,7 +267,7 @@ export async function sendPasswordResetEmail(
   console.log(`Expires:   ${expiresMinutes} minutes`);
   console.log('============================================================\n');
 
-  await dispatchEmail({ to, toName: fullName, subject, html });
+  return await dispatchEmail({ to, toName: fullName, subject, html });
 }
 
 /**
@@ -295,7 +279,7 @@ export async function sendSubscriptionEmail(
   planName: string,
   amountNGN: number,
   reference: string
-): Promise<void> {
+): Promise<boolean> {
   const subject = `Payment Confirmed: Your ${planName} is Active!`;
   const content = `
     <h2 style="font-size: 20px; margin: 0 0 12px; color: #14181c;">Payment Receipt & Subscription Active</h2>
@@ -317,5 +301,5 @@ export async function sendSubscriptionEmail(
   `;
 
   const html = wrapBrandedTemplate(subject, content);
-  await dispatchEmail({ to, toName: fullName, subject, html });
+  return await dispatchEmail({ to, toName: fullName, subject, html });
 }

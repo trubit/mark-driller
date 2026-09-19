@@ -107,8 +107,12 @@ router.post(
         userId: user._id,
       });
 
-      // Send verification email asynchronously
-      sendVerificationEmail(user.email, user.fullName, plainOtp, env.OTP_EXPIRATION_MINUTES);
+      // Dispatch verification email
+      try {
+        await sendVerificationEmail(user.email, user.fullName, plainOtp, env.OTP_EXPIRATION_MINUTES);
+      } catch (emailErr: any) {
+        console.error('⚠️ [AUTH REGISTRATION] Failed to dispatch verification email:', emailErr?.message || emailErr);
+      }
 
       const token = generateToken({
         userId: user._id.toString(),
@@ -350,7 +354,12 @@ router.post(
       user.verificationOtpLastSent = new Date();
       await user.save();
 
-      sendVerificationEmail(user.email, user.fullName, plainOtp, env.OTP_EXPIRATION_MINUTES);
+      // Dispatch fresh verification email
+      try {
+        await sendVerificationEmail(user.email, user.fullName, plainOtp, env.OTP_EXPIRATION_MINUTES);
+      } catch (emailErr: any) {
+        console.error('⚠️ [AUTH RESEND OTP] Failed to dispatch verification email:', emailErr?.message || emailErr);
+      }
 
       res.status(200).json({
         success: true,
@@ -409,7 +418,12 @@ router.post(
       user.resetPasswordOtpLastSent = new Date();
       await user.save();
 
-      sendPasswordResetEmail(user.email, user.fullName, plainOtp, env.OTP_EXPIRATION_MINUTES);
+      // Dispatch password reset email
+      try {
+        await sendPasswordResetEmail(user.email, user.fullName, plainOtp, env.OTP_EXPIRATION_MINUTES);
+      } catch (emailErr: any) {
+        console.error('⚠️ [AUTH FORGOT PASSWORD] Failed to dispatch password reset email:', emailErr?.message || emailErr);
+      }
 
       res.status(200).json({
         success: true,

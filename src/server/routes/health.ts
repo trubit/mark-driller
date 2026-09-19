@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import mongoose from 'mongoose';
+import { env } from '../config/env.js';
 
 const router = Router();
 
@@ -22,6 +23,11 @@ router.get('/', (_req: Request, res: Response) => {
       uptimeSeconds: Math.floor(process.uptime()),
       database: dbStatus,
       databaseReady: dbState === 1,
+      email: {
+        provider: env.EMAIL_PROVIDER,
+        sender: 'MarkDriller <oliversmith2140@gmail.com>',
+        apiConfigured: Boolean(env.BREVO_API_KEY),
+      },
       timestamp: new Date().toISOString(),
     },
   });
