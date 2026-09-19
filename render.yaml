@@ -67,6 +67,6 @@ services:
       - key: BREVO_API_KEY
         sync: false
       - key: EMAIL_FROM
-        value: '"MarkDriller Academic Support" <support@markdriller.com>'
+        value: '"MarkDriller" <oliversmith2140@gmail.com>'
       - key: QUESTION_SYNC_ENABLED
         value: "false"

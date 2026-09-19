@@ -37,12 +37,12 @@ export const envSchema = z.object({
   SESSION_SECRET: z.string().default('markdriller_session_secret_2026'),
 
   // Email Configuration (SMTP / Brevo)
-  EMAIL_PROVIDER: z.string().default('smtp'),
+  EMAIL_PROVIDER: z.string().default('brevo'),
   EMAIL_HOST: z.string().default('smtp-relay.brevo.com'),
   EMAIL_PORT: z.string().default('465').transform((val) => parseInt(val, 10)),
   EMAIL_USER: z.string().default(''),
   EMAIL_PASSWORD: z.string().default(''),
-  EMAIL_FROM: z.string().default('"MarkDriller Academic Support" <support@markdriller.com>'),
+  EMAIL_FROM: z.string().default('"MarkDriller" <oliversmith2140@gmail.com>'),
   BREVO_API_KEY: z.string().default(''),
 
   // OTP Configuration

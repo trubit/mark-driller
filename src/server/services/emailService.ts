@@ -41,7 +41,7 @@ function parseSender(fromStr: string): { name: string; email: string } {
 }
 
 /**
- * Send email via Brevo REST API v3 (HTTPS port 443 fallback)
+ * Send email via Brevo REST API v3 (HTTPS port 443, reliable on all cloud hosts)
  */
 export async function sendViaBrevoApi(options: {
   to: string;
@@ -53,36 +53,66 @@ export async function sendViaBrevoApi(options: {
     return false;
   }
 
-  const sender = parseSender(env.EMAIL_FROM);
+  // Parse configured sender
+  let sender = parseSender(env.EMAIL_FROM);
 
-  const response = await fetch('https://api.brevo.com/v3/smtp/email', {
-    method: 'POST',
-    headers: {
-      'accept': 'application/json',
-      'api-key': env.BREVO_API_KEY,
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({
-      sender,
-      to: [{ email: options.to, name: options.toName || options.to.split('@')[0] }],
-      subject: options.subject,
-      htmlContent: options.html,
-    }),
-  });
+  // Brevo strictly requires sender.email to be a verified address in the Brevo account.
+  // If unverified, using unconfigured domain, or default placeholder, use verified sender oliversmith2140@gmail.com
+  const verifiedBrevoEmail = 'oliversmith2140@gmail.com';
+  if (!sender.email || sender.email.includes('@markdriller.com') || sender.email.includes('localhost') || sender.email.includes('127.0.0.1')) {
+    sender = { name: sender.name || 'MarkDriller', email: verifiedBrevoEmail };
+  }
 
-  if (response.ok) {
-    const data = await response.json().catch(() => ({}));
-    console.log(`📧 [EMAIL DELIVERY via BREVO REST API] Delivered "${options.subject}" to ${options.to} (msgId: ${(data as any).messageId || 'ok'})`);
-    return true;
-  } else {
-    const errBody = await response.text().catch(() => '');
-    console.error(`❌ [BREVO API ERROR ${response.status}] Failed to deliver "${options.subject}" to ${options.to}:`, errBody);
+  const payload: any = {
+    sender,
+    to: [{ email: options.to, name: options.toName || options.to.split('@')[0] }],
+    subject: options.subject,
+    htmlContent: options.html,
+  };
+
+  try {
+    let response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'accept': 'application/json',
+        'api-key': env.BREVO_API_KEY,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    // If Brevo rejects sender as unauthorized, auto-retry with verified sender email
+    if (!response.ok && response.status === 400 && sender.email !== verifiedBrevoEmail) {
+      console.warn(`⚠️ [BREVO API] Sender "${sender.email}" unauthorized. Retrying with verified account email "${verifiedBrevoEmail}"...`);
+      payload.sender = { name: 'MarkDriller', email: verifiedBrevoEmail };
+      response = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          'accept': 'application/json',
+          'api-key': env.BREVO_API_KEY,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+    }
+
+    if (response.ok) {
+      const data = await response.json().catch(() => ({}));
+      console.log(`📧 [EMAIL DELIVERY via BREVO REST API] Delivered "${options.subject}" to ${options.to} (msgId: ${(data as any).messageId || 'ok'})`);
+      return true;
+    } else {
+      const errBody = await response.text().catch(() => '');
+      console.error(`❌ [BREVO API ERROR ${response.status}] Failed to deliver "${options.subject}" to ${options.to}:`, errBody);
+      return false;
+    }
+  } catch (netErr: any) {
+    console.error(`❌ [BREVO NETWORK ERROR] Failed contacting Brevo API:`, netErr.message);
     return false;
   }
 }
 
 /**
- * Resilient email dispatcher with primary SMTP and automatic Brevo REST API failover
+ * Resilient email dispatcher with primary Brevo API on cloud and SMTP support
  */
 export async function dispatchEmail(options: {
   to: string;
@@ -90,8 +120,8 @@ export async function dispatchEmail(options: {
   subject: string;
   html: string;
 }): Promise<boolean> {
-  // If provider is set to brevo_api, send via REST API first
-  if (env.EMAIL_PROVIDER === 'brevo_api' && env.BREVO_API_KEY) {
+  // 1. If Brevo API key is available, use HTTPS REST API first (fast, reliable, immune to cloud SMTP port blocking)
+  if (env.BREVO_API_KEY) {
     try {
       const apiSuccess = await sendViaBrevoApi(options);
       if (apiSuccess) return true;
@@ -100,7 +130,7 @@ export async function dispatchEmail(options: {
     }
   }
 
-  // 1. Try SMTP if configured
+  // 2. Try SMTP if configured with live credentials
   if (env.EMAIL_USER && env.EMAIL_PASSWORD) {
     try {
       const t = getTransporter();
@@ -113,17 +143,7 @@ export async function dispatchEmail(options: {
       console.log(`📧 [EMAIL DELIVERY via SMTP] Successfully delivered "${options.subject}" to ${options.to}`);
       return true;
     } catch (smtpErr: any) {
-      console.warn(`⚠️ [SMTP WARNING] SMTP dispatch to ${options.to} failed (${smtpErr.message}). Initiating fallback...`);
-    }
-  }
-
-  // 2. Automatic Failover: Brevo REST API (HTTPS port 443, immune to SMTP port blocks)
-  if (env.BREVO_API_KEY && env.EMAIL_PROVIDER !== 'brevo_api') {
-    try {
-      const apiSuccess = await sendViaBrevoApi(options);
-      if (apiSuccess) return true;
-    } catch (apiErr: any) {
-      console.error(`❌ [BREVO API FAILOVER ERROR]:`, apiErr.message);
+      console.warn(`⚠️ [SMTP WARNING] SMTP dispatch to ${options.to} failed (${smtpErr.message}).`);
     }
   }
 
