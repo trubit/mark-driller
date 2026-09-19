@@ -32,6 +32,8 @@ router.get('/', async (_req: Request, res: Response) => {
     }
   }
 
+  const maskedHost = mongoose.connection.host || (env.MONGODB_URI.includes('@') ? env.MONGODB_URI.split('@')[1]?.split('?')[0] : 'local');
+
   res.status(200).json({
     success: true,
     data: {
@@ -39,6 +41,7 @@ router.get('/', async (_req: Request, res: Response) => {
       service: 'Mark Driller API',
       uptimeSeconds: Math.floor(process.uptime()),
       database: dbStatus,
+      databaseHost: maskedHost,
       databaseReady: dbState === 1,
       counts,
       email: {

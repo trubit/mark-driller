@@ -10,14 +10,14 @@ export async function connectDatabase(options: { maxPoolSize?: number; minPoolSi
     mongoose.set('strictQuery', true);
 
     const isProd = env.NODE_ENV === 'production';
-    const maxPoolSize = options.maxPoolSize || (isProd ? 150 : 50);
-    const minPoolSize = options.minPoolSize || (isProd ? 20 : 5);
+    const maxPoolSize = options.maxPoolSize || (isProd ? 100 : 50);
+    const minPoolSize = options.minPoolSize || (isProd ? 2 : 1);
 
     const connection = await mongoose.connect(env.MONGODB_URI, {
       maxPoolSize,
       minPoolSize,
       maxIdleTimeMS: 30000,
-      serverSelectionTimeoutMS: 5000,
+      serverSelectionTimeoutMS: 20000,
       socketTimeoutMS: 45000,
       autoIndex: !isProd, // Disable automatic index creation in production (managed ahead of time)
     });
@@ -26,10 +26,10 @@ export async function connectDatabase(options: { maxPoolSize?: number; minPoolSi
     return connection;
   } catch (error) {
     console.error('❌ Failed to connect to MongoDB:', error);
-    console.warn('⚠️ Server will remain running and operational. Retrying MongoDB connection in 10 seconds...');
+    console.warn('⚠️ Server will remain running and operational. Retrying MongoDB connection in 5 seconds...');
     setTimeout(() => {
       connectDatabase(options).catch(() => {});
-    }, 10000);
+    }, 5000);
     throw error;
   }
 }

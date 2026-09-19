@@ -43,6 +43,8 @@ app.use(
           'https://*.onrender.com',
           'https://markdriller.com',
           'https://www.markdriller.com',
+          'https://markdriller.ng',
+          'https://www.markdriller.ng',
           env.CLIENT_URL,
           env.CORS_ORIGIN,
         ].filter(Boolean),
@@ -68,6 +70,8 @@ const allowedOrigins = [
   process.env.RENDER_EXTERNAL_URL,
   'https://markdriller.com',
   'https://www.markdriller.com',
+  'https://markdriller.ng',
+  'https://www.markdriller.ng',
   'http://127.0.0.1:3009',
   'http://localhost:3009',
   'http://127.0.0.1:5009',
@@ -133,15 +137,16 @@ app.use('/api', async (req, res, next) => {
   if (req.path === '/health' || req.path === '/health/') {
     return next();
   }
-  if (!dbReady || mongoose.connection.readyState !== 1) {
-    return res.status(503).json({
-      success: false,
-      error: {
-        message: 'Database connection and curriculum are initializing. Please retry in a few moments.',
-      },
-    });
+  if (mongoose.connection.readyState === 1) {
+    dbReady = true;
+    return next();
   }
-  next();
+  return res.status(503).json({
+    success: false,
+    error: {
+      message: 'Database connection and curriculum are initializing. Please retry in a few moments.',
+    },
+  });
 });
 
 // API Route Registration
