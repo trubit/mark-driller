@@ -29,16 +29,6 @@ function getTransporter(): Transporter {
   return transporter;
 }
 
-/**
- * Helper to parse sender string into name and email
- */
-function parseSender(fromStr: string): { name: string; email: string } {
-  const match = fromStr.match(/^(?:"?([^"]*)"?\s)?(?:<?(.+@[^>]+)>?)$/);
-  if (match) {
-    return { name: match[1] || 'MarkDriller Support', email: match[2] };
-  }
-  return { name: 'MarkDriller Support', email: fromStr };
-}
 
 /**
  * Send email via Brevo REST API v3 (HTTPS port 443, reliable on all cloud hosts)
