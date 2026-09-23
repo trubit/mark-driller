@@ -1,13 +1,15 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   useCbtAttemptQuery,
   useSaveCbtAnswerMutation,
   useSubmitCbtMutation,
 } from '../api/cbt.js';
+import { useMyBookmarksQuery, useToggleBookmarkMutation } from '../api/questions.js';
 import { useNotificationStore } from '../store/useNotificationStore.js';
 import { BrandLogo } from './BrandLogo.js';
 import { BrandLoader } from './BrandLoader.js';
+import { CbtCalculatorModal } from './CbtCalculatorModal.js';
 
 export const CbtExamRoom: React.FC = () => {
   const { attemptId } = useParams<{ attemptId: string }>();
@@ -17,6 +19,8 @@ export const CbtExamRoom: React.FC = () => {
   const { data: attemptData, isLoading, isError } = useCbtAttemptQuery(attemptId);
   const saveAnswer = useSaveCbtAnswerMutation(attemptId);
   const submitCbt = useSubmitCbtMutation(attemptId);
+  const { data: bookmarksData } = useMyBookmarksQuery();
+  const toggleBookmark = useToggleBookmarkMutation();
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answersMap, setAnswersMap] = useState<Record<string, { selectedOption: 'A' | 'B' | 'C' | 'D' | null; markedForReview: boolean }>>({});
@@ -24,6 +28,8 @@ export const CbtExamRoom: React.FC = () => {
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [autoSubmitting, setAutoSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isCalculatorOpen, setIsCalculatorOpen] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
 
   // Sync initial state from server
   useEffect(() => {
@@ -85,6 +91,79 @@ export const CbtExamRoom: React.FC = () => {
     }
   }, [remainingSeconds, autoSubmitting, attemptData, attemptId, navigate, submitCbt, notifySuccess, notifyWarning]);
 
+  // Safe memoized questions array
+  const questions = useMemo(() => attemptData?.questions || [], [attemptData?.questions]);
+
+  // Multi-subject grouping calculation
+  const subjectGroups = useMemo(() => {
+    if (!questions || questions.length === 0) return [];
+    const groups: Array<{
+      id: string;
+      name: string;
+      code: string;
+      startIndex: number;
+      count: number;
+    }> = [];
+    const map = new Map<string, number>();
+
+    questions.forEach((q, idx) => {
+      const sId = q.subjectId || attemptData?.subjectId || 'default';
+      const sName = q.subjectName || attemptData?.subjectName || 'Subject';
+      const sCode = q.subjectCode || attemptData?.subjectCode || 'SUB';
+
+      if (!map.has(sId)) {
+        map.set(sId, groups.length);
+        groups.push({
+          id: sId,
+          name: sName,
+          code: sCode,
+          startIndex: idx,
+          count: 1,
+        });
+      } else {
+        const gIdx = map.get(sId)!;
+        groups[gIdx].count += 1;
+      }
+    });
+
+    return groups;
+  }, [questions, attemptData]);
+
+  const currentSubjectGroup = useMemo(() => {
+    if (!subjectGroups.length) return null;
+    for (let i = subjectGroups.length - 1; i >= 0; i--) {
+      if (currentIndex >= subjectGroups[i].startIndex) {
+        return subjectGroups[i];
+      }
+    }
+    return subjectGroups[0];
+  }, [subjectGroups, currentIndex]);
+
+  const currentQuestion = questions[currentIndex] ?? null;
+
+  const isCurrentBookmarked = useMemo(() => {
+    if (!bookmarksData || !currentQuestion) return false;
+    return bookmarksData.some(
+      (b) => b.question?._id === currentQuestion._id || b.bookmarkId === currentQuestion._id
+    );
+  }, [bookmarksData, currentQuestion]);
+
+  // Stop audio whenever question changes or on unmount
+  useEffect(() => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+    setIsSpeaking(false);
+  }, [currentIndex]);
+
+  useEffect(() => {
+    return () => {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
+
   if (isLoading) {
     return <BrandLoader message="Loading examination room and synchronizing timer with server..." mode="fullscreen" />;
   }
@@ -92,7 +171,7 @@ export const CbtExamRoom: React.FC = () => {
   if (isError || !attemptData) {
     return (
       <div style={{ minHeight: '100vh', backgroundColor: 'var(--paper)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px' }}>
-        <h2 style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Unable to load examination</h2>
+        <h2 style={{ fontFamily: "var(--font-sans)" }}>Unable to load examination</h2>
         <p style={{ color: 'var(--ink-soft)' }}>The examination attempt may have expired or does not exist.</p>
         <Link to="/dashboard" className="btn-custom btn-custom-primary">
           ← Return to Dashboard
@@ -101,11 +180,56 @@ export const CbtExamRoom: React.FC = () => {
     );
   }
 
-  const questions = attemptData.questions || [];
-  const currentQuestion = questions[currentIndex];
   if (!currentQuestion) return null;
 
   const currentAnswer = answersMap[currentQuestion._id] || { selectedOption: null, markedForReview: false };
+
+  const handleBookmarkToggle = () => {
+    if (!currentQuestion) return;
+    toggleBookmark.mutate(currentQuestion._id, {
+      onSuccess: (res) => {
+        if (res.isBookmarked) {
+          notifySuccess('Question saved to bookmarks.');
+        } else {
+          notifySuccess('Question removed from bookmarks.');
+        }
+      },
+      onError: () => {
+        notifyError('Unable to update bookmark status.');
+      },
+    });
+  };
+
+  const handleToggleAudio = () => {
+    if (!('speechSynthesis' in window)) {
+      notifyWarning('Audio text-to-speech is not supported by your current browser.');
+      return;
+    }
+
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+    const cleanStem = currentQuestion.questionText.replace(/[\n\r]+/g, ' ');
+    const optA = (currentQuestion as any).optionA || '';
+    const optB = (currentQuestion as any).optionB || '';
+    const optC = (currentQuestion as any).optionC || '';
+    const optD = (currentQuestion as any).optionD || '';
+
+    const speechText = `Question ${currentIndex + 1}. ${cleanStem}. Option A: ${optA}. Option B: ${optB}. Option C: ${optC}. Option D: ${optD}.`;
+
+    const utterance = new SpeechSynthesisUtterance(speechText);
+    utterance.rate = 0.95;
+    utterance.pitch = 1.0;
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+
+    setIsSpeaking(true);
+    window.speechSynthesis.speak(utterance);
+  };
 
   const handleSelectOption = (opt: 'A' | 'B' | 'C' | 'D') => {
     const updated = { ...currentAnswer, selectedOption: opt };
@@ -175,7 +299,7 @@ export const CbtExamRoom: React.FC = () => {
             </div>
             <span
               style={{
-                fontFamily: "'Space Grotesk', sans-serif",
+                fontFamily: "var(--font-sans)",
                 fontWeight: 700,
                 fontSize: '18px',
                 color: 'var(--amber)',
@@ -184,13 +308,15 @@ export const CbtExamRoom: React.FC = () => {
               {attemptData.examShortCode}
             </span>
             <span style={{ color: 'rgba(255,255,255,0.4)' }}>|</span>
-            <span style={{ fontSize: '15px', color: 'var(--white)', fontWeight: 600, fontFamily: "'Space Grotesk', sans-serif" }}>
-              {attemptData.subjectName} ({attemptData.subjectCode})
+            <span style={{ fontSize: '15px', color: 'var(--white)', fontWeight: 600, fontFamily: "var(--font-sans)" }}>
+              {subjectGroups.length > 1
+                ? `Combined Mock (${subjectGroups.length} Subjects)`
+                : `${attemptData.subjectName} (${attemptData.subjectCode})`}
             </span>
             <span
               style={{
                 fontSize: '10px',
-                fontFamily: "'JetBrains Mono', monospace",
+                fontFamily: "var(--font-sans)",
                 backgroundColor: 'rgba(255,255,255,0.12)',
                 padding: '2px 6px',
                 borderRadius: '2px',
@@ -201,7 +327,7 @@ export const CbtExamRoom: React.FC = () => {
             </span>
           </div>
 
-          {/* Countdown Clock */}
+          {/* Countdown Clock & Tools */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
             <div
               style={{
@@ -218,7 +344,7 @@ export const CbtExamRoom: React.FC = () => {
               <span style={{ fontSize: '13px' }}>⏱️</span>
               <span
                 style={{
-                  fontFamily: "'JetBrains Mono', monospace",
+                  fontFamily: "var(--font-sans)",
                   fontSize: '18px',
                   fontWeight: 700,
                   letterSpacing: '0.05em',
@@ -228,6 +354,31 @@ export const CbtExamRoom: React.FC = () => {
                 {timerDisplay}
               </span>
             </div>
+
+            {/* On-Screen Scientific Calculator Toggle */}
+            <button
+              type="button"
+              onClick={() => setIsCalculatorOpen((prev) => !prev)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                backgroundColor: isCalculatorOpen ? 'var(--rust)' : 'rgba(255,255,255,0.08)',
+                border: isCalculatorOpen ? '1px solid var(--rust)' : '1px solid rgba(255,255,255,0.2)',
+                padding: '6px 12px',
+                borderRadius: '3px',
+                color: 'var(--white)',
+                fontSize: '12px',
+                fontFamily: "var(--font-sans)",
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+              }}
+              title="Toggle On-Screen Scientific Calculator"
+            >
+              <span>🖩</span>
+              <span>Calculator</span>
+            </button>
 
             <button
               type="button"
@@ -241,27 +392,112 @@ export const CbtExamRoom: React.FC = () => {
         </div>
       </header>
 
+      {/* Floating CBT On-Screen Scientific Calculator */}
+      <CbtCalculatorModal isOpen={isCalculatorOpen} onClose={() => setIsCalculatorOpen(false)} />
+
+      {/* Multi-Subject Selection Tab Bar (When multiple subjects are selected) */}
+      {subjectGroups.length > 1 && (
+        <div
+          style={{
+            backgroundColor: 'var(--white)',
+            borderBottom: '1.5px solid var(--paper-line)',
+            padding: '10px clamp(12px, 3vw, 24px)',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.03)',
+          }}
+        >
+          <div
+            className="wrap"
+            style={{
+              padding: 0,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              overflowX: 'auto',
+            }}
+          >
+            <span
+              style={{
+                fontSize: '12px',
+                fontWeight: 700,
+                fontFamily: "var(--font-sans)",
+                color: 'var(--ink-soft)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                marginRight: '6px',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Subjects:
+            </span>
+            {subjectGroups.map((g) => {
+              const isActive = currentSubjectGroup?.id === g.id;
+              const subQuestions = questions.slice(g.startIndex, g.startIndex + g.count);
+              const subAnswered = subQuestions.filter((q) => answersMap[q._id]?.selectedOption !== null).length;
+
+              return (
+                <button
+                  key={g.id}
+                  type="button"
+                  onClick={() => setCurrentIndex(g.startIndex)}
+                  style={{
+                    padding: '6px 14px',
+                    borderRadius: '4px',
+                    border: isActive ? '2px solid var(--rust)' : '1px solid var(--paper-line)',
+                    backgroundColor: isActive ? 'var(--rust)' : 'var(--paper)',
+                    color: isActive ? 'var(--white)' : 'var(--ink)',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    fontSize: '13px',
+                    fontFamily: "var(--font-sans)",
+                    whiteSpace: 'nowrap',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <span>{g.name}</span>
+                  <span
+                    style={{
+                      fontSize: '11px',
+                      fontFamily: "var(--font-sans)",
+                      padding: '1px 6px',
+                      borderRadius: '10px',
+                      backgroundColor: isActive ? 'rgba(255,255,255,0.25)' : 'var(--white)',
+                      color: isActive ? 'var(--white)' : 'var(--ink-soft)',
+                      border: isActive ? 'none' : '1px solid var(--paper-line)',
+                    }}
+                  >
+                    {subAnswered}/{g.count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Main CBT Workspace Layout */}
       <div className="wrap cbt-exam-grid" style={{ flex: 1, padding: 'clamp(16px, 3vw, 24px) clamp(12px, 3vw, 24px)', boxSizing: 'border-box', width: '100%', maxWidth: '1200px', margin: '0 auto' }}>
         {/* Left Column: Active Question */}
         <div
           style={{
             backgroundColor: 'var(--white)',
-            border: '1.5px solid rgba(20,24,28,0.14)',
+            border: '1.5px solid var(--paper-line)',
             borderRadius: '4px',
-            padding: '32px',
+            padding: 'clamp(14px, 3.5vw, 28px)',
             boxShadow: 'var(--shadow)',
             display: 'flex',
             flexDirection: 'column',
-            gap: '24px',
+            gap: 'clamp(14px, 3vw, 24px)',
           }}
         >
           {/* Question Sub-Header */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(20,24,28,0.08)', paddingBottom: '16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--paper-line)', paddingBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <span
                 style={{
-                  fontFamily: "'Space Grotesk', sans-serif",
+                  fontFamily: "var(--font-sans)",
                   fontWeight: 700,
                   fontSize: '16px',
                   color: 'var(--ink)',
@@ -269,15 +505,34 @@ export const CbtExamRoom: React.FC = () => {
               >
                 Question {currentIndex + 1} of {totalQuestions}
               </span>
+
+              {currentQuestion.subjectName && subjectGroups.length > 1 && (
+                <span
+                  style={{
+                    fontSize: '11px',
+                    fontFamily: "var(--font-sans)",
+                    fontWeight: 700,
+                    backgroundColor: 'rgba(194, 65, 12, 0.1)',
+                    color: 'var(--rust)',
+                    padding: '2px 8px',
+                    borderRadius: '2px',
+                    border: '1px solid rgba(194, 65, 12, 0.2)',
+                  }}
+                >
+                  {currentQuestion.subjectName}
+                </span>
+              )}
+
               {currentQuestion.topicName && (
                 <span
                   style={{
                     fontSize: '11px',
-                    fontFamily: "'JetBrains Mono', monospace",
+                    fontFamily: "var(--font-sans)",
                     backgroundColor: 'var(--paper)',
                     color: 'var(--ink-soft)',
                     padding: '2px 8px',
                     borderRadius: '2px',
+                    border: '1px solid var(--paper-line)',
                   }}
                 >
                   {currentQuestion.topicName}
@@ -285,26 +540,93 @@ export const CbtExamRoom: React.FC = () => {
               )}
             </div>
 
-            <button
-              type="button"
-              onClick={handleToggleReview}
-              style={{
-                background: currentAnswer.markedForReview ? '#fef3e2' : 'transparent',
-                border: currentAnswer.markedForReview ? '1px solid var(--amber)' : '1px solid rgba(20,24,28,0.2)',
-                color: currentAnswer.markedForReview ? 'var(--amber-deep)' : 'var(--ink-soft)',
-                padding: '4px 10px',
-                borderRadius: '3px',
-                fontSize: '12px',
-                fontFamily: "'JetBrains Mono', monospace",
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-              }}
-            >
-              🚩 {currentAnswer.markedForReview ? 'Flagged for Review' : 'Flag Question'}
-            </button>
+            {/* Action Buttons: Read Aloud + Bookmark + Flag for Review */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              {/* Native Speech Synthesis Button */}
+              <button
+                type="button"
+                onClick={handleToggleAudio}
+                style={{
+                  background: isSpeaking ? '#e0f2fe' : 'var(--paper)',
+                  border: isSpeaking ? '1px solid #0284c7' : '1px solid var(--paper-line)',
+                  color: isSpeaking ? '#0369a1' : 'var(--ink)',
+                  padding: '5px 11px',
+                  borderRadius: '3px',
+                  fontSize: '12px',
+                  fontFamily: "var(--font-sans)",
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  transition: 'all 0.15s ease',
+                }}
+                title="Read question and options aloud using browser speech"
+              >
+                <span>{isSpeaking ? '⏹' : '🔊'}</span>
+                <span>{isSpeaking ? 'Stop Audio' : 'Read Aloud'}</span>
+              </button>
+
+              {/* Bookmark Question Button */}
+              <button
+                type="button"
+                onClick={handleBookmarkToggle}
+                disabled={toggleBookmark.isPending}
+                style={{
+                  background: isCurrentBookmarked ? '#fef3c7' : 'var(--paper)',
+                  border: isCurrentBookmarked ? '1px solid #d97706' : '1px solid var(--paper-line)',
+                  color: isCurrentBookmarked ? '#b45309' : 'var(--ink)',
+                  padding: '5px 11px',
+                  borderRadius: '3px',
+                  fontSize: '12px',
+                  fontFamily: "var(--font-sans)",
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  transition: 'all 0.15s ease',
+                }}
+                title={isCurrentBookmarked ? 'Remove question from bookmarks' : 'Save question to bookmarks'}
+              >
+                <span>{isCurrentBookmarked ? '★' : '☆'}</span>
+                <span>{isCurrentBookmarked ? 'Bookmarked' : 'Bookmark'}</span>
+              </button>
+
+              {/* Flag for Review */}
+              <button
+                type="button"
+                onClick={handleToggleReview}
+                style={{
+                  background: currentAnswer.markedForReview ? '#fef3e2' : 'var(--paper)',
+                  border: currentAnswer.markedForReview ? '1px solid var(--amber)' : '1px solid var(--paper-line)',
+                  color: currentAnswer.markedForReview ? 'var(--amber-deep)' : 'var(--ink-soft)',
+                  padding: '5px 11px',
+                  borderRadius: '3px',
+                  fontSize: '12px',
+                  fontFamily: "var(--font-sans)",
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
+                🚩 {currentAnswer.markedForReview ? 'Flagged' : 'Flag'}
+              </button>
+            </div>
           </div>
+
+          {/* Question Diagram / Image (if available) */}
+          {currentQuestion.imageUrl && (
+            <div style={{ textAlign: 'center', margin: '4px 0 12px', backgroundColor: 'var(--paper)', padding: '12px', borderRadius: '4px', border: '1px solid var(--paper-line)' }}>
+              <img
+                src={currentQuestion.imageUrl}
+                alt={`Figure for question ${currentIndex + 1}`}
+                style={{ maxWidth: '100%', maxHeight: '340px', objectFit: 'contain', borderRadius: '3px' }}
+              />
+            </div>
+          )}
 
           {/* Question Stem */}
           <div
@@ -312,7 +634,8 @@ export const CbtExamRoom: React.FC = () => {
               fontSize: '18px',
               lineHeight: '1.65',
               color: 'var(--ink)',
-              fontFamily: "'Source Serif 4', Georgia, serif",
+              fontFamily: "var(--font-sans)",
+              whiteSpace: 'pre-wrap',
             }}
           >
             {currentQuestion.questionText}
@@ -333,24 +656,24 @@ export const CbtExamRoom: React.FC = () => {
                     textAlign: 'left',
                     padding: '14px 18px',
                     borderRadius: '3px',
-                    backgroundColor: isSelected ? '#faede7' : 'var(--paper)',
-                    border: isSelected ? '2px solid var(--rust)' : '1px solid rgba(20,24,28,0.12)',
+                    backgroundColor: isSelected ? 'var(--rust-soft)' : 'var(--paper)',
+                    border: isSelected ? '2px solid var(--rust)' : '1px solid var(--paper-line)',
                     color: 'var(--ink)',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '14px',
                     fontSize: '15px',
-                    fontFamily: "'Space Grotesk', sans-serif",
+                    fontFamily: "var(--font-sans)",
                     transition: 'all 0.15s ease',
                   }}
                 >
                   <span
                     style={{
-                      fontFamily: "'JetBrains Mono', monospace",
+                      fontFamily: "var(--font-sans)",
                       fontWeight: 700,
                       fontSize: '13px',
-                      backgroundColor: isSelected ? 'var(--rust)' : 'rgba(20,24,28,0.08)',
+                      backgroundColor: isSelected ? 'var(--rust)' : 'var(--surface-hover)',
                       color: isSelected ? 'var(--white)' : 'var(--ink)',
                       width: '28px',
                       height: '28px',
@@ -373,8 +696,8 @@ export const CbtExamRoom: React.FC = () => {
 
           {/* Practice mode hint/explanation */}
           {attemptData.mode === 'PRACTICE' && currentQuestion.explanation && (
-            <div style={{ padding: '14px 18px', backgroundColor: '#e7edf3', borderRadius: '3px', borderLeft: '4px solid var(--steel)' }}>
-              <strong style={{ fontSize: '13px', fontFamily: "'JetBrains Mono', monospace", color: 'var(--steel-deep)' }}>
+            <div style={{ padding: '14px 18px', backgroundColor: 'var(--paper)', borderRadius: '3px', borderLeft: '4px solid var(--steel)' }}>
+              <strong style={{ fontSize: '13px', fontFamily: "var(--font-sans)", color: 'var(--steel-deep)' }}>
                 CORRECT ANSWER: {currentQuestion.correctAnswer}
               </strong>
               <p style={{ margin: '6px 0 0', fontSize: '14px', color: 'var(--ink)' }}>{currentQuestion.explanation}</p>
@@ -382,7 +705,7 @@ export const CbtExamRoom: React.FC = () => {
           )}
 
           {/* Bottom Navigation Buttons */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '12px', borderTop: '1px solid rgba(20,24,28,0.08)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '12px', borderTop: '1px solid var(--paper-line)', flexWrap: 'wrap', gap: '10px' }}>
             <button
               type="button"
               disabled={currentIndex === 0}
@@ -393,7 +716,7 @@ export const CbtExamRoom: React.FC = () => {
               ← Previous Question
             </button>
 
-            <span style={{ fontSize: '12px', fontFamily: "'JetBrains Mono', monospace", color: 'var(--ink-soft)' }}>
+            <span style={{ fontSize: '12px', fontFamily: "var(--font-sans)", color: 'var(--ink-soft)' }}>
               {saveAnswer.isPending ? 'Autosaving answer...' : 'Answer saved to server ✓'}
             </span>
 
@@ -413,29 +736,29 @@ export const CbtExamRoom: React.FC = () => {
         <div
           style={{
             backgroundColor: 'var(--white)',
-            border: '1.5px solid rgba(20,24,28,0.14)',
+            border: '1.5px solid var(--paper-line)',
             borderRadius: '4px',
             padding: '20px',
             boxShadow: 'var(--shadow)',
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-            <h3 style={{ fontSize: '15px', margin: 0, fontFamily: "'Space Grotesk', sans-serif" }}>
+            <h3 style={{ fontSize: '15px', margin: 0, fontFamily: "var(--font-sans)" }}>
               Question Palette
             </h3>
-            <span style={{ fontSize: '11px', fontFamily: "'JetBrains Mono', monospace", color: 'var(--ink-soft)' }}>
+            <span style={{ fontSize: '11px', fontFamily: "var(--font-sans)", color: 'var(--ink-soft)' }}>
               {answeredCount}/{totalQuestions} Answered
             </span>
           </div>
 
           {/* Legend */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '16px', fontSize: '11px', fontFamily: "'JetBrains Mono', monospace" }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '16px', fontSize: '11px', fontFamily: "var(--font-sans)" }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span style={{ width: '12px', height: '12px', borderRadius: '2px', backgroundColor: '#e4f5ea', border: '1px solid #217844' }} />
               <span>Answered</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ width: '12px', height: '12px', borderRadius: '2px', backgroundColor: 'var(--paper)', border: '1px solid rgba(20,24,28,0.2)' }} />
+              <span style={{ width: '12px', height: '12px', borderRadius: '2px', backgroundColor: 'var(--paper)', border: '1px solid var(--paper-line)' }} />
               <span>Unanswered</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -449,7 +772,7 @@ export const CbtExamRoom: React.FC = () => {
           </div>
 
           {/* Palette Grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px', marginBottom: '20px' }}>
+          <div className="cbt-qnav-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(38px, 1fr))', gap: '6px', marginBottom: '20px' }}>
             {questions.map((q, idx) => {
               const ans = answersMap[q._id];
               const isCurrent = idx === currentIndex;
@@ -457,7 +780,7 @@ export const CbtExamRoom: React.FC = () => {
               const isFlagged = ans && ans.markedForReview;
 
               let bg = 'var(--paper)';
-              let border = '1px solid rgba(20,24,28,0.18)';
+              let border = '1px solid var(--paper-line)';
               let color = 'var(--ink)';
 
               if (isCurrent) {
@@ -485,7 +808,7 @@ export const CbtExamRoom: React.FC = () => {
                     backgroundColor: bg,
                     border,
                     color,
-                    fontFamily: "'JetBrains Mono', monospace",
+                    fontFamily: "var(--font-sans)",
                     fontSize: '13px',
                     fontWeight: 700,
                     cursor: 'pointer',
@@ -540,7 +863,7 @@ export const CbtExamRoom: React.FC = () => {
             <span className="eyebrow" style={{ color: 'var(--rust)', marginBottom: '4px', display: 'block' }}>
               Final Verification
             </span>
-            <h2 style={{ fontSize: '22px', fontFamily: "'Space Grotesk', sans-serif", margin: '0 0 12px', color: 'var(--ink)' }}>
+            <h2 style={{ fontSize: '22px', fontFamily: "var(--font-sans)", margin: '0 0 12px', color: 'var(--ink)' }}>
               Submit Examination?
             </h2>
             <p style={{ fontSize: '14px', color: 'var(--ink-soft)', margin: '0 0 20px' }}>
@@ -549,28 +872,28 @@ export const CbtExamRoom: React.FC = () => {
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '20px' }}>
               <div style={{ padding: '12px', backgroundColor: '#e4f5ea', borderRadius: '3px', textAlign: 'center' }}>
-                <div style={{ fontSize: '20px', fontWeight: 700, fontFamily: "'Space Grotesk', sans-serif", color: '#11532c' }}>
+                <div style={{ fontSize: '20px', fontWeight: 700, fontFamily: "var(--font-sans)", color: '#11532c' }}>
                   {answeredCount}
                 </div>
-                <div style={{ fontSize: '11px', fontFamily: "'JetBrains Mono', monospace", color: '#217844' }}>
+                <div style={{ fontSize: '11px', fontFamily: "var(--font-sans)", color: '#217844' }}>
                   Answered
                 </div>
               </div>
 
               <div style={{ padding: '12px', backgroundColor: '#fde8e8', borderRadius: '3px', textAlign: 'center' }}>
-                <div style={{ fontSize: '20px', fontWeight: 700, fontFamily: "'Space Grotesk', sans-serif", color: '#991b1b' }}>
+                <div style={{ fontSize: '20px', fontWeight: 700, fontFamily: "var(--font-sans)", color: '#991b1b' }}>
                   {unansweredCount}
                 </div>
-                <div style={{ fontSize: '11px', fontFamily: "'JetBrains Mono', monospace", color: '#b91c1c' }}>
+                <div style={{ fontSize: '11px', fontFamily: "var(--font-sans)", color: '#b91c1c' }}>
                   Unanswered
                 </div>
               </div>
 
               <div style={{ padding: '12px', backgroundColor: '#fef3e2', borderRadius: '3px', textAlign: 'center' }}>
-                <div style={{ fontSize: '20px', fontWeight: 700, fontFamily: "'Space Grotesk', sans-serif", color: '#a16207' }}>
+                <div style={{ fontSize: '20px', fontWeight: 700, fontFamily: "var(--font-sans)", color: '#a16207' }}>
                   {flaggedCount}
                 </div>
-                <div style={{ fontSize: '11px', fontFamily: "'JetBrains Mono', monospace", color: '#a16207' }}>
+                <div style={{ fontSize: '11px', fontFamily: "var(--font-sans)", color: '#a16207' }}>
                   Flagged
                 </div>
               </div>
@@ -611,3 +934,4 @@ export const CbtExamRoom: React.FC = () => {
     </div>
   );
 };
+

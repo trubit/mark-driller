@@ -21,8 +21,9 @@
     "preview": "vite preview",
     "db:index": "tsx scripts/ensure-production-indexes.ts",
     "type-check": "tsc --noEmit && tsc -p tsconfig.server.json --noEmit",
-    "test": "tsx scripts/verify-security-hardening.ts && tsx scripts/verify-4000-concurrency.ts && tsx scripts/verify-expansion-layout.ts",
-    "test:all": "tsx scripts/verify-security-hardening.ts && tsx scripts/verify-4000-concurrency.ts && tsx scripts/verify-expansion-layout.ts && tsx scripts/verify-paystack-e2e.ts && tsx scripts/verify-student-journey-e2e.ts",
+    "test": "tsx scripts/verify-navbar-separation.ts && tsx scripts/verify-security-hardening.ts && tsx scripts/verify-4000-concurrency.ts && tsx scripts/verify-expansion-layout.ts",
+    "test:all": "tsx scripts/verify-navbar-separation.ts && tsx scripts/verify-security-hardening.ts && tsx scripts/verify-4000-concurrency.ts && tsx scripts/verify-expansion-layout.ts && tsx scripts/verify-paystack-e2e.ts && tsx scripts/verify-student-journey-e2e.ts",
+    "test:navbar": "tsx scripts/verify-navbar-separation.ts",
     "test:access": "tsx scripts/verify-access-control.ts",
     "test:email": "tsx scripts/verify-brevo.ts",
     "test:sync": "tsx scripts/verify-question-sync.ts",
@@ -31,7 +32,8 @@
     "test:journey": "tsx scripts/verify-student-journey-e2e.ts",
     "test:security": "tsx scripts/verify-security-hardening.ts",
     "test:concurrency": "tsx scripts/verify-4000-concurrency.ts",
-    "test:platform": "tsx scripts/verify-full-production-platform.ts"
+    "test:platform": "tsx scripts/verify-full-production-platform.ts",
+    "test:responsive": "tsx scripts/verify-whole-project-responsiveness.ts"
   },
   "keywords": [
     "mark-driller",

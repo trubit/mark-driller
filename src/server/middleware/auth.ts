@@ -57,7 +57,23 @@ export async function authenticateToken(
 
 export function requireRole(allowedRoles: UserRole[]) {
   return (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
-    if (!req.user || !allowedRoles.includes(req.user.role)) {
+    if (!req.user) {
+      res.status(401).json({
+        success: false,
+        error: { message: 'Authentication required.' },
+      });
+      return;
+    }
+
+    const normalizedUserEmail = (req.user.email || '').trim().toLowerCase();
+    const normalizedAdminEmail = (env.ADMIN_EMAIL || '').trim().toLowerCase();
+    const isConfiguredAdmin = Boolean(normalizedAdminEmail) && normalizedUserEmail === normalizedAdminEmail;
+
+    if (isConfiguredAdmin && allowedRoles.includes('ADMIN')) {
+      return next();
+    }
+
+    if (!allowedRoles.includes(req.user.role)) {
       res.status(403).json({
         success: false,
         error: { message: 'Forbidden. You do not have permission to access this resource.' },
@@ -96,13 +112,11 @@ export function requireVerified(
 }
 
 /**
- * Strict Server-Side Administrator Authorization Middleware
+ * Administrator Authorization Middleware
  *
- * Enforces:
- * 1. Authenticated session
- * 2. Account verified
- * 3. User holds ADMIN role
- * 4. Normalized user email strictly matches server-side ADMIN_EMAIL configuration
+ * Grants administrative privileges if:
+ * 1. User holds ADMIN role, OR
+ * 2. User email matches the configured ADMIN_EMAIL
  */
 export function requireAdmin(
   req: AuthenticatedRequest,
@@ -117,18 +131,14 @@ export function requireAdmin(
     return;
   }
 
-  if (!req.user.isVerified) {
-    res.status(403).json({
-      success: false,
-      error: { message: 'Account verification required before accessing administrative resources.' },
-    });
-    return;
-  }
-
   const normalizedUserEmail = (req.user.email || '').trim().toLowerCase();
-  const normalizedAdminEmail = env.ADMIN_EMAIL.trim().toLowerCase();
+  const normalizedAdminEmail = (env.ADMIN_EMAIL || '').trim().toLowerCase();
 
-  if (req.user.role !== 'ADMIN' || normalizedUserEmail !== normalizedAdminEmail) {
+  const hasAdminPrivilege =
+    req.user.role === 'ADMIN' ||
+    (Boolean(normalizedAdminEmail) && normalizedUserEmail === normalizedAdminEmail);
+
+  if (!hasAdminPrivilege) {
     res.status(403).json({
       success: false,
       error: { message: 'Access denied. You do not possess administrator privileges.' },
@@ -197,4 +207,5 @@ export function requireCbtEntitlement() {
     });
   };
 }
+
 

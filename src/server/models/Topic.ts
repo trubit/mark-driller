@@ -41,3 +41,4 @@ TopicSchema.index({ subjectId: 1, name: 1 }, { unique: true });
 TopicSchema.index({ subjectId: 1, order: 1 });
 
 export const Topic: Model<ITopic> = mongoose.models.Topic || mongoose.model<ITopic>('Topic', TopicSchema);
+

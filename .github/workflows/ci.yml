@@ -53,8 +53,11 @@ jobs:
       - name: Production Bundle Compilation
         run: npm run build
 
-      - name: Headless Expansion & Layout Isolation Verification
-        run: npm run test:expansion
+      - name: Whole-Project Dynamic Responsive Design Audit
+        run: npm run test:responsive
+
+      - name: Security Hardening, Navbar Separation & Concurrency Verification
+        run: npm test
 
       - name: Headless Paystack Payment & E2E Security Verification
         run: npm run test:paystack

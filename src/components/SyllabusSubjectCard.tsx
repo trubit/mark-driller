@@ -9,6 +9,7 @@ export interface SyllabusSubjectCardProps {
   isAdmin?: boolean;
   onDeleteSubject?: (subjectId: string, name: string) => void;
   onDeleteTopic?: (topicId: string, name: string) => void;
+  onDrillTopic?: (subjectId: string, topicId: string) => void;
 }
 
 /**
@@ -30,6 +31,7 @@ export const SyllabusSubjectCard: React.FC<SyllabusSubjectCardProps> = ({
   isAdmin = false,
   onDeleteSubject,
   onDeleteTopic,
+  onDrillTopic,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -62,7 +64,7 @@ export const SyllabusSubjectCard: React.FC<SyllabusSubjectCardProps> = ({
         <div style={{ flex: 1, minWidth: 0, paddingRight: '8px' }}>
           <span
             style={{
-              fontFamily: "'JetBrains Mono', monospace",
+              fontFamily: "var(--font-sans)",
               fontSize: '11px',
               backgroundColor: 'var(--paper-dim)',
               color: 'var(--ink-soft)',
@@ -87,7 +89,7 @@ export const SyllabusSubjectCard: React.FC<SyllabusSubjectCardProps> = ({
         </div>
         <span
           style={{
-            fontFamily: "'JetBrains Mono', monospace",
+            fontFamily: "var(--font-sans)",
             fontSize: '11px',
             color: 'var(--rust)',
             backgroundColor: '#faede7',
@@ -125,7 +127,7 @@ export const SyllabusSubjectCard: React.FC<SyllabusSubjectCardProps> = ({
             padding: 0,
             cursor: 'pointer',
             fontSize: '13px',
-            fontFamily: "'Space Grotesk', sans-serif",
+            fontFamily: "var(--font-sans)",
             fontWeight: 600,
             color: isExpanded ? 'var(--rust)' : 'var(--steel)',
             display: 'flex',
@@ -140,10 +142,10 @@ export const SyllabusSubjectCard: React.FC<SyllabusSubjectCardProps> = ({
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           {showDrillLink && effectiveExamId && (
             <Link
-              to={`/questions?exam=${effectiveExamId}&subject=${subject._id}`}
+              to={`/portal/questions?exam=${effectiveExamId}&subject=${subject._id}`}
               style={{
                 fontSize: '12px',
-                fontFamily: "'Space Grotesk', sans-serif",
+                fontFamily: "var(--font-sans)",
                 fontWeight: 600,
                 color: 'var(--rust)',
                 textDecoration: 'none',
@@ -165,7 +167,7 @@ export const SyllabusSubjectCard: React.FC<SyllabusSubjectCardProps> = ({
                 fontSize: '11px',
                 cursor: 'pointer',
                 borderRadius: '2px',
-                fontFamily: "'JetBrains Mono', monospace",
+                fontFamily: "var(--font-sans)",
               }}
             >
               Delete Subject
@@ -189,7 +191,7 @@ export const SyllabusSubjectCard: React.FC<SyllabusSubjectCardProps> = ({
           <div
             style={{
               fontSize: '11px',
-              fontFamily: "'JetBrains Mono', monospace",
+              fontFamily: "var(--font-sans)",
               color: 'var(--ink-soft)',
               marginBottom: '10px',
               textTransform: 'uppercase',
@@ -223,7 +225,7 @@ export const SyllabusSubjectCard: React.FC<SyllabusSubjectCardProps> = ({
                     <span
                       style={{
                         color: 'var(--ink-soft)',
-                        fontFamily: "'JetBrains Mono', monospace",
+                        fontFamily: "var(--font-sans)",
                         marginRight: '8px',
                       }}
                     >
@@ -233,18 +235,42 @@ export const SyllabusSubjectCard: React.FC<SyllabusSubjectCardProps> = ({
                   </span>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-                    {showDrillLink && effectiveExamId && (
-                      <Link
-                        to={`/questions?exam=${effectiveExamId}&subject=${subject._id}&topic=${topic._id}`}
+                    {onDrillTopic && (
+                      <button
+                        type="button"
+                        onClick={() => onDrillTopic(subject._id, topic._id)}
                         style={{
                           fontSize: '11px',
-                          fontFamily: "'JetBrains Mono', monospace",
-                          color: 'var(--rust)',
+                          fontFamily: "var(--font-sans)",
+                          backgroundColor: 'var(--rust)',
+                          color: 'var(--white)',
+                          border: 'none',
+                          padding: '3px 8px',
+                          borderRadius: '2px',
+                          cursor: 'pointer',
+                          fontWeight: 600,
+                          whiteSpace: 'nowrap',
+                          transition: 'opacity 0.15s ease',
+                        }}
+                        title="Start CBT practice drill on this topic"
+                      >
+                        Drill CBT ⚡
+                      </button>
+                    )}
+
+                    {showDrillLink && effectiveExamId && (
+                      <Link
+                        to={`/portal/questions?exam=${effectiveExamId}&subject=${subject._id}&topic=${topic._id}`}
+                        style={{
+                          fontSize: '11px',
+                          fontFamily: "var(--font-sans)",
+                          color: 'var(--ink-soft)',
                           textDecoration: 'none',
                           whiteSpace: 'nowrap',
+                          padding: '2px 4px',
                         }}
                       >
-                        Drill →
+                        Browse →
                       </Link>
                     )}
 
@@ -279,3 +305,4 @@ export const SyllabusSubjectCard: React.FC<SyllabusSubjectCardProps> = ({
     </div>
   );
 };
+

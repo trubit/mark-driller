@@ -91,3 +91,4 @@ QuestionSyncLogSchema.index({ sourceProvider: 1, startedAt: -1 });
 export const QuestionSyncLog: Model<IQuestionSyncLog> =
   mongoose.models.QuestionSyncLog ||
   mongoose.model<IQuestionSyncLog>('QuestionSyncLog', QuestionSyncLogSchema);
+

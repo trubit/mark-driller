@@ -28,6 +28,14 @@ export interface StudyMaterialItem {
   createdAt: string;
 }
 
+export interface StudyMaterialsLibraryResponse {
+  items: StudyMaterialItem[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 export function useStudyMaterialsQuery(params?: {
   examId?: string;
   subjectId?: string;
@@ -48,6 +56,34 @@ export function useStudyMaterialsQuery(params?: {
   return useQuery<StudyMaterialItem[]>({
     queryKey: ['materials', params],
     queryFn: () => apiClient<StudyMaterialItem[]>(endpoint),
+    staleTime: 30000,
+  });
+}
+
+export function useStudyMaterialsLibraryQuery(params?: {
+  examId?: string;
+  subjectId?: string;
+  year?: number | string;
+  search?: string;
+  premiumOnly?: string;
+  page?: number;
+  limit?: number;
+  sort?: 'newest' | 'oldest' | 'title' | 'downloads';
+}) {
+  const searchParams = new URLSearchParams();
+  searchParams.set('paginated', 'true');
+  searchParams.set('page', String(params?.page || 1));
+  searchParams.set('limit', String(params?.limit || 12));
+  if (params?.sort) searchParams.set('sort', params.sort);
+  if (params?.examId) searchParams.set('examId', params.examId);
+  if (params?.subjectId) searchParams.set('subjectId', params.subjectId);
+  if (params?.year) searchParams.set('year', String(params.year));
+  if (params?.search) searchParams.set('search', params.search);
+  if (params?.premiumOnly) searchParams.set('premiumOnly', params.premiumOnly);
+
+  return useQuery<StudyMaterialsLibraryResponse>({
+    queryKey: ['materials', 'library', params],
+    queryFn: () => apiClient<StudyMaterialsLibraryResponse>(`/api/materials?${searchParams.toString()}`),
     staleTime: 30000,
   });
 }
@@ -139,3 +175,4 @@ export function useDeleteMaterialMutation() {
     },
   });
 }
+

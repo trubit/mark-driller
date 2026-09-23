@@ -26,6 +26,10 @@ export interface IQuestionSnapshot {
   difficulty: 'EASY' | 'MEDIUM' | 'HARD';
   topicId?: Types.ObjectId;
   topicName?: string;
+  subjectId?: Types.ObjectId;
+  subjectName?: string;
+  subjectCode?: string;
+  imageUrl?: string;
 }
 
 export interface IExamAttempt extends Document {
@@ -33,6 +37,8 @@ export interface IExamAttempt extends Document {
   userId: Types.ObjectId;
   examId: Types.ObjectId;
   subjectId: Types.ObjectId;
+  subjectIds?: Types.ObjectId[];
+  isMultiSubject?: boolean;
   mode: AttemptMode;
   status: AttemptStatus;
   allocatedDurationSeconds: number;
@@ -137,6 +143,22 @@ const QuestionSnapshotSchema = new Schema<IQuestionSnapshot>(
       type: String,
       default: '',
     },
+    subjectId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Subject',
+    },
+    subjectName: {
+      type: String,
+      default: '',
+    },
+    subjectCode: {
+      type: String,
+      default: '',
+    },
+    imageUrl: {
+      type: String,
+      default: '',
+    },
   },
   { _id: false }
 );
@@ -160,6 +182,14 @@ const ExamAttemptSchema = new Schema<IExamAttempt>(
       ref: 'Subject',
       required: true,
       index: true,
+    },
+    subjectIds: [{
+      type: Schema.Types.ObjectId,
+      ref: 'Subject',
+    }],
+    isMultiSubject: {
+      type: Boolean,
+      default: false,
     },
     mode: {
       type: String,
@@ -218,3 +248,4 @@ ExamAttemptSchema.index({ userId: 1, status: 1, createdAt: -1 });
 
 export const ExamAttempt: Model<IExamAttempt> =
   mongoose.models.ExamAttempt || mongoose.model<IExamAttempt>('ExamAttempt', ExamAttemptSchema);
+

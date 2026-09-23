@@ -50,3 +50,4 @@ process.on('SIGTERM', () => gracefulWorkerShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulWorkerShutdown('SIGINT'));
 
 bootstrapWorker();
+

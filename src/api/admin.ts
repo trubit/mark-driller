@@ -338,4 +338,334 @@ export function useAdminReviewQuestionMutation() {
   });
 }
 
+// ----------------------------------------------------
+// Admin Manual Payment Proof Oversight Hooks
+// ----------------------------------------------------
+
+export interface AdminManualPaymentItem {
+  _id: string;
+  reference: string;
+  amountKobo: number;
+  amount?: number;
+  currency: string;
+  provider: string;
+  status: 'PENDING' | 'PENDING_REVIEW' | 'SUCCESS' | 'FAILED' | 'REJECTED';
+  channel?: string;
+  proofUrl?: string;
+  depositorName?: string;
+  bankName?: string;
+  transferDate?: string;
+  adminReviewNotes?: string;
+  reviewedBy?: { _id: string; fullName: string; email: string };
+  reviewedAt?: string;
+  paidAt?: string;
+  createdAt: string;
+  userId?: { _id: string; fullName: string; email: string; isVerified: boolean; role: string };
+  metadata?: {
+    plan?: string;
+    planName?: string;
+    notes?: string;
+    userEmail?: string;
+    userFullName?: string;
+  };
+}
+
+export function useAdminManualPaymentProofsQuery(params?: { status?: string; page?: number; limit?: number }) {
+  const searchParams = new URLSearchParams();
+  if (params?.status) searchParams.set('status', params.status);
+  if (params?.page) searchParams.set('page', params.page.toString());
+  if (params?.limit) searchParams.set('limit', params.limit.toString());
+
+  const qs = searchParams.toString();
+  return useQuery<{
+    payments: AdminManualPaymentItem[];
+    pagination: { total: number; page: number; limit: number; totalPages: number };
+  }>({
+    queryKey: ['admin', 'payments', 'manual-proofs', params],
+    queryFn: () => apiClient<any>(`/api/admin/payments/manual-proofs?${qs}`),
+    refetchInterval: 30000,
+  });
+}
+
+export function useAdminApproveManualPaymentMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ paymentId, adminReviewNotes }: { paymentId: string; adminReviewNotes?: string }) =>
+      apiClient<any>(`/api/admin/payments/${paymentId}/approve`, {
+        method: 'POST',
+        body: JSON.stringify({ adminReviewNotes }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'payments'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'overview'] });
+    },
+  });
+}
+
+export function useAdminRejectManualPaymentMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ paymentId, reviewNotes }: { paymentId: string; reviewNotes: string }) =>
+      apiClient<any>(`/api/admin/payments/${paymentId}/reject`, {
+        method: 'POST',
+        body: JSON.stringify({ reviewNotes }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'payments'] });
+    },
+  });
+}
+
+// Physical Bank Account Configuration Hooks
+export interface AdminBankDetails {
+  bankName: string;
+  accountName: string;
+  accountNumber: string;
+  currency: string;
+  instructions: string;
+}
+
+export function useAdminBankDetailsQuery() {
+  return useQuery<AdminBankDetails>({
+    queryKey: ['admin', 'bank-details'],
+    queryFn: () => apiClient<AdminBankDetails>('/api/admin/bank-details'),
+  });
+}
+
+export function useAdminUpdateBankDetailsMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: AdminBankDetails) =>
+      apiClient<AdminBankDetails>('/api/admin/bank-details', {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'bank-details'] });
+      queryClient.invalidateQueries({ queryKey: ['subscription', 'bank-details'] });
+    },
+  });
+}
+
+// ----------------------------------------------------
+// Institutions & Courses Admin Hooks
+// ----------------------------------------------------
+export function useAdminInstitutionsQuery(params?: { page?: number; limit?: number; search?: string; type?: string; state?: string }) {
+  const searchParams = new URLSearchParams();
+  if (params?.page) searchParams.set('page', params.page.toString());
+  if (params?.limit) searchParams.set('limit', params.limit.toString());
+  if (params?.search) searchParams.set('search', params.search);
+  if (params?.type) searchParams.set('type', params.type);
+  if (params?.state) searchParams.set('state', params.state);
+
+  const qs = searchParams.toString();
+  return useQuery<{ institutions: any[]; pagination: any }>({
+    queryKey: ['admin', 'institutions', params],
+    queryFn: () => apiClient<any>(`/api/admin/institutions?${qs}`),
+    staleTime: 15000,
+  });
+}
+
+export function useAdminCreateInstitutionMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: any) =>
+      apiClient<any>('/api/admin/institutions', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'institutions'] });
+      queryClient.invalidateQueries({ queryKey: ['institutions'] });
+    },
+  });
+}
+
+export function useAdminDeleteInstitutionMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiClient<any>(`/api/admin/institutions/${id}`, {
+        method: 'DELETE',
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'institutions'] });
+      queryClient.invalidateQueries({ queryKey: ['institutions'] });
+    },
+  });
+}
+
+// ----------------------------------------------------
+// Blog Admin Hooks
+// ----------------------------------------------------
+export function useAdminBlogQuery(params?: { page?: number; limit?: number; category?: string }) {
+  const searchParams = new URLSearchParams();
+  if (params?.page) searchParams.set('page', params.page.toString());
+  if (params?.limit) searchParams.set('limit', params.limit.toString());
+  if (params?.category) searchParams.set('category', params.category);
+
+  const qs = searchParams.toString();
+  return useQuery<{ articles: any[]; pagination: any }>({
+    queryKey: ['admin', 'blog', params],
+    queryFn: () => apiClient<any>(`/api/admin/blog?${qs}`),
+    staleTime: 15000,
+  });
+}
+
+export function useAdminCreateBlogMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: any) =>
+      apiClient<any>('/api/admin/blog', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'blog'] });
+      queryClient.invalidateQueries({ queryKey: ['blog'] });
+    },
+  });
+}
+
+export function useAdminDeleteBlogMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiClient<any>(`/api/admin/blog/${id}`, {
+        method: 'DELETE',
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'blog'] });
+      queryClient.invalidateQueries({ queryKey: ['blog'] });
+    },
+  });
+}
+
+// ----------------------------------------------------
+// Testimonials Admin Hooks
+// ----------------------------------------------------
+export function useAdminTestimonialsQuery() {
+  return useQuery<any[]>({
+    queryKey: ['admin', 'testimonials'],
+    queryFn: () => apiClient<any[]>('/api/admin/testimonials'),
+    staleTime: 15000,
+  });
+}
+
+export function useAdminCreateTestimonialMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: any) =>
+      apiClient<any>('/api/admin/testimonials', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'testimonials'] });
+      queryClient.invalidateQueries({ queryKey: ['testimonials'] });
+    },
+  });
+}
+
+export function useAdminDeleteTestimonialMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiClient<any>(`/api/admin/testimonials/${id}`, {
+        method: 'DELETE',
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'testimonials'] });
+      queryClient.invalidateQueries({ queryKey: ['testimonials'] });
+    },
+  });
+}
+
+// ----------------------------------------------------
+// Videos Admin Hooks
+// ----------------------------------------------------
+export function useAdminVideosQuery() {
+  return useQuery<any[]>({
+    queryKey: ['admin', 'videos'],
+    queryFn: () => apiClient<any[]>('/api/admin/videos'),
+    staleTime: 15000,
+  });
+}
+
+export function useAdminCreateVideoMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: any) =>
+      apiClient<any>('/api/admin/videos', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'videos'] });
+      queryClient.invalidateQueries({ queryKey: ['videos'] });
+    },
+  });
+}
+
+export function useAdminDeleteVideoMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiClient<any>(`/api/admin/videos/${id}`, {
+        method: 'DELETE',
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'videos'] });
+      queryClient.invalidateQueries({ queryKey: ['videos'] });
+    },
+  });
+}
+
+// ----------------------------------------------------
+// Subscriptions Directory & Payments Hooks
+// ----------------------------------------------------
+export function useAdminSubscriptionsQuery(params?: { status?: string; plan?: string; page?: number; limit?: number }) {
+  const searchParams = new URLSearchParams();
+  if (params?.status) searchParams.set('status', params.status);
+  if (params?.plan) searchParams.set('plan', params.plan);
+  if (params?.page) searchParams.set('page', params.page.toString());
+  if (params?.limit) searchParams.set('limit', params.limit.toString());
+
+  const qs = searchParams.toString();
+  return useQuery<{ subscriptions: any[]; pagination: any }>({
+    queryKey: ['admin', 'subscriptions', params],
+    queryFn: () => apiClient<any>(`/api/admin/subscriptions?${qs}`),
+    staleTime: 15000,
+  });
+}
+
+export function useAdminPaymentsDirectoryQuery(params?: { status?: string; provider?: string; page?: number; limit?: number }) {
+  const searchParams = new URLSearchParams();
+  if (params?.status) searchParams.set('status', params.status);
+  if (params?.provider) searchParams.set('provider', params.provider);
+  if (params?.page) searchParams.set('page', params.page.toString());
+  if (params?.limit) searchParams.set('limit', params.limit.toString());
+
+  const qs = searchParams.toString();
+  return useQuery<{ payments: any[]; pagination: any }>({
+    queryKey: ['admin', 'payments-directory', params],
+    queryFn: () => apiClient<any>(`/api/admin/payments?${qs}`),
+    staleTime: 15000,
+  });
+}
+
+// ----------------------------------------------------
+// Media Storage Telemetry Hook
+// ----------------------------------------------------
+export function useAdminMediaQuery() {
+  return useQuery<{ totalFiles: number; totalBytes: number; totalMegabytes: number; files: any[] }>({
+    queryKey: ['admin', 'media'],
+    queryFn: () => apiClient<any>('/api/admin/media'),
+    staleTime: 30000,
+  });
+}
+
+
+
+
 

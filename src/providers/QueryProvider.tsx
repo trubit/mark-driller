@@ -23,3 +23,4 @@ export const QueryProvider: React.FC<QueryProviderProps> = ({ children }) => {
     </QueryClientProvider>
   );
 };
+

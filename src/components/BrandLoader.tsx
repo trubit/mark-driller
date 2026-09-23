@@ -29,7 +29,7 @@ export const BrandLoader: React.FC<BrandLoaderProps> = ({
           display: 'inline-flex',
           alignItems: 'center',
           gap: '8px',
-          fontFamily: "'JetBrains Mono', monospace",
+          fontFamily: "var(--font-sans)",
           fontSize: '12px',
         }}
       >
@@ -97,7 +97,7 @@ export const BrandLoader: React.FC<BrandLoaderProps> = ({
         {message && (
           <div
             style={{
-              fontFamily: "'JetBrains Mono', monospace",
+              fontFamily: "var(--font-sans)",
               fontSize: isFullscreen ? '13px' : '12px',
               color: 'var(--slate, #666)',
               letterSpacing: '0.5px',
@@ -112,3 +112,4 @@ export const BrandLoader: React.FC<BrandLoaderProps> = ({
     </div>
   );
 };
+

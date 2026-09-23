@@ -36,6 +36,40 @@ router.get('/', async (_req: Request, res: Response, next: NextFunction): Promis
   }
 });
 
+// GET /api/exams/telemetry — Public live telemetry computed from real MongoDB collections
+router.get('/telemetry', async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const cacheKey = 'telemetry:public';
+    const cached = metadataCache.get(cacheKey);
+    if (cached) {
+      res.status(200).json({ success: true, data: cached });
+      return;
+    }
+
+    const [totalQuestions, totalExams, totalSubjects, totalAttempts, totalStudents] = await Promise.all([
+      Question.countDocuments({ published: true, reviewStatus: 'PUBLISHED' }),
+      Exam.countDocuments({ isActive: true }),
+      Subject.countDocuments({}),
+      ExamAttempt.countDocuments({ status: 'COMPLETED' }),
+      User.countDocuments({ role: 'STUDENT' }),
+    ]);
+
+    const telemetryData = {
+      totalQuestions,
+      totalExams,
+      totalSubjects,
+      totalAttempts,
+      totalStudents,
+      lastUpdated: new Date().toISOString(),
+    };
+
+    metadataCache.set(cacheKey, telemetryData, 60); // 1 minute cache
+    res.status(200).json({ success: true, data: telemetryData });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // GET /api/exams/:examId/subjects — List all subjects for an exam with topic and question counts
 router.get('/:examId/subjects', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
@@ -261,3 +295,4 @@ router.post(
 );
 
 export default router;
+

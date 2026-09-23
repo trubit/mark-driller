@@ -70,3 +70,4 @@ declare module '@paystack/inline-js' {
   export default PaystackPop;
 }
 
+

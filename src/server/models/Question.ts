@@ -2,6 +2,8 @@ import mongoose, { Schema, Document, Model, Types } from 'mongoose';
 
 export type CorrectOption = 'A' | 'B' | 'C' | 'D';
 export type QuestionDifficulty = 'EASY' | 'MEDIUM' | 'HARD';
+export type QuestionType = 'MULTIPLE_CHOICE' | 'FILL_IN_BLANKS' | 'TRUE_FALSE';
+export type DrillType = 'PAST_QUESTION' | 'PRACTICE_MOCK' | 'BOTH';
 export type QuestionReviewStatus =
   | 'IMPORTED'
   | 'REVIEW_REQUIRED'
@@ -25,6 +27,8 @@ export interface IQuestion extends Document {
   correctAnswer: CorrectOption;
   explanation: string;
   difficulty: QuestionDifficulty;
+  questionType: QuestionType;
+  drillType: DrillType;
   imageUrl?: string;
   published: boolean;
   // Provenance & synchronization metadata
@@ -110,6 +114,18 @@ const QuestionSchema = new Schema<IQuestion>(
       enum: ['EASY', 'MEDIUM', 'HARD'],
       default: 'MEDIUM',
     },
+    questionType: {
+      type: String,
+      enum: ['MULTIPLE_CHOICE', 'FILL_IN_BLANKS', 'TRUE_FALSE'],
+      default: 'MULTIPLE_CHOICE',
+      index: true,
+    },
+    drillType: {
+      type: String,
+      enum: ['PAST_QUESTION', 'PRACTICE_MOCK', 'BOTH'],
+      default: 'PAST_QUESTION',
+      index: true,
+    },
     imageUrl: {
       type: String,
       trim: true,
@@ -176,20 +192,27 @@ const QuestionSchema = new Schema<IQuestion>(
 QuestionSchema.index({ examId: 1, subjectId: 1, year: 1, questionNumber: 1 }, { unique: true });
 QuestionSchema.index({ examId: 1, subjectId: 1, topicId: 1 });
 
-// Provenance unique lookup (sparse so questions without external ID don't clash)
+// Provenance unique lookup (partial filter so questions without external sourceQuestionId don't clash)
 QuestionSchema.index(
   { sourceProvider: 1, sourceQuestionId: 1 },
-  { unique: true, sparse: true }
+  {
+    unique: true,
+    partialFilterExpression: {
+      sourceQuestionId: { $type: 'string' },
+    },
+  }
 );
 
 // High-performance index for question catalog pagination & sorting directly in B-Tree
 QuestionSchema.index({ published: 1, reviewStatus: 1, year: -1, questionNumber: 1 });
 QuestionSchema.index({ published: 1, reviewStatus: 1, examId: 1, subjectId: 1, year: -1, questionNumber: 1 });
 QuestionSchema.index({ published: 1, reviewStatus: 1, examId: 1, subjectId: 1, topicId: 1, year: -1 });
+QuestionSchema.index({ published: 1, drillType: 1, examId: 1, subjectId: 1, year: -1 });
 
 // Full-text search index for fast keyword matching without unbounded regex scans
 QuestionSchema.index({ questionText: 'text' });
 
 export const Question: Model<IQuestion> =
   mongoose.models.Question || mongoose.model<IQuestion>('Question', QuestionSchema);
+
 

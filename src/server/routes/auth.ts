@@ -9,6 +9,10 @@ import { authenticateToken, AuthenticatedRequest } from '../middleware/auth.js';
 import { authLimiter } from '../middleware/rateLimiter.js';
 import { generateNumericOtp, hashOtp, verifyOtpHash } from '../utils/otp.js';
 import { sendVerificationEmail, sendPasswordResetEmail } from '../services/emailService.js';
+import path from 'path';
+import fs from 'fs';
+import { Bookmark } from '../models/Bookmark.js';
+import { avatarUpload, validateAvatarFileSignature, AVATARS_DIR_ABSOLUTE } from '../middleware/upload.js';
 import { env } from '../config/env.js';
 
 const router = Router();
@@ -181,6 +185,14 @@ router.post(
           error: { message: 'The email address or password you entered is incorrect.' },
         });
         return;
+      }
+
+      // Ensure admin email automatically has ADMIN role and verified status
+      const normalizedAdminEmail = (env.ADMIN_EMAIL || '').trim().toLowerCase();
+      if (normalizedAdminEmail && user.email.toLowerCase() === normalizedAdminEmail && user.role !== 'ADMIN') {
+        user.role = 'ADMIN';
+        user.isVerified = true;
+        await user.save();
       }
 
       const token = generateToken({
@@ -588,9 +600,16 @@ router.get(
   authenticateToken,
   async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const user = await User.findById(req.user!._id)
+      let user = await User.findById(req.user!._id)
         .populate('targetExam', 'name shortCode description')
         .populate('selectedSubjects', 'name code');
+
+      const normalizedAdminEmail = (env.ADMIN_EMAIL || '').trim().toLowerCase();
+      if (user && normalizedAdminEmail && user.email.toLowerCase() === normalizedAdminEmail && user.role !== 'ADMIN') {
+        user.role = 'ADMIN';
+        user.isVerified = true;
+        await user.save();
+      }
 
       const profile = await Profile.findOne({ userId: req.user!._id });
 
@@ -662,4 +681,280 @@ router.post('/logout', (_req: Request, res: Response) => {
   });
 });
 
+// ----------------------------------------------------
+// AVATAR STREAMING (Public with sanitization)
+// ----------------------------------------------------
+router.get('/avatars/:filename', (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const rawFilename = Array.isArray(req.params.filename) ? req.params.filename[0] : req.params.filename;
+    const filename = path.basename(String(rawFilename || ''));
+    const filePath = path.join(AVATARS_DIR_ABSOLUTE, filename);
+
+    if (!fs.existsSync(filePath)) {
+      res.status(404).json({ success: false, error: { message: 'Avatar image not found.' } });
+      return;
+    }
+
+    const ext = path.extname(filename).toLowerCase();
+    const mimeTypes: Record<string, string> = {
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.png': 'image/png',
+      '.webp': 'image/webp',
+    };
+
+    res.setHeader('Content-Type', mimeTypes[ext] || 'application/octet-stream');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    fs.createReadStream(filePath).pipe(res);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ----------------------------------------------------
+// USER PROFILE UPDATE
+// ----------------------------------------------------
+const updateProfileSchema = z.object({
+  fullName: z.string().min(2, 'Name must be at least 2 characters').max(100).optional(),
+  phone: z.string().max(20).optional().nullable(),
+  educationLevel: z.string().max(50).optional().nullable(),
+  state: z.string().max(50).optional().nullable(),
+  country: z.string().max(50).optional().nullable(),
+  targetExamId: z.string().optional().nullable(),
+  selectedSubjects: z.array(z.string()).optional(),
+});
+
+router.put(
+  '/profile',
+  authenticateToken,
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const data = updateProfileSchema.parse(req.body);
+      const userId = req.user!._id;
+
+      const user = await User.findById(userId);
+      if (!user) {
+        res.status(404).json({ success: false, error: { message: 'User not found.' } });
+        return;
+      }
+
+      if (data.fullName !== undefined) {
+        user.fullName = data.fullName.trim();
+      }
+      if (data.targetExamId !== undefined) {
+        user.targetExam = data.targetExamId ? (data.targetExamId as any) : undefined;
+      }
+      if (data.selectedSubjects !== undefined) {
+        user.selectedSubjects = data.selectedSubjects as any;
+      }
+      await user.save();
+
+      let profile = await Profile.findOne({ userId });
+      if (!profile) {
+        profile = await Profile.create({ userId });
+      }
+
+      if (data.phone !== undefined) profile.phone = data.phone?.trim() || undefined;
+      if (data.educationLevel !== undefined) profile.educationLevel = data.educationLevel?.trim() || undefined;
+      if (data.state !== undefined) profile.state = data.state?.trim() || undefined;
+      if (data.country !== undefined) profile.country = data.country?.trim() || 'Nigeria';
+      await profile.save();
+
+      const populatedUser = await User.findById(userId)
+        .populate('targetExam', 'name shortCode description')
+        .populate('selectedSubjects', 'name code');
+
+      res.status(200).json({
+        success: true,
+        message: 'Profile updated successfully.',
+        data: {
+          user: populatedUser?.toJSON(),
+          profile: profile.toJSON(),
+        },
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({
+          success: false,
+          error: { message: 'Validation failed', details: error.flatten().fieldErrors },
+        });
+        return;
+      }
+      next(error);
+    }
+  }
+);
+
+// ----------------------------------------------------
+// AVATAR UPLOAD & REMOVAL
+// ----------------------------------------------------
+router.post(
+  '/profile/avatar',
+  authenticateToken,
+  (req, res, next) => {
+    avatarUpload.single('avatar')(req, res, (err) => {
+      if (err) {
+        return res.status(400).json({ success: false, error: { message: err.message || 'Avatar upload error.' } });
+      }
+      next();
+    });
+  },
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (!req.file) {
+        res.status(400).json({ success: false, error: { message: 'No image file uploaded.' } });
+        return;
+      }
+
+      const filePath = req.file.path;
+      const isValidSig = await validateAvatarFileSignature(filePath);
+      if (!isValidSig) {
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+        res.status(400).json({
+          success: false,
+          error: { message: 'Uploaded file binary content is not an approved image format (JPEG, PNG, or WEBP).' },
+        });
+        return;
+      }
+
+      const avatarUrl = `/api/auth/avatars/${path.basename(req.file.filename)}`;
+
+      let profile = await Profile.findOne({ userId: req.user!._id });
+      if (!profile) {
+        profile = await Profile.create({ userId: req.user!._id });
+      }
+
+      // If old avatar was stored locally, remove it to save disk space
+      if (profile.avatar && profile.avatar.startsWith('/api/auth/avatars/')) {
+        const oldFile = path.basename(profile.avatar);
+        const oldPath = path.join(AVATARS_DIR_ABSOLUTE, oldFile);
+        if (fs.existsSync(oldPath) && oldFile !== path.basename(req.file.filename)) {
+          try {
+            fs.unlinkSync(oldPath);
+          } catch {
+            // Ignore cleanup failure
+          }
+        }
+      }
+
+      profile.avatar = avatarUrl;
+      await profile.save();
+
+      res.status(200).json({
+        success: true,
+        message: 'Profile photo updated successfully.',
+        data: {
+          avatarUrl,
+          profile: profile.toJSON(),
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.delete(
+  '/profile/avatar',
+  authenticateToken,
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const profile = await Profile.findOne({ userId: req.user!._id });
+      if (profile && profile.avatar) {
+        if (profile.avatar.startsWith('/api/auth/avatars/')) {
+          const oldFile = path.basename(profile.avatar);
+          const oldPath = path.join(AVATARS_DIR_ABSOLUTE, oldFile);
+          if (fs.existsSync(oldPath)) {
+            try {
+              fs.unlinkSync(oldPath);
+            } catch {
+              // Ignore cleanup error
+            }
+          }
+        }
+        profile.avatar = undefined;
+        await profile.save();
+      }
+
+      res.status(200).json({
+        success: true,
+        message: 'Profile photo removed successfully.',
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// ----------------------------------------------------
+// DANGER ZONE: ACCOUNT DEACTIVATION / DELETION
+// ----------------------------------------------------
+const deleteAccountSchema = z.object({
+  password: z.string().min(1, 'Password is required to confirm account deletion'),
+  confirmationText: z.string().refine((val) => val === 'DELETE MY ACCOUNT', {
+    message: 'Please type "DELETE MY ACCOUNT" exactly to confirm.',
+  }),
+});
+
+router.post(
+  '/delete-account',
+  authenticateToken,
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { password } = deleteAccountSchema.parse(req.body);
+      const userId = req.user!._id;
+
+      const user = await User.findById(userId).select('+passwordHash');
+      if (!user) {
+        res.status(404).json({ success: false, error: { message: 'User not found.' } });
+        return;
+      }
+
+      // Re-verify password
+      const isMatch = await user.comparePassword(password);
+      if (!isMatch) {
+        res.status(400).json({
+          success: false,
+          error: { message: 'Incorrect password. Account deletion aborted.' },
+        });
+        return;
+      }
+
+      // Prevent deletion if sole admin
+      if (user.role === 'ADMIN') {
+        const adminCount = await User.countDocuments({ role: 'ADMIN' });
+        if (adminCount <= 1) {
+          res.status(403).json({
+            success: false,
+            error: { message: 'Primary administrator account cannot be deleted while no other admin exists.' },
+          });
+          return;
+        }
+      }
+
+      // Cleanup user profile and bookmarks
+      await Bookmark.deleteMany({ userId });
+      await Profile.deleteOne({ userId });
+      await User.deleteOne({ _id: userId });
+
+      res.status(200).json({
+        success: true,
+        message: 'Your account has been permanently deleted.',
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({
+          success: false,
+          error: { message: 'Validation failed', details: error.flatten().fieldErrors },
+        });
+        return;
+      }
+      next(error);
+    }
+  }
+);
+
 export default router;
+

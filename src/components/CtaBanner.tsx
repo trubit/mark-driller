@@ -13,9 +13,9 @@ export const CtaBanner: React.FC = () => {
           <button
             type="button"
             className="btn-custom btn-custom-primary btn-custom-lg"
-            onClick={() => openAuthModal('signup')}
+            onClick={() => openAuthModal('login')}
           >
-            Create free account
+            Log in to Start Practising
           </button>
           <a href="#cbt" className="btn-custom btn-custom-ghost btn-custom-lg">
             See a sample CBT test
@@ -25,3 +25,4 @@ export const CtaBanner: React.FC = () => {
     </section>
   );
 };
+

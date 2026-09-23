@@ -101,3 +101,4 @@ export function useAnalyticsOverviewQuery() {
     staleTime: 1000 * 60 * 2,
   });
 }
+

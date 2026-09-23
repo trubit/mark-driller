@@ -22,6 +22,7 @@ import resultsRouter from './routes/results.js';
 import adminRouter from './routes/admin.js';
 import materialsRouter from './routes/materials.js';
 import subscriptionsRouter from './routes/subscriptions.js';
+import contentRouter from './routes/content.js';
 
 const __filename = fileURLToPath(import.meta.url);
 
@@ -48,7 +49,12 @@ app.use(
           env.CLIENT_URL,
           env.CORS_ORIGIN,
         ].filter(Boolean),
-        frameSrc: ["'self'", 'https://checkout.paystack.com'],
+        frameSrc: [
+          "'self'",
+          'https://checkout.paystack.com',
+          'https://www.youtube-nocookie.com',
+          'https://www.youtube.com',
+        ],
         imgSrc: ["'self'", 'data:', 'https:', 'blob:'],
         styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
         fontSrc: ["'self'", 'https://fonts.gstatic.com'],
@@ -72,10 +78,12 @@ const allowedOrigins = [
   'https://www.markdriller.com',
   'https://markdriller.ng',
   'https://www.markdriller.ng',
-  'http://127.0.0.1:3009',
-  'http://localhost:3009',
-  'http://127.0.0.1:5009',
-  'http://localhost:5009',
+  ...(env.NODE_ENV !== 'production' ? [
+    'http://127.0.0.1:3009',
+    'http://localhost:3009',
+    'http://127.0.0.1:5009',
+    'http://localhost:5009',
+  ] : []),
 ].filter(Boolean) as string[];
 
 app.use(
@@ -156,6 +164,8 @@ app.use('/api/materials', materialsRouter);
 app.use('/api/subscriptions', subscriptionsRouter);
 app.use('/api/exam-boards', examBoardsRouter);
 app.use('/api/leads', leadsRouter);
+app.use('/api', contentRouter);
+app.use('/api/content', contentRouter);
 
 // Production Static Serving
 if (env.NODE_ENV === 'production') {
@@ -187,6 +197,15 @@ const server = app.listen(env.PORT, '0.0.0.0', () => {
   console.log(`🚀 MarkDriller Full-Stack Server running on http://127.0.0.1:${env.PORT} [${env.NODE_ENV}]`);
 });
 
+server.on('error', (err: NodeJS.ErrnoException) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`[ERROR] Port ${env.PORT} is already in use.`);
+    process.exit(1);
+  } else {
+    console.error('Server error:', err);
+  }
+});
+
 // Graceful shutdown handling
 const gracefulShutdown = async (signal: string) => {
   console.log(`\n🛑 Received ${signal}. Shutting down MarkDriller server gracefully...`);
@@ -208,3 +227,4 @@ process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 export { app, server, dbPromise };
+

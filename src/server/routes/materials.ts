@@ -37,7 +37,7 @@ function escapeRegex(text: string): string {
 // -------------------------------------------------------------
 router.get('/', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { examId, subjectId, year, search, premiumOnly } = req.query;
+    const { examId, subjectId, year, search, premiumOnly, page, limit, sort, paginated } = req.query;
     const filter: any = { isPublished: true };
 
     if (examId && typeof examId === 'string') filter.examId = examId;
@@ -51,15 +51,48 @@ router.get('/', async (req: Request, res: Response, next: NextFunction): Promise
       filter.$or = [
         { title: { $regex: sanitized, $options: 'i' } },
         { description: { $regex: sanitized, $options: 'i' } },
+        { originalFilename: { $regex: sanitized, $options: 'i' } },
       ];
     }
 
-    const materials = await StudyMaterial.find(filter)
-      .select('_id examId subjectId title description originalFilename fileType fileSize isPublished isPremium downloadCount createdAt')
+    const sortMap: Record<string, any> = {
+      newest: { createdAt: -1 },
+      oldest: { createdAt: 1 },
+      title: { title: 1 },
+      downloads: { downloadCount: -1 },
+    };
+    const sortValue = typeof sort === 'string' && sortMap[sort] ? sortMap[sort] : sortMap.newest;
+
+    const query = StudyMaterial.find(filter)
+      .select('_id examId subjectId title description originalFilename fileType fileSize isPublished isPremium downloadCount year createdAt')
       .populate('examId', 'name shortCode')
       .populate('subjectId', 'name code')
-      .sort({ createdAt: -1 })
-      .lean();
+      .sort(sortValue);
+
+    if (paginated === 'true') {
+      const pageNumber = Math.max(1, Number(page) || 1);
+      const limitNumber = Math.min(48, Math.max(6, Number(limit) || 12));
+      const skip = (pageNumber - 1) * limitNumber;
+
+      const [materials, total] = await Promise.all([
+        query.clone().skip(skip).limit(limitNumber).lean(),
+        StudyMaterial.countDocuments(filter),
+      ]);
+
+      res.status(200).json({
+        success: true,
+        data: {
+          items: materials,
+          total,
+          page: pageNumber,
+          limit: limitNumber,
+          totalPages: Math.max(1, Math.ceil(total / limitNumber)),
+        },
+      });
+      return;
+    }
+
+    const materials = await query.lean();
 
     res.status(200).json({ success: true, data: materials });
   } catch (error) {
@@ -76,7 +109,7 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction): Prom
     const materialId = Array.isArray(rawId) ? rawId[0] : rawId;
 
     const material = await StudyMaterial.findById(materialId)
-      .select('_id examId subjectId title description originalFilename fileType fileSize isPublished isPremium downloadCount createdAt')
+      .select('_id examId subjectId title description originalFilename fileType fileSize isPublished isPremium downloadCount year createdAt')
       .populate('examId', 'name shortCode')
       .populate('subjectId', 'name code');
 
@@ -459,3 +492,4 @@ router.delete(
 );
 
 export default router;
+

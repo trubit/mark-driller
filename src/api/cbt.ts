@@ -12,6 +12,10 @@ export interface CbtQuestion {
   optionD: string;
   difficulty: string;
   topicName?: string;
+  subjectId?: string;
+  subjectName?: string;
+  subjectCode?: string;
+  imageUrl?: string;
   correctAnswer?: 'A' | 'B' | 'C' | 'D';
   explanation?: string;
 }
@@ -35,6 +39,8 @@ export interface CbtAttemptState {
   examShortCode: string;
   subjectName: string;
   subjectCode: string;
+  subjectId?: string;
+  isMultiSubject?: boolean;
   questions: CbtQuestion[];
   answers: CbtAnswer[];
   score?: number;
@@ -44,7 +50,12 @@ export interface CbtAttemptState {
 
 export interface StartCbtPayload {
   examId: string;
-  subjectId: string;
+  subjectId?: string;
+  subjectIds?: string[];
+  topicId?: string;
+  year?: number;
+  difficulty?: 'EASY' | 'MEDIUM' | 'HARD';
+  onlyBookmarked?: boolean;
   mode?: 'PRACTICE' | 'TIMED_MOCK';
   durationMinutes?: number;
   questionCount?: number;
@@ -64,6 +75,15 @@ export interface TopicBreakdownItem {
   accuracyPercentage: number;
 }
 
+export interface SubjectBreakdownItem {
+  subjectId: string;
+  subjectName: string;
+  subjectCode: string;
+  totalQuestions: number;
+  correctAnswers: number;
+  accuracyPercentage: number;
+}
+
 export interface CbtResultResponse {
   result: {
     _id: string;
@@ -76,6 +96,7 @@ export interface CbtResultResponse {
     unansweredCount: number;
     timeSpentSeconds: number;
     topicBreakdown: TopicBreakdownItem[];
+    subjectBreakdown?: SubjectBreakdownItem[];
     createdAt: string;
   };
   attempt: {
@@ -155,3 +176,4 @@ export function useCbtResultQuery(attemptId?: string) {
     enabled: !!attemptId,
   });
 }
+

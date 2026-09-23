@@ -1,60 +1,96 @@
-# Deploying MarkDriller on Render (Everything Self-Hosted on Render)
+# Deploying MarkDriller on Render & MongoDB Atlas
 
-MarkDriller is configured to run **100% on Render**. You do **not** need a MongoDB Atlas account, AWS account, or any external database provider.
-
-Render hosts both:
-1. **The Web Application (`markdriller`)**: Node.js 22 LTS serving the React SPA and Express REST API.
-2. **The MongoDB Database (`markdriller-mongodb`)**: Official `mongo:7.0` container with a 10 GB persistent Render Disk (`/data/db`), connected privately inside Render's secure internal network.
+MarkDriller production deployment combines **GitHub CI/CD**, **Render** (Node.js Web Service hosting the Vite React SPA + Express REST API), and **MongoDB Atlas** (Managed Cloud Database).
 
 ---
 
-## 🚀 1-Click Deploy via Render Blueprint
+## 🏗️ Architecture Overview
 
-MarkDriller includes a complete [`render.yaml`](./render.yaml) Blueprint that provisions both the web service and the MongoDB database automatically.
+```text
+Developer Push → GitHub (main branch)
+        ↓
+GitHub Actions CI
+  ├─ TypeScript validation (npm run type-check)
+  ├─ Production build compilation (npm run build)
+  ├─ Responsive layout verification (npm run test:responsive)
+  ├─ Security hardening & concurrency SLOs (npm test)
+  ├─ Paystack payment flows (npm run test:paystack)
+  ├─ Student lifecycle tests (npm run test:journey)
+  └─ Supply chain audit (npm audit)
+        ↓ (Checks Pass)
+Render Web Service Auto-Deploy
+        ↓
+Connects to MongoDB Atlas Cloud Cluster
+        ↓
+Health Check Endpoint Passes (/api/health)
+        ↓
+Production Live: Students & Administrators Access via Internet
+```
 
-### Step 1: Open Render Blueprint
-1. Go to your **[Render Dashboard](https://dashboard.render.com)**.
-2. Click **New +** in the top-right corner and choose **Blueprint**.
+---
+
+## 🚀 Deployment Instructions via Render Blueprint
+
+MarkDriller includes an official [`render.yaml`](./render.yaml) Blueprint that provisions the web service automatically.
+
+### Step 1: Push Code to GitHub
+Ensure all code and configuration changes are pushed to your repository's production branch (`main`).
+
+### Step 2: Connect MongoDB Atlas
+1. In your **[MongoDB Atlas Dashboard](https://cloud.mongodb.com/)**:
+   - Create or select your cluster (e.g. Cluster0).
+   - Go to **Database Access** → Add a Database User with `readWriteAnyDatabase` or `readWrite@markdriller` permissions.
+   - Go to **Network Access** → Add IP Access List entry.
+     - *Note*: Render Web Services use dynamic egress IP addresses. For Render web services, add `0.0.0.0/0` (Allow Access from Anywhere) with a strong user password and TLS enabled.
+   - Click **Connect** → **Drivers (Node.js)** to get your connection URI:
+     `mongodb+srv://<username>:<password>@<cluster>.mongodb.net/markdriller?retryWrites=true&w=majority`
+
+### Step 3: Launch on Render
+1. Go to your **[Render Dashboard](https://dashboard.render.com/)**.
+2. Click **New +** → **Blueprint**.
 3. Select your repository: **`trubit/mark-driller`** (branch: `main`).
+4. Render detects [`render.yaml`](./render.yaml) and lists the `markdriller` web service.
+5. In the settings, provide the required sync environment variables:
+   - `MONGODB_URI`: Your MongoDB Atlas connection string.
+   - `PAYSTACK_SECRET_KEY`: Paystack secret key (`sk_live_...` or `sk_test_...`).
+   - `PAYSTACK_PUBLIC_KEY`: Paystack public key (`pk_live_...` or `pk_test_...`).
+   - `PAYSTACK_WEBHOOK_SECRET`: Paystack webhook signing secret.
+   - `BREVO_API_KEY`: Brevo API key for transactional emails/OTPs.
+   - `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`: For PDF study materials.
+   - `ADMIN_EMAIL`: Email address authorized for production administrator access (e.g. `admin@markdriller.com`).
+   - `ADMIN_INITIAL_PASSWORD`: (Optional) Initial password if running admin bootstrap seed.
 
-### Step 2: Review Services
-Render will automatically detect `render.yaml` and show:
-- **`markdriller`**: Web Service (Node.js 22, Port 10000, connected to internal MongoDB).
-- **`markdriller-mongodb`**: Private Service (Docker `mongo:7.0` with 10 GB persistent disk).
+### Step 4: Configure Auto-Deploy Mode
+Render supports two auto-deploy modes for GitHub services:
+- **`On Commit`**: Deploys immediately upon any push to the `main` branch.
+- **`After CI Checks Pass`** *(Recommended)*: Render listens for GitHub commit status checks and automatically triggers deployment ONLY when the GitHub Actions CI pipeline passes.
 
-### Step 3: Enter Only Your Service Keys
-Render will auto-configure `MONGODB_URI` to `mongodb://markdriller-mongodb:27017/markdriller`.
-You only need to enter:
-1. `PAYSTACK_SECRET_KEY`: `sk_live_...`
-2. `PAYSTACK_PUBLIC_KEY`: `pk_live_...`
-3. `PAYSTACK_WEBHOOK_SECRET`: Your Paystack secret key
-4. `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`: For PDF past question uploads
-5. `BREVO_API_KEY`: For sending verification email OTPs
-
-> [!NOTE]
-> `MONGODB_URI`, `JWT_SECRET`, `SESSION_SECRET`, `NODE_ENV`, and `PORT` are configured automatically by Render with zero manual entry required!
-
-### Step 4: Click "Apply"
-Click **Apply**. Render will:
-1. Start `markdriller-mongodb` and mount the 10GB persistent storage disk.
-2. Build the MarkDriller application (`npm ci --include=dev && npm run build`).
-3. Connect `markdriller` to `markdriller-mongodb` inside Render's internal private network.
-4. Launch the live service!
+To enable this:
+1. In the Render Web Service settings, locate **Auto-Deploy**.
+2. Set auto-deploy to **Yes** and select **After CI checks pass**.
 
 ---
 
-## 🌐 Connect Your Custom Domain (`markdriller.com`)
+## 🌐 Custom Domain & Production Routing
 
-1. Open your **markdriller** Web Service in Render.
-2. Go to **Settings** > **Custom Domains**.
-3. Add `markdriller.com` and `www.markdriller.com`.
-4. Point your domain DNS records to Render (ANAME / ALIAS to `markdriller.onrender.com` and CNAME for `www`).
-5. Render automatically issues and renews free SSL certificates!
+1. In Render Web Service settings, go to **Custom Domains**.
+2. Add your production domain: `markdriller.com` and `www.markdriller.com`.
+3. Configure your DNS provider with the CNAME and ALIAS records provided by Render.
+4. Render automatically provisions and renews TLS/SSL certificates at zero cost.
 
 ---
 
-## ⚡ Paystack Live Webhook
+## 🛡️ Production Admin Access via Internet
+
+The MarkDriller Admin Portal (`/admin`) is securely protected both client-side and server-side:
+- **Backend Authentication & RBAC**: Every `/api/admin/*` endpoint strictly enforces `authenticateToken` and `requireAdmin` middleware. Requests verify that the user's role in MongoDB is `ADMIN` or the verified email matches `process.env.ADMIN_EMAIL`.
+- **Database Index Synchronization**: Run `npm run db:index` or trigger index synchronization to ensure all compound query indexes on users, exams, subjects, questions, and subscriptions are live on MongoDB Atlas.
+- **Zero Hardcoded Credentials**: Passwords are securely hashed with bcrypt (salt rounds: 12). No default passwords exist in production code.
+
+---
+
+## ⚡ Paystack Webhook Configuration
 
 In your [Paystack Dashboard](https://dashboard.paystack.com/#/settings/developer):
 - **Live Webhook URL**: `https://markdriller.com/api/subscriptions/webhook`
-- **Events**: `charge.success`, `subscription.create`, `subscription.disable`
+- **Supported Events**: `charge.success`, `subscription.create`, `subscription.disable`

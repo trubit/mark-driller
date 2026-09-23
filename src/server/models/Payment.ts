@@ -1,6 +1,6 @@
 import mongoose, { Schema, Document, Model, Types } from 'mongoose';
 
-export type PaymentStatus = 'PENDING' | 'SUCCESS' | 'FAILED';
+export type PaymentStatus = 'PENDING' | 'PENDING_REVIEW' | 'SUCCESS' | 'FAILED' | 'REJECTED';
 
 export interface IPayment extends Document {
   _id: Types.ObjectId;
@@ -9,10 +9,17 @@ export interface IPayment extends Document {
   reference: string;
   amountKobo: number; // Stored in smallest currency unit (kobo)
   currency: string;
-  provider: 'PAYSTACK' | 'FLUTTERWAVE';
+  provider: 'PAYSTACK' | 'FLUTTERWAVE' | 'MANUAL_BANK_TRANSFER' | 'SCRATCH_CARD_PIN';
   status: PaymentStatus;
   channel?: string;
   paidAt?: Date;
+  proofUrl?: string;
+  depositorName?: string;
+  bankName?: string;
+  transferDate?: Date;
+  adminReviewNotes?: string;
+  reviewedBy?: Types.ObjectId;
+  reviewedAt?: Date;
   metadata?: Record<string, any>;
   createdAt: Date;
   updatedAt: Date;
@@ -46,12 +53,13 @@ const PaymentSchema = new Schema<IPayment>(
     },
     provider: {
       type: String,
-      enum: ['PAYSTACK', 'FLUTTERWAVE'],
+      enum: ['PAYSTACK', 'FLUTTERWAVE', 'MANUAL_BANK_TRANSFER', 'SCRATCH_CARD_PIN'],
       default: 'PAYSTACK',
+      index: true,
     },
     status: {
       type: String,
-      enum: ['PENDING', 'SUCCESS', 'FAILED'],
+      enum: ['PENDING', 'PENDING_REVIEW', 'SUCCESS', 'FAILED', 'REJECTED'],
       default: 'PENDING',
       index: true,
     },
@@ -59,6 +67,32 @@ const PaymentSchema = new Schema<IPayment>(
       type: String,
     },
     paidAt: {
+      type: Date,
+    },
+    proofUrl: {
+      type: String,
+      trim: true,
+    },
+    depositorName: {
+      type: String,
+      trim: true,
+    },
+    bankName: {
+      type: String,
+      trim: true,
+    },
+    transferDate: {
+      type: Date,
+    },
+    adminReviewNotes: {
+      type: String,
+      trim: true,
+    },
+    reviewedBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    reviewedAt: {
       type: Date,
     },
     metadata: {
@@ -72,3 +106,4 @@ const PaymentSchema = new Schema<IPayment>(
 
 export const Payment: Model<IPayment> =
   mongoose.models.Payment || mongoose.model<IPayment>('Payment', PaymentSchema);
+

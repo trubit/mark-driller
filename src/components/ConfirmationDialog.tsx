@@ -52,21 +52,24 @@ export const ConfirmationDialog: React.FC = () => {
       aria-describedby="confirmation-dialog-description"
       PaperProps={{
         style: {
-          backgroundColor: '#ffffff',
-          borderRadius: '4px',
-          border: '1.5px solid #14181c',
+          backgroundColor: 'var(--white)',
+          color: 'var(--ink)',
+          borderRadius: '6px',
+          border: '1.5px solid var(--paper-line)',
           padding: '12px 16px',
-          boxShadow: '0 12px 36px rgba(20, 24, 28, 0.25)',
+          boxShadow: 'var(--card-shadow)',
+          maxWidth: 'min(94vw, 420px)',
+          margin: '12px auto',
         },
       }}
     >
       <DialogTitle
         id="confirmation-dialog-title"
         sx={{
-          fontFamily: "'Space Grotesk', sans-serif",
+          fontFamily: "var(--font-sans)",
           fontWeight: 700,
           fontSize: '18px',
-          color: isDestructive ? '#b91c1c' : '#14181c',
+          color: isDestructive ? 'var(--color-error)' : 'var(--ink)',
           p: '12px 0 8px',
         }}
       >
@@ -77,9 +80,9 @@ export const ConfirmationDialog: React.FC = () => {
         <Typography
           id="confirmation-dialog-description"
           sx={{
-            fontFamily: "'Space Grotesk', sans-serif",
+            fontFamily: "var(--font-sans)",
             fontSize: '14.5px',
-            color: '#374151',
+            color: 'var(--ink-soft)',
             lineHeight: 1.5,
           }}
         >
@@ -91,8 +94,8 @@ export const ConfirmationDialog: React.FC = () => {
             sx={{
               mt: 1.5,
               fontSize: '12.5px',
-              fontFamily: "'JetBrains Mono', monospace",
-              color: '#b91c1c',
+              fontFamily: "var(--font-sans)",
+              color: 'var(--color-error)',
               fontWeight: 600,
             }}
           >
@@ -106,14 +109,14 @@ export const ConfirmationDialog: React.FC = () => {
           onClick={handleCancel}
           disabled={isProcessing}
           sx={{
-            fontFamily: "'Space Grotesk', sans-serif",
+            fontFamily: "var(--font-sans)",
             fontWeight: 600,
-            color: '#4b5563',
+            color: 'var(--ink-soft)',
             textTransform: 'none',
             fontSize: '13.5px',
             px: 2,
             '&:hover': {
-              backgroundColor: 'rgba(20, 24, 28, 0.05)',
+              backgroundColor: 'var(--paper-line)',
             },
           }}
         >
@@ -125,23 +128,23 @@ export const ConfirmationDialog: React.FC = () => {
           disabled={isProcessing}
           variant="contained"
           sx={{
-            fontFamily: "'Space Grotesk', sans-serif",
+            fontFamily: "var(--font-sans)",
             fontWeight: 700,
             textTransform: 'none',
             fontSize: '13.5px',
             px: 2.5,
             py: 0.8,
-            backgroundColor: isDestructive ? '#b91c1c' : '#14181c',
-            color: '#ffffff',
+            backgroundColor: isDestructive ? 'var(--color-error)' : 'var(--rust)',
+            color: 'var(--white)',
             boxShadow: 'none',
             '&:hover': {
-              backgroundColor: isDestructive ? '#991b1b' : '#000000',
+              backgroundColor: isDestructive ? 'var(--color-error)' : 'var(--amber-deep)',
               boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
             },
           }}
         >
           {isProcessing ? (
-            <CircularProgress size={18} sx={{ color: '#ffffff', mr: 1 }} />
+            <CircularProgress size={18} sx={{ color: 'var(--white)', mr: 1 }} />
           ) : null}
           {confirmLabel}
         </Button>
@@ -149,3 +152,4 @@ export const ConfirmationDialog: React.FC = () => {
     </Dialog>
   );
 };
+

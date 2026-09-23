@@ -79,13 +79,13 @@ export const ForgotPasswordModal: React.FC = () => {
       centered
       contentClassName="auth-modal-content"
     >
-      <div style={{ background: 'var(--white)', border: '2px solid var(--ink)', padding: '32px', boxShadow: '5px 5px 0 var(--ink)' }}>
+      <div style={{ background: 'var(--white)', border: '1.5px solid var(--paper-line)', borderRadius: '6px', padding: '32px', boxShadow: 'var(--card-shadow)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
           <div>
-            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', color: 'var(--rust)', textTransform: 'uppercase', letterSpacing: '1px' }}>
+            <div style={{ fontFamily: "var(--font-sans)", fontSize: '11px', color: 'var(--rust)', textTransform: 'uppercase', letterSpacing: '1px' }}>
               Account Recovery
             </div>
-            <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '24px', margin: '4px 0 0', color: 'var(--ink)' }}>
+            <h3 style={{ fontFamily: "var(--font-sans)", fontWeight: 700, fontSize: '24px', margin: '4px 0 0', color: 'var(--ink)' }}>
               {step === 'REQUEST' ? 'Reset Your Password' : step === 'RESET' ? 'Enter Recovery Code' : 'Password Reset!'}
             </h3>
           </div>
@@ -98,26 +98,26 @@ export const ForgotPasswordModal: React.FC = () => {
         </div>
 
         {errorMsg && (
-          <div style={{ padding: '10px 14px', background: '#fdf0ed', border: '1px solid var(--rust)', color: 'var(--rust)', fontSize: '13px', marginBottom: '16px' }}>
+          <div style={{ padding: '10px 14px', background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '4px', color: '#ef4444', fontSize: '13px', marginBottom: '16px' }}>
             ⚠ {errorMsg}
           </div>
         )}
 
         {successMsg && (
-          <div style={{ padding: '10px 14px', background: '#eaf4ee', border: '1px solid var(--forest)', color: 'var(--forest)', fontSize: '13px', marginBottom: '16px' }}>
+          <div style={{ padding: '10px 14px', background: 'rgba(34, 197, 94, 0.12)', border: '1px solid rgba(34, 197, 94, 0.3)', borderRadius: '4px', color: '#22c55e', fontSize: '13px', marginBottom: '16px' }}>
             ✓ {successMsg}
           </div>
         )}
 
         {step === 'REQUEST' && (
           <form onSubmit={handleRequestOtp}>
-            <p style={{ fontSize: '14px', color: 'var(--slate)', margin: '0 0 20px', lineHeight: 1.5 }}>
+            <p style={{ fontSize: '14px', color: 'var(--ink-soft)', margin: '0 0 20px', lineHeight: 1.5 }}>
               Enter the email address associated with your MarkDriller account. We'll send you a 6-digit recovery code.
             </p>
             <div style={{ marginBottom: '20px' }}>
               <label
                 htmlFor="resetEmailInput"
-                style={{ display: 'block', fontSize: '11px', fontFamily: "'JetBrains Mono', monospace", textTransform: 'uppercase', color: 'var(--slate)', marginBottom: '8px' }}
+                style={{ display: 'block', fontSize: '11px', fontFamily: "var(--font-sans)", textTransform: 'uppercase', color: 'var(--slate)', marginBottom: '8px' }}
               >
                 Account Email Address
               </label>
@@ -147,7 +147,7 @@ export const ForgotPasswordModal: React.FC = () => {
                 background: 'var(--ink)',
                 color: 'var(--white)',
                 border: 'none',
-                fontFamily: "'JetBrains Mono', monospace",
+                fontFamily: "var(--font-sans)",
                 fontSize: '13px',
                 fontWeight: 700,
                 cursor: forgotMutation.isPending ? 'not-allowed' : 'pointer',
@@ -166,7 +166,7 @@ export const ForgotPasswordModal: React.FC = () => {
             <div style={{ marginBottom: '16px' }}>
               <label
                 htmlFor="recoveryOtpInput"
-                style={{ display: 'block', fontSize: '11px', fontFamily: "'JetBrains Mono', monospace", textTransform: 'uppercase', color: 'var(--slate)', marginBottom: '6px' }}
+                style={{ display: 'block', fontSize: '11px', fontFamily: "var(--font-sans)", textTransform: 'uppercase', color: 'var(--slate)', marginBottom: '6px' }}
               >
                 6-Digit Recovery Passcode
               </label>
@@ -181,7 +181,7 @@ export const ForgotPasswordModal: React.FC = () => {
                   width: '100%',
                   padding: '10px',
                   fontSize: '20px',
-                  fontFamily: "'JetBrains Mono', monospace",
+                  fontFamily: "var(--font-sans)",
                   fontWeight: 700,
                   textAlign: 'center',
                   letterSpacing: '6px',
@@ -195,7 +195,7 @@ export const ForgotPasswordModal: React.FC = () => {
             <div style={{ marginBottom: '16px' }}>
               <label
                 htmlFor="newPasswordInput"
-                style={{ display: 'block', fontSize: '11px', fontFamily: "'JetBrains Mono', monospace", textTransform: 'uppercase', color: 'var(--slate)', marginBottom: '6px' }}
+                style={{ display: 'block', fontSize: '11px', fontFamily: "var(--font-sans)", textTransform: 'uppercase', color: 'var(--slate)', marginBottom: '6px' }}
               >
                 New Password (min. 6 chars)
               </label>
@@ -218,7 +218,7 @@ export const ForgotPasswordModal: React.FC = () => {
             <div style={{ marginBottom: '20px' }}>
               <label
                 htmlFor="confirmPasswordInput"
-                style={{ display: 'block', fontSize: '11px', fontFamily: "'JetBrains Mono', monospace", textTransform: 'uppercase', color: 'var(--slate)', marginBottom: '6px' }}
+                style={{ display: 'block', fontSize: '11px', fontFamily: "var(--font-sans)", textTransform: 'uppercase', color: 'var(--slate)', marginBottom: '6px' }}
               >
                 Confirm New Password
               </label>
@@ -247,7 +247,7 @@ export const ForgotPasswordModal: React.FC = () => {
                 background: 'var(--rust)',
                 color: 'var(--white)',
                 border: 'none',
-                fontFamily: "'JetBrains Mono', monospace",
+                fontFamily: "var(--font-sans)",
                 fontSize: '13px',
                 fontWeight: 700,
                 cursor: resetMutation.isPending || otp.length !== 6 ? 'not-allowed' : 'pointer',
@@ -261,7 +261,7 @@ export const ForgotPasswordModal: React.FC = () => {
         {step === 'DONE' && (
           <div style={{ textAlign: 'center', padding: '20px 0' }}>
             <div style={{ fontSize: '36px', marginBottom: '12px' }}>🎉</div>
-            <h4 style={{ fontFamily: "'Playfair Display', serif", fontSize: '20px', color: 'var(--forest)', margin: '0 0 8px' }}>
+            <h4 style={{ fontFamily: "var(--font-sans)", fontSize: '20px', color: 'var(--forest)', margin: '0 0 8px' }}>
               Password Reset Complete!
             </h4>
             <p style={{ fontSize: '14px', color: 'var(--slate)', margin: '0 0 16px' }}>
@@ -282,7 +282,7 @@ export const ForgotPasswordModal: React.FC = () => {
               border: 'none',
               color: 'var(--ink)',
               fontSize: '12px',
-              fontFamily: "'JetBrains Mono', monospace",
+              fontFamily: "var(--font-sans)",
               cursor: 'pointer',
             }}
           >
@@ -293,3 +293,4 @@ export const ForgotPasswordModal: React.FC = () => {
     </Modal>
   );
 };
+

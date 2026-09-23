@@ -1,12 +1,18 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import crypto from 'crypto';
+import path from 'path';
+import fs from 'fs';
 import { Subscription, PlanType } from '../models/Subscription.js';
 import { Payment } from '../models/Payment.js';
 import { User } from '../models/User.js';
+import { ActivationKey } from '../models/ActivationKey.js';
+import { SystemSetting } from '../models/SystemSetting.js';
 import { authenticateToken, requireVerified, AuthenticatedRequest } from '../middleware/auth.js';
 import { sendSubscriptionEmail } from '../services/emailService.js';
 import { PaystackService } from '../services/paystackService.js';
+import { receiptUpload, validateReceiptFileSignature, RECEIPTS_DIR_ABSOLUTE } from '../middleware/upload.js';
+import { CloudinaryService } from '../services/cloudinaryService.js';
 import { env } from '../config/env.js';
 
 const router = Router();
@@ -65,6 +71,90 @@ export const SUBSCRIPTION_PLANS = [
 router.get('/plans', (_req: Request, res: Response) => {
   res.status(200).json({ success: true, data: SUBSCRIPTION_PLANS });
 });
+
+export interface DynamicBankDetails {
+  isConfigured: boolean;
+  bankName: string;
+  accountName: string;
+  accountNumber: string;
+  currency: string;
+  instructions: string;
+}
+
+export async function getDynamicBankDetails(): Promise<DynamicBankDetails> {
+  try {
+    const setting = await SystemSetting.findOne({ key: 'OFFICIAL_BANK_DETAILS' }).lean();
+    if (setting && setting.value && typeof setting.value === 'object') {
+      const val = setting.value as any;
+      const bankName = String(val.bankName || '').trim();
+      const accountName = String(val.accountName || '').trim();
+      const accountNumber = String(val.accountNumber || '').trim();
+      const currency = String(val.currency || 'NGN').trim();
+      const instructions = String(val.instructions || '').trim();
+
+      const isConfigured = Boolean(bankName && accountNumber);
+      return {
+        isConfigured,
+        bankName,
+        accountName,
+        accountNumber,
+        currency,
+        instructions: instructions || 'Use your registered MarkDriller email address as the payment narration or transfer remark.',
+      };
+    }
+  } catch (error) {
+    console.warn('⚠️ Could not fetch dynamic bank details from DB:', error);
+  }
+
+  return {
+    isConfigured: false,
+    bankName: '',
+    accountName: '',
+    accountNumber: '',
+    currency: 'NGN',
+    instructions: 'Official receiving bank account details are currently being updated by platform administration.',
+  };
+}
+
+// GET /api/subscriptions/bank-details — Official account details for direct bank transfer (Public endpoint, dynamic from database)
+router.get('/bank-details', async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    const details = await getDynamicBankDetails();
+    res.status(200).json({ success: true, data: details });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /api/subscriptions/receipts/:filename — Stream / render uploaded candidate receipt image or PDF
+router.get('/receipts/:filename', (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const rawFilename = Array.isArray(req.params.filename) ? req.params.filename[0] : req.params.filename;
+    const filename = path.basename(String(rawFilename || ''));
+    const filePath = path.join(RECEIPTS_DIR_ABSOLUTE, filename);
+
+    if (!fs.existsSync(filePath)) {
+      res.status(404).json({ success: false, error: { message: 'Receipt not found.' } });
+      return;
+    }
+
+    const ext = path.extname(filename).toLowerCase();
+    const mimeTypes: Record<string, string> = {
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.png': 'image/png',
+      '.webp': 'image/webp',
+      '.pdf': 'application/pdf',
+    };
+
+    res.setHeader('Content-Type', mimeTypes[ext] || 'application/octet-stream');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    fs.createReadStream(filePath).pipe(res);
+  } catch (error) {
+    next(error);
+  }
+});
+
 
 // ----------------------------------------------------
 // PAYSTACK WEBHOOK (Unauthenticated, verified via HMAC SHA-512)
@@ -396,4 +486,303 @@ router.post('/verify', async (req: AuthenticatedRequest, res: Response, next: Ne
   }
 });
 
+const manualProofSchema = z.object({
+  plan: z.enum(['PRO_MONTHLY', 'PRO_ANNUAL']),
+  depositorName: z.string().trim().min(2, 'Depositor name must be at least 2 characters'),
+  bankName: z.string().trim().min(2, 'Bank name is required'),
+  amountPaidNGN: z.number().positive('Amount paid must be greater than zero'),
+  transferDate: z.string().optional(),
+  proofUrl: z.string().min(5, 'Valid payment receipt or screenshot URL is required'),
+  notes: z.string().max(500).optional(),
+});
+
+// POST /api/subscriptions/upload-receipt — Candidate receipt file upload (images & PDF)
+router.post(
+  '/upload-receipt',
+  authenticateToken,
+  requireVerified,
+  (req, res, next) => {
+    receiptUpload.single('receipt')(req, res, (err) => {
+      if (err) {
+        return res.status(400).json({ success: false, error: { message: err.message || 'Receipt upload error.' } });
+      }
+      next();
+    });
+  },
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (!req.file) {
+        res.status(400).json({ success: false, error: { message: 'No receipt file uploaded.' } });
+        return;
+      }
+
+      const filePath = req.file.path;
+      const originalName = req.file.originalname;
+
+      // Validate authentic image or PDF binary signature (magic bytes)
+      const isValidSig = await validateReceiptFileSignature(filePath);
+      if (!isValidSig) {
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+        res.status(400).json({
+          success: false,
+          error: { message: 'Uploaded file content does not match an approved image screenshot or PDF document.' },
+        });
+        return;
+      }
+
+      const isCloudinary = env.STORAGE_PROVIDER === 'cloudinary' && CloudinaryService.isConfigured();
+
+      if (isCloudinary) {
+        try {
+          const cloudRes = await CloudinaryService.uploadFile(filePath, originalName);
+          if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+          }
+          res.status(200).json({
+            success: true,
+            data: {
+              fileUrl: cloudRes.secureUrl,
+              filename: cloudRes.publicId,
+              originalName,
+            },
+          });
+          return;
+        } catch (cloudErr) {
+          console.warn('Cloudinary receipt upload failed, falling back to local storage:', cloudErr);
+        }
+      }
+
+      const fileUrl = `/api/subscriptions/receipts/${path.basename(req.file.filename)}`;
+      res.status(200).json({
+        success: true,
+        data: {
+          fileUrl,
+          filename: req.file.filename,
+          originalName,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// POST /api/subscriptions/manual-proof — Submit proof of direct bank transfer for admin review
+router.post(
+  '/manual-proof',
+  authenticateToken,
+  requireVerified,
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const data = manualProofSchema.parse(req.body);
+      const userId = req.user!._id;
+
+      const planConfig = SUBSCRIPTION_PLANS.find((p) => p.id === data.plan);
+      if (!planConfig) {
+        res.status(400).json({ success: false, error: { message: 'Invalid subscription plan selected.' } });
+        return;
+      }
+
+      // Check for an existing pending review proof for this user
+      const existingPending = await Payment.findOne({
+        userId,
+        provider: 'MANUAL_BANK_TRANSFER',
+        status: 'PENDING_REVIEW',
+      });
+
+      if (existingPending) {
+        res.status(409).json({
+          success: false,
+          error: {
+            message:
+              'You already have a manual payment proof currently pending review by our administrative team. Reference: ' +
+              existingPending.reference,
+          },
+        });
+        return;
+      }
+
+      const reference = `MNL_${Date.now()}_${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+
+      const payment = await Payment.create({
+        userId,
+        reference,
+        amountKobo: Math.round(data.amountPaidNGN * 100),
+        currency: 'NGN',
+        provider: 'MANUAL_BANK_TRANSFER',
+        status: 'PENDING_REVIEW',
+        channel: 'direct_bank_transfer',
+        depositorName: data.depositorName,
+        bankName: data.bankName,
+        proofUrl: data.proofUrl,
+        transferDate: data.transferDate ? new Date(data.transferDate) : new Date(),
+        metadata: {
+          plan: data.plan,
+          planName: planConfig.name,
+          notes: data.notes || '',
+          userEmail: req.user!.email,
+          userFullName: req.user!.fullName,
+        },
+      });
+
+      res.status(201).json({
+        success: true,
+        message: 'Your payment proof has been submitted successfully and is pending administrator verification.',
+        data: {
+          reference: payment.reference,
+          status: payment.status,
+          plan: data.plan,
+          amountPaidNGN: data.amountPaidNGN,
+          submittedAt: payment.createdAt,
+        },
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({
+          success: false,
+          error: { message: 'Validation failed', details: error.flatten().fieldErrors },
+        });
+        return;
+      }
+      next(error);
+    }
+  }
+);
+
+// POST /api/subscriptions/redeem-pin — Redeem a physical scratch card PIN or reseller activation key
+const redeemPinSchema = z.object({
+  pinCode: z
+    .string()
+    .min(6, 'Valid PIN or activation code is required')
+    .max(64, 'Activation key exceeds maximum length')
+    .regex(/^[A-Za-z0-9\-_ ]+$/, 'PIN must contain valid alphanumeric characters only'),
+});
+
+router.post(
+  '/redeem-pin',
+  authenticateToken,
+  requireVerified,
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { pinCode } = redeemPinSchema.parse(req.body);
+      const cleanCode = pinCode.trim().toUpperCase();
+
+      const key = await ActivationKey.findOne({ code: cleanCode });
+      if (!key) {
+        res.status(404).json({
+          success: false,
+          error: { message: 'Invalid scratch card PIN or product activation key. Please check and try again.' },
+        });
+        return;
+      }
+
+      if (key.isRedeemed) {
+        res.status(400).json({
+          success: false,
+          error: { message: 'This activation key has already been redeemed on another account.' },
+        });
+        return;
+      }
+
+      const userId = req.user!._id;
+      const durationMs = (key.durationDays || 30) * 24 * 60 * 60 * 1000;
+      const now = new Date();
+      const expiryDate = new Date(now.getTime() + durationMs);
+
+      // Update or create Subscription
+      let subscription = await Subscription.findOne({ userId });
+      if (subscription) {
+        subscription.plan = key.plan;
+        subscription.status = 'ACTIVE';
+        subscription.startDate = now;
+        subscription.endDate = expiryDate;
+        await subscription.save();
+      } else {
+        subscription = await Subscription.create({
+          userId,
+          plan: key.plan,
+          status: 'ACTIVE',
+          startDate: now,
+          endDate: expiryDate,
+        });
+      }
+
+      // Update User profile
+      await User.findByIdAndUpdate(userId, {
+        subscriptionStatus: 'ACTIVE',
+        subscriptionPlan: key.plan,
+        subscriptionEndDate: expiryDate,
+      });
+
+      // Mark Key as redeemed
+      key.isRedeemed = true;
+      key.redeemedBy = userId;
+      key.redeemedAt = now;
+      await key.save();
+
+      // Log payment audit entry
+      await Payment.create({
+        userId,
+        reference: `PIN-${key.code}-${Date.now()}`,
+        amountKobo: key.plan === 'PRO_ANNUAL' ? 2500000 : 350000,
+        currency: 'NGN',
+        provider: 'SCRATCH_CARD_PIN',
+        status: 'SUCCESS',
+        channel: 'pin_redemption',
+        metadata: {
+          keyId: key._id.toString(),
+          batchId: key.batchId || 'RETAIL',
+          resellerName: key.resellerName || 'Direct Scratch Card',
+        },
+      });
+
+      res.status(200).json({
+        success: true,
+        message: `Congratulations! Your ${key.plan.replace('_', ' ')} has been successfully activated.`,
+        data: {
+          plan: key.plan,
+          status: 'ACTIVE',
+          expiryDate: expiryDate.toISOString(),
+          durationDays: key.durationDays,
+        },
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({
+          success: false,
+          error: { message: 'Validation failed', details: error.flatten().fieldErrors },
+        });
+        return;
+      }
+      next(error);
+    }
+  }
+);
+
+// GET /api/subscriptions/my-payments — Return the logged-in student's complete payment history
+router.get(
+  '/my-payments',
+  authenticateToken,
+  requireVerified,
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const userId = req.user!._id;
+      const payments = await Payment.find({ userId })
+        .sort({ createdAt: -1 })
+        .limit(50)
+        .lean();
+
+      res.status(200).json({
+        success: true,
+        data: payments,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
 export default router;
+

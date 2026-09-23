@@ -5,9 +5,15 @@ export interface UserSession {
   fullName: string;
   email: string;
   role: 'STUDENT' | 'ADMIN';
-  targetExam?: string;
-  selectedSubjects?: string[];
+  targetExam?: any;
+  selectedSubjects?: any[];
   isVerified: boolean;
+  avatar?: string;
+  phone?: string;
+  educationLevel?: string;
+  state?: string;
+  country?: string;
+  accountStatus?: string;
   createdAt: string;
 }
 
@@ -68,7 +74,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (response.ok) {
         const payload = await response.json();
         if (payload.success && payload.data?.user) {
-          const freshUser = payload.data.user;
+          const freshUser: UserSession = {
+            ...payload.data.user,
+            avatar: payload.data.profile?.avatar || payload.data.user.avatar,
+            phone: payload.data.profile?.phone || payload.data.user.phone,
+            educationLevel: payload.data.profile?.educationLevel || payload.data.user.educationLevel,
+            state: payload.data.profile?.state || payload.data.user.state,
+            country: payload.data.profile?.country || payload.data.user.country || 'Nigeria',
+          };
           localStorage.setItem('md_token', token);
           localStorage.setItem('md_user', JSON.stringify(freshUser));
           set({
@@ -119,3 +132,4 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     get().checkAuth();
   },
 }));
+

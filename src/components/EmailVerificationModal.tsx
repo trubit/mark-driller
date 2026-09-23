@@ -67,13 +67,13 @@ export const EmailVerificationModal: React.FC = () => {
       backdrop="static"
       contentClassName="auth-modal-content"
     >
-      <div style={{ background: 'var(--white)', border: '2px solid var(--ink)', padding: '32px', boxShadow: '5px 5px 0 var(--ink)' }}>
+      <div style={{ background: 'var(--white)', border: '1.5px solid var(--paper-line)', borderRadius: '6px', padding: '32px', boxShadow: 'var(--card-shadow)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
           <div>
-            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', color: 'var(--rust)', textTransform: 'uppercase', letterSpacing: '1px' }}>
+            <div style={{ fontFamily: "var(--font-sans)", fontSize: '11px', color: 'var(--rust)', textTransform: 'uppercase', letterSpacing: '1px' }}>
               Identity Verification
             </div>
-            <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '24px', margin: '4px 0 0', color: 'var(--ink)' }}>
+            <h3 style={{ fontFamily: "var(--font-sans)", fontWeight: 700, fontSize: '24px', margin: '4px 0 0', color: 'var(--ink)' }}>
               Confirm Your Email
             </h3>
           </div>
@@ -85,22 +85,22 @@ export const EmailVerificationModal: React.FC = () => {
           </button>
         </div>
 
-        <p style={{ fontSize: '14px', color: 'var(--slate)', lineHeight: 1.5, margin: '0 0 16px' }}>
+        <p style={{ fontSize: '14px', color: 'var(--ink-soft)', lineHeight: 1.5, margin: '0 0 16px' }}>
           We sent a 6-digit security code to <strong style={{ color: 'var(--ink)' }}>{emailToVerify}</strong>. Enter it below to unlock all examination drills and mock rooms.
         </p>
 
-        <div style={{ fontSize: '12px', color: '#8c603a', background: '#fff8f3', padding: '10px 14px', borderLeft: '3px solid var(--rust)', marginBottom: '20px', lineHeight: 1.5 }}>
+        <div style={{ fontSize: '12px', color: 'var(--ink)', background: 'rgba(226, 154, 60, 0.12)', padding: '10px 14px', borderLeft: '3px solid var(--amber)', borderRadius: '4px', marginBottom: '20px', lineHeight: 1.5 }}>
           💡 <strong>Tip:</strong> If you don't see the email in your primary inbox, please check your <strong>Spam / Junk</strong> folder or <strong>Promotions</strong> tab.
         </div>
 
         {errorMsg && (
-          <div style={{ padding: '10px 14px', background: '#fdf0ed', border: '1px solid var(--rust)', color: 'var(--rust)', fontSize: '13px', marginBottom: '16px' }}>
+          <div style={{ padding: '10px 14px', background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '4px', color: '#ef4444', fontSize: '13px', marginBottom: '16px' }}>
             ⚠ {errorMsg}
           </div>
         )}
 
         {successMsg && (
-          <div style={{ padding: '10px 14px', background: '#eaf4ee', border: '1px solid var(--forest)', color: 'var(--forest)', fontSize: '13px', marginBottom: '16px' }}>
+          <div style={{ padding: '10px 14px', background: 'rgba(34, 197, 94, 0.12)', border: '1px solid rgba(34, 197, 94, 0.3)', borderRadius: '4px', color: '#22c55e', fontSize: '13px', marginBottom: '16px' }}>
             ✓ {successMsg}
           </div>
         )}
@@ -109,7 +109,7 @@ export const EmailVerificationModal: React.FC = () => {
           <div style={{ marginBottom: '20px' }}>
             <label
               htmlFor="otpInput"
-              style={{ display: 'block', fontSize: '11px', fontFamily: "'JetBrains Mono', monospace", textTransform: 'uppercase', color: 'var(--slate)', marginBottom: '8px' }}
+              style={{ display: 'block', fontSize: '11px', fontFamily: "var(--font-sans)", textTransform: 'uppercase', color: 'var(--slate)', marginBottom: '8px' }}
             >
               6-Digit One-Time Passcode (OTP)
             </label>
@@ -124,7 +124,7 @@ export const EmailVerificationModal: React.FC = () => {
                 width: '100%',
                 padding: '12px',
                 fontSize: '24px',
-                fontFamily: "'JetBrains Mono', monospace",
+                fontFamily: "var(--font-sans)",
                 fontWeight: 700,
                 textAlign: 'center',
                 letterSpacing: '8px',
@@ -144,7 +144,7 @@ export const EmailVerificationModal: React.FC = () => {
               background: 'var(--ink)',
               color: 'var(--white)',
               border: 'none',
-              fontFamily: "'JetBrains Mono', monospace",
+              fontFamily: "var(--font-sans)",
               fontSize: '13px',
               fontWeight: 700,
               cursor: verifyMutation.isPending || otp.length !== 6 ? 'not-allowed' : 'pointer',
@@ -168,7 +168,7 @@ export const EmailVerificationModal: React.FC = () => {
               border: 'none',
               color: cooldown > 0 ? 'var(--slate)' : 'var(--rust)',
               fontSize: '12px',
-              fontFamily: "'JetBrains Mono', monospace",
+              fontFamily: "var(--font-sans)",
               fontWeight: 600,
               cursor: cooldown > 0 ? 'default' : 'pointer',
             }}
@@ -180,3 +180,4 @@ export const EmailVerificationModal: React.FC = () => {
     </Modal>
   );
 };
+

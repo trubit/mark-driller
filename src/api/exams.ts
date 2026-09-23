@@ -37,6 +37,23 @@ export interface DashboardStats {
   availableSubjects: SubjectItem[];
 }
 
+export interface TelemetryData {
+  totalQuestions: number;
+  totalExams: number;
+  totalSubjects: number;
+  totalAttempts: number;
+  totalStudents: number;
+  lastUpdated: string;
+}
+
+export function useTelemetryQuery() {
+  return useQuery<TelemetryData>({
+    queryKey: ['telemetry'],
+    queryFn: () => apiClient<TelemetryData>('/api/exams/telemetry'),
+    staleTime: 1000 * 60,
+  });
+}
+
 export function useExamsQuery() {
   return useQuery<ExamItem[]>({
     queryKey: ['exams'],
@@ -88,3 +105,4 @@ export function useUpdateTargetExamMutation() {
     },
   });
 }
+

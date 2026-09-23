@@ -40,6 +40,8 @@ services:
         generateValue: true
       - key: SESSION_SECRET
         generateValue: true
+      - key: ADMIN_INITIAL_PASSWORD
+        generateValue: true
 
       # Payment Gateway Configuration (Paystack Live)
       - key: PAYSTACK_SECRET_KEY

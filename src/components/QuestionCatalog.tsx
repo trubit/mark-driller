@@ -11,7 +11,6 @@ import {
   useAcquireCurriculumMutation,
   type QuestionItem,
 } from '../api/questions.js';
-import { PortalHeader } from './PortalHeader.js';
 
 interface QuestionCardProps {
   question: QuestionItem;
@@ -38,6 +37,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
 
   return (
     <div
+      className="question-card"
       style={{
         backgroundColor: 'var(--white)',
         border: '1.5px solid rgba(20,24,28,0.14)',
@@ -64,7 +64,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           <span
             style={{
-              fontFamily: "'Space Grotesk', sans-serif",
+              fontFamily: "var(--font-sans)",
               fontWeight: 700,
               fontSize: '14px',
               color: 'var(--ink)',
@@ -75,7 +75,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
           <span
             style={{
               fontSize: '11px',
-              fontFamily: "'JetBrains Mono', monospace",
+              fontFamily: "var(--font-sans)",
               backgroundColor: 'var(--paper)',
               padding: '2px 8px',
               borderRadius: '2px',
@@ -88,7 +88,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
           <span
             style={{
               fontSize: '11px',
-              fontFamily: "'JetBrains Mono', monospace",
+              fontFamily: "var(--font-sans)",
               backgroundColor: 'var(--paper-dim)',
               padding: '2px 8px',
               borderRadius: '2px',
@@ -101,7 +101,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
             <span
               style={{
                 fontSize: '11px',
-                fontFamily: "'JetBrains Mono', monospace",
+                fontFamily: "var(--font-sans)",
                 backgroundColor: '#e7edf3',
                 padding: '2px 8px',
                 borderRadius: '2px',
@@ -117,7 +117,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
           <span
             style={{
               fontSize: '10.5px',
-              fontFamily: "'JetBrains Mono', monospace",
+              fontFamily: "var(--font-sans)",
               fontWeight: 700,
               padding: '2px 6px',
               borderRadius: '2px',
@@ -167,7 +167,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
           fontSize: '16px',
           lineHeight: '1.6',
           color: 'var(--ink)',
-          fontFamily: "'Source Serif 4', Georgia, serif",
+          fontFamily: "var(--font-sans)",
         }}
       >
         {question.questionText}
@@ -214,14 +214,14 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                 alignItems: 'flex-start',
                 gap: '10px',
                 fontSize: '14.5px',
-                fontFamily: "'Space Grotesk', sans-serif",
+                fontFamily: "var(--font-sans)",
                 transition: 'all 0.15s ease',
               }}
             >
               <span
                 style={{
                   fontWeight: 700,
-                  fontFamily: "'JetBrains Mono', monospace",
+                  fontFamily: "var(--font-sans)",
                   fontSize: '13px',
                   backgroundColor: 'rgba(20,24,28,0.06)',
                   padding: '2px 6px',
@@ -250,7 +250,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
         </button>
 
         {selectedOption && !showExplanation && (
-          <span style={{ fontSize: '12px', fontFamily: "'JetBrains Mono', monospace", color: 'var(--ink-soft)' }}>
+          <span style={{ fontSize: '12px', fontFamily: "var(--font-sans)", color: 'var(--ink-soft)' }}>
             Selected: Option {selectedOption}
           </span>
         )}
@@ -270,7 +270,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
             <span
               style={{
-                fontFamily: "'JetBrains Mono', monospace",
+                fontFamily: "var(--font-sans)",
                 fontSize: '11px',
                 fontWeight: 700,
                 color: 'var(--white)',
@@ -289,7 +289,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
               lineHeight: '1.6',
               color: 'var(--ink)',
               margin: 0,
-              fontFamily: "'Source Serif 4', Georgia, serif",
+              fontFamily: "var(--font-sans)",
             }}
           >
             {question.explanation}
@@ -330,6 +330,7 @@ export const QuestionCatalog: React.FC = () => {
   const acquireCurriculum = useAcquireCurriculumMutation();
   const [syncSuccessMsg, setSyncSuccessMsg] = useState<string | null>(null);
   const [syncErrorMsg, setSyncErrorMsg] = useState<string | null>(null);
+  const [showBookmarksOnly, setShowBookmarksOnly] = useState(false);
 
   const bookmarkedQuestionIds = new Set(
     bookmarksData?.map((b) => b.question?._id) || []
@@ -407,24 +408,34 @@ export const QuestionCatalog: React.FC = () => {
   };
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: 'var(--paper)', display: 'flex', flexDirection: 'column' }}>
-      {/* Top Responsive Portal Header */}
-      <PortalHeader badge="QUESTION BANK" badgeColor="rust" activePath="/questions" />
-
+    <div className="premium-portal-page premium-question-page" style={{ minHeight: '100vh', backgroundColor: 'var(--paper)', display: 'flex', flexDirection: 'column' }}>
       {/* Main Catalog View */}
       <main className="wrap" style={{ flex: 1, padding: 'clamp(18px, 4vw, 36px) clamp(14px, 3vw, 32px)' }}>
         {/* Title Header */}
-        <div style={{ marginBottom: '28px' }}>
-          <span className="eyebrow" style={{ marginBottom: '6px', display: 'block' }}>
-            Official Past Questions Repository
-          </span>
-          <h1 style={{ fontSize: 'clamp(28px, 4vw, 36px)', margin: '0 0 8px 0', color: 'var(--ink)' }}>
-            Past Questions Drill &amp; Solved Solutions
-          </h1>
-          <p style={{ color: 'var(--ink-soft)', fontSize: '15px', maxWidth: '72ch', margin: 0 }}>
-            Browse accredited past questions across JAMB, WAEC, and NECO. Filter by examination board, subject, topic, year, or search by keywords.
-          </p>
-        </div>
+        <section className="premium-portal-hero" aria-labelledby="questions-title">
+          <div className="premium-portal-hero-copy">
+            <span className="eyebrow" style={{ marginBottom: '6px', display: 'block' }}>
+              Official Past Questions Repository
+            </span>
+            <h1 id="questions-title" style={{ fontSize: 'clamp(28px, 4vw, 36px)', margin: '0 0 8px 0', color: 'var(--ink)' }}>
+              Past Questions Drill &amp; Solved Solutions
+            </h1>
+            <p style={{ color: 'var(--ink-soft)', fontSize: '15px', maxWidth: '72ch', margin: 0 }}>
+              Browse accredited past questions across JAMB, WAEC, and NECO. Filter by examination board, subject, topic, year, or search by keywords.
+            </p>
+          </div>
+          <div className="premium-portal-hero-media">
+            <img
+              src="https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1200&q=82"
+              alt="Student working through a computer-based exam practice session"
+              loading="eager"
+            />
+            <div className="premium-portal-hero-stat">
+              <span>Exam-Ready Workflow</span>
+              <strong>Filter, solve, save, and revisit official practice questions.</strong>
+            </div>
+          </div>
+        </section>
 
         {/* Filter Toolbar */}
         <div
@@ -453,12 +464,50 @@ export const QuestionCatalog: React.FC = () => {
                 borderRadius: '2px',
                 border: '1px solid rgba(20,24,28,0.2)',
                 fontSize: '14px',
-                fontFamily: "'Space Grotesk', sans-serif",
+                fontFamily: "var(--font-sans)",
                 boxSizing: 'border-box',
               }}
             />
             <button type="submit" className="btn-custom btn-custom-primary" style={{ padding: '10px 24px', flexShrink: 0 }}>
               Search
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowBookmarksOnly((prev) => !prev)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '10px 18px',
+                borderRadius: '2px',
+                border: showBookmarksOnly ? '1.5px solid var(--rust)' : '1px solid rgba(20,24,28,0.2)',
+                backgroundColor: showBookmarksOnly ? '#fdf0ed' : 'var(--paper)',
+                color: showBookmarksOnly ? 'var(--rust)' : 'var(--ink)',
+                fontSize: '13px',
+                fontFamily: "var(--font-sans)",
+                fontWeight: showBookmarksOnly ? 700 : 500,
+                cursor: 'pointer',
+                flexShrink: 0,
+                transition: 'all 0.15s ease',
+              }}
+              title="Filter by bookmarked questions"
+            >
+              <span>{showBookmarksOnly ? '★' : '☆'}</span>
+              <span>{showBookmarksOnly ? 'Saved Bookmarks Only' : 'Saved Bookmarks'}</span>
+              {bookmarksData && bookmarksData.length > 0 && (
+                <span
+                  style={{
+                    backgroundColor: showBookmarksOnly ? 'var(--rust)' : 'rgba(20,24,28,0.1)',
+                    color: showBookmarksOnly ? '#fff' : 'var(--ink)',
+                    fontSize: '11px',
+                    padding: '1px 6px',
+                    borderRadius: '10px',
+                    fontWeight: 700,
+                  }}
+                >
+                  {bookmarksData.length}
+                </span>
+              )}
             </button>
           </form>
 
@@ -471,7 +520,7 @@ export const QuestionCatalog: React.FC = () => {
                 style={{
                   display: 'block',
                   fontSize: '11px',
-                  fontFamily: "'JetBrains Mono', monospace",
+                  fontFamily: "var(--font-sans)",
                   color: 'var(--ink-soft)',
                   marginBottom: '4px',
                 }}
@@ -489,7 +538,7 @@ export const QuestionCatalog: React.FC = () => {
                   border: '1px solid rgba(20,24,28,0.2)',
                   backgroundColor: 'var(--paper)',
                   fontSize: '13px',
-                  fontFamily: "'Space Grotesk', sans-serif",
+                  fontFamily: "var(--font-sans)",
                 }}
               >
                 <option value="">All Examination Boards</option>
@@ -508,7 +557,7 @@ export const QuestionCatalog: React.FC = () => {
                 style={{
                   display: 'block',
                   fontSize: '11px',
-                  fontFamily: "'JetBrains Mono', monospace",
+                  fontFamily: "var(--font-sans)",
                   color: 'var(--ink-soft)',
                   marginBottom: '4px',
                 }}
@@ -526,7 +575,7 @@ export const QuestionCatalog: React.FC = () => {
                   border: '1px solid rgba(20,24,28,0.2)',
                   backgroundColor: 'var(--paper)',
                   fontSize: '13px',
-                  fontFamily: "'Space Grotesk', sans-serif",
+                  fontFamily: "var(--font-sans)",
                 }}
               >
                 <option value="">All Subjects</option>
@@ -545,7 +594,7 @@ export const QuestionCatalog: React.FC = () => {
                 style={{
                   display: 'block',
                   fontSize: '11px',
-                  fontFamily: "'JetBrains Mono', monospace",
+                  fontFamily: "var(--font-sans)",
                   color: 'var(--ink-soft)',
                   marginBottom: '4px',
                 }}
@@ -564,7 +613,7 @@ export const QuestionCatalog: React.FC = () => {
                   border: '1px solid rgba(20,24,28,0.2)',
                   backgroundColor: 'var(--paper)',
                   fontSize: '13px',
-                  fontFamily: "'Space Grotesk', sans-serif",
+                  fontFamily: "var(--font-sans)",
                   opacity: selectedSubjectId ? 1 : 0.6,
                 }}
               >
@@ -584,7 +633,7 @@ export const QuestionCatalog: React.FC = () => {
                 style={{
                   display: 'block',
                   fontSize: '11px',
-                  fontFamily: "'JetBrains Mono', monospace",
+                  fontFamily: "var(--font-sans)",
                   color: 'var(--ink-soft)',
                   marginBottom: '4px',
                 }}
@@ -602,7 +651,7 @@ export const QuestionCatalog: React.FC = () => {
                   border: '1px solid rgba(20,24,28,0.2)',
                   backgroundColor: 'var(--paper)',
                   fontSize: '13px',
-                  fontFamily: "'Space Grotesk', sans-serif",
+                  fontFamily: "var(--font-sans)",
                 }}
               >
                 <option value="">All Past Years</option>
@@ -622,7 +671,7 @@ export const QuestionCatalog: React.FC = () => {
                 style={{
                   display: 'block',
                   fontSize: '11px',
-                  fontFamily: "'JetBrains Mono', monospace",
+                  fontFamily: "var(--font-sans)",
                   color: 'var(--ink-soft)',
                   marginBottom: '4px',
                 }}
@@ -640,7 +689,7 @@ export const QuestionCatalog: React.FC = () => {
                   border: '1px solid rgba(20,24,28,0.2)',
                   backgroundColor: 'var(--paper)',
                   fontSize: '13px',
-                  fontFamily: "'Space Grotesk', sans-serif",
+                  fontFamily: "var(--font-sans)",
                 }}
               >
                 <option value="">All Difficulties</option>
@@ -662,7 +711,7 @@ export const QuestionCatalog: React.FC = () => {
                   border: 'none',
                   color: 'var(--rust)',
                   fontSize: '12px',
-                  fontFamily: "'JetBrains Mono', monospace",
+                  fontFamily: "var(--font-sans)",
                   cursor: 'pointer',
                   textDecoration: 'underline',
                 }}
@@ -696,7 +745,7 @@ export const QuestionCatalog: React.FC = () => {
                   style={{
                     display: 'block',
                     fontSize: '13.5px',
-                    fontFamily: "'Space Grotesk', sans-serif",
+                    fontFamily: "var(--font-sans)",
                     color: '#166534',
                     fontWeight: 700,
                   }}
@@ -707,7 +756,7 @@ export const QuestionCatalog: React.FC = () => {
                   style={{
                     fontSize: '12.5px',
                     color: '#15803d',
-                    fontFamily: "'JetBrains Mono', monospace",
+                    fontFamily: "var(--font-sans)",
                   }}
                 >
                   {syncSuccessMsg ||
@@ -735,8 +784,43 @@ export const QuestionCatalog: React.FC = () => {
         )}
 
         {/* Questions List */}
-        {questionsLoading ? (
-          <div style={{ padding: '60px 0', textAlign: 'center', fontFamily: "'JetBrains Mono', monospace", color: 'var(--ink-soft)' }}>
+        {showBookmarksOnly ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', fontFamily: "var(--font-sans)", color: 'var(--rust)', fontWeight: 700 }}>
+              <span>★ Saved Bookmarks ({bookmarksData?.length || 0} questions)</span>
+              <button
+                type="button"
+                onClick={() => setShowBookmarksOnly(false)}
+                style={{ background: 'none', border: 'none', color: 'var(--ink-soft)', cursor: 'pointer', textDecoration: 'underline', fontSize: '12px' }}
+              >
+                Back to all questions →
+              </button>
+            </div>
+            {!bookmarksData || bookmarksData.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '48px 24px', background: 'var(--white)', border: '1.5px dashed rgba(20,24,28,0.2)', borderRadius: '4px' }}>
+                <div style={{ fontSize: '32px', marginBottom: '12px' }}>★</div>
+                <h3 style={{ fontFamily: "var(--font-sans)", fontSize: '18px', margin: '0 0 8px' }}>No Bookmarked Questions Yet</h3>
+                <p style={{ color: 'var(--ink-soft)', fontSize: '14px', maxWidth: '46ch', margin: '0 auto 16px' }}>
+                  Save questions for rapid revision by clicking the bookmark icon on any question card.
+                </p>
+                <button type="button" onClick={() => setShowBookmarksOnly(false)} className="btn-custom btn-custom-primary">
+                  Explore Question Bank
+                </button>
+              </div>
+            ) : (
+              bookmarksData.map((b) => (
+                <QuestionCard
+                  key={b.question._id}
+                  question={b.question}
+                  isBookmarked={true}
+                  onToggleBookmark={handleToggleBookmark}
+                  isBookmarkPending={toggleBookmark.isPending}
+                />
+              ))
+            )}
+          </div>
+        ) : questionsLoading ? (
+          <div style={{ padding: '60px 0', textAlign: 'center', fontFamily: "var(--font-sans)", color: 'var(--ink-soft)' }}>
             Loading questions catalog from database...
           </div>
         ) : questionsError ? (
@@ -749,7 +833,7 @@ export const QuestionCatalog: React.FC = () => {
               border: '1.5px solid #feb2b2',
             }}
           >
-            <h3 style={{ fontFamily: "'Space Grotesk', sans-serif", color: '#c53030', marginBottom: '8px' }}>
+            <h3 style={{ fontFamily: "var(--font-sans)", color: '#c53030', marginBottom: '8px' }}>
               Error Loading Questions
             </h3>
             <p style={{ color: 'var(--ink)', fontSize: '14px', maxWidth: '50ch', margin: '0 auto 16px' }}>
@@ -766,7 +850,7 @@ export const QuestionCatalog: React.FC = () => {
           </div>
         ) : questionsData && questionsData.questions.length > 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', fontFamily: "'JetBrains Mono', monospace", color: 'var(--ink-soft)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', fontFamily: "var(--font-sans)", color: 'var(--ink-soft)' }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 Showing {questionsData.questions.length} of {questionsData.pagination.total} Questions
                 {questionsFetching && (
@@ -839,7 +923,7 @@ export const QuestionCatalog: React.FC = () => {
                       style={{
                         padding: '6px 12px',
                         fontSize: '13px',
-                        fontFamily: "'JetBrains Mono', monospace",
+                        fontFamily: "var(--font-sans)",
                         fontWeight: isActive ? 700 : 500,
                         backgroundColor: isActive ? 'var(--ink)' : 'var(--white)',
                         color: isActive ? 'var(--white)' : 'var(--ink)',
@@ -888,7 +972,7 @@ export const QuestionCatalog: React.FC = () => {
               border: '1.5px solid rgba(20,24,28,0.12)',
             }}
           >
-            <h3 style={{ fontFamily: "'Space Grotesk', sans-serif", marginBottom: '8px' }}>No Questions Found</h3>
+            <h3 style={{ fontFamily: "var(--font-sans)", marginBottom: '8px' }}>No Questions Found</h3>
             <p style={{ color: 'var(--ink-soft)', fontSize: '14px', maxWidth: '54ch', margin: '0 auto 20px' }}>
               {currentPage > 1
                 ? `You are on page ${currentPage}, but there are no questions on this page.`
@@ -939,7 +1023,7 @@ export const QuestionCatalog: React.FC = () => {
                       color: '#c53030',
                       fontSize: '13px',
                       marginTop: '8px',
-                      fontFamily: "'JetBrains Mono', monospace",
+                      fontFamily: "var(--font-sans)",
                     }}
                   >
                     ⚠ {syncErrorMsg}
@@ -971,14 +1055,7 @@ export const QuestionCatalog: React.FC = () => {
           </div>
         )}
       </main>
-
-      {/* Footer */}
-      <footer className="site-footer" style={{ padding: '24px 0' }}>
-        <div className="wrap" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontFamily: "'JetBrains Mono', monospace", color: 'rgba(248,247,242,0.5)' }}>
-          <span>© 2026 MARK DRILLER PLATFORM · PAST QUESTIONS REPOSITORY</span>
-          <span>AUTHENTIC CURRICULA VERIFIED</span>
-        </div>
-      </footer>
     </div>
   );
 };
+

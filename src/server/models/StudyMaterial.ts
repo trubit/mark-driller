@@ -119,3 +119,4 @@ const StudyMaterialSchema = new Schema<IStudyMaterial>(
 
 export const StudyMaterial: Model<IStudyMaterial> =
   mongoose.models.StudyMaterial || mongoose.model<IStudyMaterial>('StudyMaterial', StudyMaterialSchema);
+

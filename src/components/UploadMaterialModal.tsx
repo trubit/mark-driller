@@ -209,7 +209,7 @@ export const UploadMaterialModal: React.FC<UploadMaterialModalProps> = ({
           <div>
             <div
               style={{
-                fontFamily: "'JetBrains Mono', monospace",
+                fontFamily: "var(--font-sans)",
                 fontSize: '11px',
                 fontWeight: 700,
                 color: 'var(--rust, #a8562f)',
@@ -221,7 +221,7 @@ export const UploadMaterialModal: React.FC<UploadMaterialModalProps> = ({
             </div>
             <h2
               style={{
-                fontFamily: "'Playfair Display', serif",
+                fontFamily: "var(--font-sans)",
                 fontSize: '20px',
                 margin: '2px 0 0',
                 color: 'var(--ink, #14181c)',
@@ -272,7 +272,7 @@ export const UploadMaterialModal: React.FC<UploadMaterialModalProps> = ({
             <label
               style={{
                 display: 'block',
-                fontFamily: "'JetBrains Mono', monospace",
+                fontFamily: "var(--font-sans)",
                 fontSize: '12px',
                 fontWeight: 600,
                 marginBottom: '6px',
@@ -300,7 +300,7 @@ export const UploadMaterialModal: React.FC<UploadMaterialModalProps> = ({
                 style={{ display: 'none' }}
               />
               {file ? (
-                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '13px', color: 'var(--forest, #225a38)' }}>
+                <div style={{ fontFamily: "var(--font-sans)", fontSize: '13px', color: 'var(--forest, #225a38)' }}>
                   📄 <strong>{file.name}</strong> ({(file.size / 1024).toFixed(1)} KB)
                   <div style={{ fontSize: '11px', color: 'var(--slate, #666)', marginTop: '4px' }}>
                     Click to choose a different PDF
@@ -320,7 +320,7 @@ export const UploadMaterialModal: React.FC<UploadMaterialModalProps> = ({
             <label
               style={{
                 display: 'block',
-                fontFamily: "'JetBrains Mono', monospace",
+                fontFamily: "var(--font-sans)",
                 fontSize: '12px',
                 fontWeight: 600,
                 marginBottom: '6px',
@@ -353,7 +353,7 @@ export const UploadMaterialModal: React.FC<UploadMaterialModalProps> = ({
               <label
                 style={{
                   display: 'block',
-                  fontFamily: "'JetBrains Mono', monospace",
+                  fontFamily: "var(--font-sans)",
                   fontSize: '12px',
                   fontWeight: 600,
                   marginBottom: '6px',
@@ -392,7 +392,7 @@ export const UploadMaterialModal: React.FC<UploadMaterialModalProps> = ({
               <label
                 style={{
                   display: 'block',
-                  fontFamily: "'JetBrains Mono', monospace",
+                  fontFamily: "var(--font-sans)",
                   fontSize: '12px',
                   fontWeight: 600,
                   marginBottom: '6px',
@@ -430,7 +430,7 @@ export const UploadMaterialModal: React.FC<UploadMaterialModalProps> = ({
             <label
               style={{
                 display: 'block',
-                fontFamily: "'JetBrains Mono', monospace",
+                fontFamily: "var(--font-sans)",
                 fontSize: '12px',
                 fontWeight: 600,
                 marginBottom: '6px',
@@ -501,7 +501,7 @@ export const UploadMaterialModal: React.FC<UploadMaterialModalProps> = ({
                 padding: '10px 18px',
                 border: '1.5px solid var(--ink, #14181c)',
                 background: 'transparent',
-                fontFamily: "'JetBrains Mono', monospace",
+                fontFamily: "var(--font-sans)",
                 fontSize: '12.5px',
                 fontWeight: 600,
                 cursor: isSubmitting ? 'not-allowed' : 'pointer',
@@ -517,7 +517,7 @@ export const UploadMaterialModal: React.FC<UploadMaterialModalProps> = ({
                 border: '1.5px solid var(--ink, #14181c)',
                 background: isSubmitting || !file ? 'var(--slate, #999)' : 'var(--ink, #14181c)',
                 color: '#fff',
-                fontFamily: "'JetBrains Mono', monospace",
+                fontFamily: "var(--font-sans)",
                 fontSize: '12.5px',
                 fontWeight: 700,
                 cursor: isSubmitting || !file ? 'not-allowed' : 'pointer',
@@ -538,3 +538,4 @@ export const UploadMaterialModal: React.FC<UploadMaterialModalProps> = ({
     </div>
   );
 };
+

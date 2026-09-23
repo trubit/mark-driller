@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useCbtResultQuery } from '../api/cbt.js';
+import { useCbtResultQuery, type SubjectBreakdownItem } from '../api/cbt.js';
 import { useAuthStore } from '../store/useAuthStore.js';
 import { BrandLoader } from './BrandLoader.js';
 
@@ -19,8 +19,8 @@ export const CbtResultView: React.FC = () => {
     if (imageError) {
       return '/assets/images/verified-candidate-passport.jpg';
     }
-    return user?.avatar || '/assets/images/verified-candidate-passport.jpg';
-  }, [user?.avatar, imageError]);
+    return (user as any)?.avatar || '/assets/images/verified-candidate-passport.jpg';
+  }, [(user as any)?.avatar, imageError]);
 
   // Declared before any conditional returns to strictly satisfy React Rules of Hooks
   const filteredQuestions = useMemo(() => {
@@ -615,7 +615,7 @@ export const CbtResultView: React.FC = () => {
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
-              {result.subjectBreakdown.map((s, idx) => (
+              {result.subjectBreakdown.map((s: SubjectBreakdownItem, idx: number) => (
                 <div
                   key={s.subjectId || idx}
                   style={{

@@ -21,3 +21,4 @@ export function verifyOtpHash(plainOtp: string, hashedOtp: string): boolean {
   const incomingHash = hashOtp(plainOtp);
   return crypto.timingSafeEqual(Buffer.from(incomingHash), Buffer.from(hashedOtp));
 }
+

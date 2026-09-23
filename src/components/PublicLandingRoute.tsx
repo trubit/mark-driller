@@ -30,7 +30,7 @@ export const PublicLandingRoute: React.FC = () => {
           justifyContent: 'center',
           backgroundColor: 'var(--paper, #fdfbf7)',
           color: 'var(--ink, #14181c)',
-          fontFamily: "'Space Grotesk', sans-serif",
+          fontFamily: "var(--font-sans)",
           gap: '16px',
         }}
       >
@@ -61,3 +61,4 @@ export const PublicLandingRoute: React.FC = () => {
   // Unauthenticated visitor or unverified account visiting root -> Public Landing Page
   return <LandingPage />;
 };
+

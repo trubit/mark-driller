@@ -41,18 +41,18 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
       aria-label="MarkDriller Target Insignia"
       style={{ flexShrink: 0 }}
     >
-      <circle cx="14" cy="14" r="12" stroke="#14181c" strokeWidth="2" />
-      <circle cx="14" cy="14" r="6.5" stroke="#a8562f" strokeWidth="2" />
-      <circle cx="14" cy="14" r="1.8" fill="#14181c" />
-      <line x1="14" y1="0" x2="14" y2="5" stroke="#14181c" strokeWidth="2" />
-      <line x1="14" y1="23" x2="14" y2="28" stroke="#14181c" strokeWidth="2" />
-      <line x1="0" y1="14" x2="5" y2="14" stroke="#14181c" strokeWidth="2" />
-      <line x1="23" y1="14" x2="28" y2="14" stroke="#14181c" strokeWidth="2" />
+      <circle cx="14" cy="14" r="12" stroke="currentColor" strokeWidth="2" />
+      <circle cx="14" cy="14" r="6.5" stroke="var(--rust, #a8562f)" strokeWidth="2" />
+      <circle cx="14" cy="14" r="1.8" fill="currentColor" />
+      <line x1="14" y1="0" x2="14" y2="5" stroke="currentColor" strokeWidth="2" />
+      <line x1="14" y1="23" x2="14" y2="28" stroke="currentColor" strokeWidth="2" />
+      <line x1="0" y1="14" x2="5" y2="14" stroke="currentColor" strokeWidth="2" />
+      <line x1="23" y1="14" x2="28" y2="14" stroke="currentColor" strokeWidth="2" />
     </svg>
   );
 
   if (isIconOnly) {
-    return <div className={`brand-logo-container ${className}`} style={{ display: 'inline-flex', alignItems: 'center', ...style }}>{iconSvg}</div>;
+    return <div className={`brand-logo-container ${className}`} style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--ink, #14181c)', ...style }}>{iconSvg}</div>;
   }
 
   return (
@@ -63,10 +63,10 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
         flexDirection: isStacked ? 'column' : 'row',
         alignItems: 'center',
         gap: config.gap,
-        fontFamily: "'Space Grotesk', sans-serif",
+        fontFamily: "var(--font-sans)",
         fontWeight: 700,
         textDecoration: 'none',
-        color: '#14181c',
+        color: 'var(--ink, #14181c)',
         ...style,
       }}
     >
@@ -79,7 +79,7 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
           <span
             style={{
               fontSize: '11px',
-              fontFamily: "'JetBrains Mono', monospace",
+              fontFamily: "var(--font-sans)",
               color: 'var(--slate, #666)',
               fontWeight: 500,
               letterSpacing: '0.5px',
@@ -93,3 +93,4 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
     </div>
   );
 };
+

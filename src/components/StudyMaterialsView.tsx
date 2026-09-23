@@ -1,79 +1,163 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useStudyMaterialsQuery, StudyMaterialItem } from '../api/materials.js';
-import { useExamsQuery } from '../api/exams.js';
+import {
+  useStudyMaterialDetailQuery,
+  useStudyMaterialsLibraryQuery,
+  StudyMaterialItem,
+} from '../api/materials.js';
+import { useExamSubjectsQuery, useExamsQuery } from '../api/exams.js';
 import { useMySubscriptionQuery } from '../api/subscriptions.js';
 import { useAuthStore } from '../store/useAuthStore.js';
 import { useAppStore } from '../store/useAppStore.js';
 import { useNotificationStore } from '../store/useNotificationStore.js';
 import { BrandLoader } from './BrandLoader.js';
 import { UploadMaterialModal } from './UploadMaterialModal.js';
-import { PortalHeader } from './PortalHeader.js';
+
+type MaterialSort = 'newest' | 'oldest' | 'title' | 'downloads';
+type AccessFilter = '' | 'false' | 'true';
+
+const PAGE_SIZE = 12;
+
+const formatFileSize = (bytes: number) => {
+  if (!bytes) return 'File size unavailable';
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
+
+const formatMaterialDate = (date: string) =>
+  new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(date));
+
+const materialMeta = (material: StudyMaterialItem) =>
+  [
+    material.examId?.shortCode,
+    material.subjectId?.name || material.subjectId?.code,
+    material.year,
+    material.fileType ? material.fileType.toUpperCase() : 'DOCUMENT',
+  ].filter(Boolean).join(' · ');
+
+const EXAM_VISUALS: Record<string, { image: string; label: string; tone: string }> = {
+  WAEC: { image: '/assets/logos/waec.png', label: 'WAEC revision pack', tone: 'materials-visual-waec' },
+  WASSCE: { image: '/assets/logos/waec.png', label: 'WAEC revision pack', tone: 'materials-visual-waec' },
+  JAMB: { image: '/assets/logos/jamb.png', label: 'JAMB UTME study file', tone: 'materials-visual-jamb' },
+  UTME: { image: '/assets/logos/jamb.png', label: 'JAMB UTME study file', tone: 'materials-visual-jamb' },
+  NECO: { image: '/assets/logos/neco.png', label: 'NECO study file', tone: 'materials-visual-neco' },
+  NABTEB: { image: '/assets/logos/nabteb.png', label: 'NABTEB technical file', tone: 'materials-visual-nabteb' },
+  GCE: { image: '/assets/logos/waec.png', label: 'GCE private candidate file', tone: 'materials-visual-gce' },
+  'POST-UTME': { image: '/assets/logos/jamb.png', label: 'Post-UTME admission prep', tone: 'materials-visual-postutme' },
+  POSTUTME: { image: '/assets/logos/jamb.png', label: 'Post-UTME admission prep', tone: 'materials-visual-postutme' },
+};
+
+const getMaterialVisual = (material: StudyMaterialItem) => {
+  const examText = `${material.examId?.shortCode || ''} ${material.examId?.name || ''} ${material.title}`.toUpperCase();
+  const match = Object.entries(EXAM_VISUALS).find(([key]) => examText.includes(key));
+  return match?.[1] || { image: '/favicon.svg', label: 'MarkDriller study document', tone: 'materials-visual-default' };
+};
 
 export const StudyMaterialsView: React.FC = () => {
   const navigate = useNavigate();
-  const [selectedExamId, setSelectedExamId] = useState<string>('');
-  const [selectedYear, setSelectedYear] = useState<string>('');
-  const [searchTerm, setSearchTerm] = useState<string>('');
-  const [downloadingId, setDownloadingId] = useState<string | null>(null);
-  const [downloadSuccessMsg, setDownloadSuccessMsg] = useState<string | null>(null);
-  const [downloadErrorMsg, setDownloadErrorMsg] = useState<string | null>(null);
-  const [uploadModalOpen, setUploadModalOpen] = useState(false);
-
   const { user, isAuthenticated } = useAuthStore();
-  const { data: currentSub } = useMySubscriptionQuery();
-  const isPro = Boolean(currentSub?.isPro || user?.role === 'ADMIN');
-
   const { openAuthModal } = useAppStore();
   const { notifySuccess, notifyError, notifyWarning, notifyInfo } = useNotificationStore();
 
-  const { data: exams } = useExamsQuery();
-  const { data: materials, isLoading, refetch } = useStudyMaterialsQuery({
+  const [selectedExamId, setSelectedExamId] = useState('');
+  const [selectedSubjectId, setSelectedSubjectId] = useState('');
+  const [selectedYear, setSelectedYear] = useState('');
+  const [accessFilter, setAccessFilter] = useState<AccessFilter>('');
+  const [sort, setSort] = useState<MaterialSort>('newest');
+  const [searchInput, setSearchInput] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [page, setPage] = useState(1);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [selectedMaterialId, setSelectedMaterialId] = useState<string | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const { data: exams, isLoading: examsLoading } = useExamsQuery();
+  const { data: subjects, isLoading: subjectsLoading } = useExamSubjectsQuery(selectedExamId || undefined);
+  const { data: currentSub } = useMySubscriptionQuery();
+  const isAdmin = user?.role === 'ADMIN';
+  const hasProAccess = Boolean(currentSub?.isPro || isAdmin);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setSearchTerm(searchInput.trim());
+      setPage(1);
+    }, 350);
+    return () => window.clearTimeout(timeoutId);
+  }, [searchInput]);
+
+  const libraryQuery = useStudyMaterialsLibraryQuery({
     examId: selectedExamId || undefined,
+    subjectId: selectedSubjectId || undefined,
     year: selectedYear || undefined,
+    premiumOnly: accessFilter || undefined,
     search: searchTerm || undefined,
+    sort,
+    page,
+    limit: PAGE_SIZE,
   });
 
-  const handleDownload = async (materialId: string, title: string, isPremium: boolean) => {
+  const { data: selectedMaterial, isLoading: detailLoading } = useStudyMaterialDetailQuery(selectedMaterialId || '');
+
+  const materials = libraryQuery.data?.items || [];
+  const totalMaterials = libraryQuery.data?.total || 0;
+  const totalPages = libraryQuery.data?.totalPages || 1;
+  const selectedExam = exams?.find((exam) => exam._id === selectedExamId);
+  const activeFilterCount = [selectedExamId, selectedSubjectId, selectedYear, accessFilter, searchTerm].filter(Boolean).length;
+
+  const yearOptions = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    return Array.from({ length: 8 }, (_, index) => String(currentYear - index));
+  }, []);
+
+  const resetFilters = () => {
+    setSelectedExamId('');
+    setSelectedSubjectId('');
+    setSelectedYear('');
+    setAccessFilter('');
+    setSearchInput('');
+    setSearchTerm('');
+    setSort('newest');
+    setPage(1);
+  };
+
+  const handleDownload = async (material: StudyMaterialItem) => {
     if (!isAuthenticated) {
       openAuthModal('login');
-      notifyInfo('Please sign in or create an account to download revision materials.');
+      notifyInfo('Please sign in to download study materials.');
       return;
     }
 
-    // Pre-emptively gate Pro study materials to avoid unauthorized requests
-    if (isPremium && !isPro) {
-      const upgradeMsg = 'This official curriculum guide is reserved for Pro Pass members. Upgrade for ₦3,500/month to download all 300 syllabus packs.';
-      setDownloadErrorMsg(upgradeMsg);
-      notifyWarning(upgradeMsg);
+    if (material.isPremium && !hasProAccess) {
+      const message = 'This study material requires an active Pro subscription.';
+      setStatusMessage({ type: 'error', text: message });
+      notifyWarning(message);
       return;
     }
 
-    setDownloadSuccessMsg(null);
-    setDownloadErrorMsg(null);
-    setDownloadingId(materialId);
+    setDownloadingId(material._id);
+    setStatusMessage(null);
 
     try {
       const token = localStorage.getItem('md_token');
-      const response = await fetch(`/api/materials/${materialId}/download`, {
-        headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+      const response = await fetch(`/api/materials/${material._id}/download`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
 
       if (response.status === 403) {
         const json = await response.json().catch(() => ({}));
-        const msg = json.error?.message || 'A Pro subscription is required to download this official curriculum pack.';
-        setDownloadErrorMsg(msg);
-        notifyWarning(msg);
+        const message = json.error?.message || 'An active Pro subscription is required for this material.';
+        setStatusMessage({ type: 'error', text: message });
+        notifyWarning(message);
         return;
       }
 
       if (response.status === 404) {
         const json = await response.json().catch(() => ({}));
-        const msg = json.error?.message || 'This study material is currently unavailable.';
-        setDownloadErrorMsg(msg);
-        notifyError(msg);
+        const message = json.error?.message || 'This study material is currently unavailable.';
+        setStatusMessage({ type: 'error', text: message });
+        notifyError(message);
         return;
       }
 
@@ -83,400 +167,440 @@ export const StudyMaterialsView: React.FC = () => {
 
       const blob = await response.blob();
       const blobUrl = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = blobUrl;
-      a.download = `${title.replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      const anchor = document.createElement('a');
+      anchor.href = blobUrl;
+      anchor.download = `${material.title.replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
       window.URL.revokeObjectURL(blobUrl);
 
-      const successMsg = `Downloaded "${title}". Ready for offline revision.`;
-      setDownloadSuccessMsg(successMsg);
-      notifySuccess(successMsg);
-      setTimeout(() => setDownloadSuccessMsg(null), 4000);
-      refetch();
+      const message = `"${material.title}" is ready for offline revision.`;
+      setStatusMessage({ type: 'success', text: message });
+      notifySuccess(message);
+      libraryQuery.refetch();
     } catch {
-      const errMsg = 'We could not complete your download. Please check your connection and try again.';
-      setDownloadErrorMsg(errMsg);
-      notifyError(errMsg);
+      const message = 'We could not complete this download. Please check your connection and try again.';
+      setStatusMessage({ type: 'error', text: message });
+      notifyError(message);
     } finally {
       setDownloadingId(null);
     }
   };
 
-  const isAdmin = isAuthenticated && user?.role === 'ADMIN';
+  const FilterPanel = (
+    <form
+      className="materials-filter-panel"
+      onSubmit={(event) => {
+        event.preventDefault();
+        setSearchTerm(searchInput.trim());
+        setFiltersOpen(false);
+      }}
+    >
+      <div className="materials-filter-head">
+        <div>
+          <span className="materials-kicker">Discovery</span>
+          <h2>Find the right material</h2>
+        </div>
+        {activeFilterCount > 0 && (
+          <button type="button" className="materials-text-button" onClick={resetFilters}>
+            Clear all
+          </button>
+        )}
+      </div>
+
+      <label className="materials-field">
+        <span>Search library</span>
+        <input
+          type="search"
+          value={searchInput}
+          onChange={(event) => setSearchInput(event.target.value)}
+          placeholder="Title, subject, topic or filename"
+        />
+      </label>
+
+      <label className="materials-field">
+        <span>Examination board</span>
+        <select
+          value={selectedExamId}
+          onChange={(event) => {
+            setSelectedExamId(event.target.value);
+            setSelectedSubjectId('');
+            setPage(1);
+          }}
+          disabled={examsLoading}
+        >
+          <option value="">All boards</option>
+          {exams?.map((exam) => (
+            <option key={exam._id} value={exam._id}>
+              {exam.shortCode} - {exam.name}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className="materials-field">
+        <span>Subject</span>
+        <select
+          value={selectedSubjectId}
+          onChange={(event) => {
+            setSelectedSubjectId(event.target.value);
+            setPage(1);
+          }}
+          disabled={!selectedExamId || subjectsLoading}
+        >
+          <option value="">{selectedExamId ? 'All subjects' : 'Choose a board first'}</option>
+          {subjects?.map((subject) => (
+            <option key={subject._id} value={subject._id}>
+              {subject.name} ({subject.code})
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <div className="materials-filter-grid">
+        <label className="materials-field">
+          <span>Year</span>
+          <select
+            value={selectedYear}
+            onChange={(event) => {
+              setSelectedYear(event.target.value);
+              setPage(1);
+            }}
+          >
+            <option value="">Any year</option>
+            {yearOptions.map((year) => (
+              <option key={year} value={year}>
+                {year}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="materials-field">
+          <span>Access</span>
+          <select
+            value={accessFilter}
+            onChange={(event) => {
+              setAccessFilter(event.target.value as AccessFilter);
+              setPage(1);
+            }}
+          >
+            <option value="">All access</option>
+            <option value="false">Free</option>
+            <option value="true">Pro</option>
+          </select>
+        </label>
+      </div>
+
+      <label className="materials-field">
+        <span>Sort by</span>
+        <select
+          value={sort}
+          onChange={(event) => {
+            setSort(event.target.value as MaterialSort);
+            setPage(1);
+          }}
+        >
+          <option value="newest">Newest first</option>
+          <option value="oldest">Oldest first</option>
+          <option value="title">Title A-Z</option>
+          <option value="downloads">Most downloaded</option>
+        </select>
+      </label>
+
+      <button type="submit" className="materials-primary-action">
+        Apply filters
+      </button>
+    </form>
+  );
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: 'var(--paper)', display: 'flex', flexDirection: 'column' }}>
-      {/* Responsive Portal Header */}
-      <PortalHeader
-        badge="MATERIALS"
-        badgeColor="forest"
-        activePath="/materials"
-        extraAction={
-          isAdmin ? (
-            <button
-              type="button"
-              onClick={() => setUploadModalOpen(true)}
-              style={{
-                padding: '6px 14px',
-                background: 'var(--rust)',
-                color: '#ffffff',
-                border: 'none',
-                fontSize: '12px',
-                fontFamily: "'JetBrains Mono', monospace",
-                fontWeight: 700,
-                cursor: 'pointer',
-                borderRadius: '2px',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              + Upload Material
+    <div className="materials-page">
+      <main className="materials-wrap">
+        <section className="materials-hero" aria-labelledby="materials-title">
+          <div>
+            <span className="materials-kicker">Study Materials</span>
+            <h1 id="materials-title">A focused library for exam revision</h1>
+            <p>
+              Search official MarkDriller PDFs by examination board, subject and year, then inspect the material before downloading it through the secure access flow.
+            </p>
+          </div>
+          <div className="materials-hero-actions">
+            <button type="button" className="materials-filter-toggle" onClick={() => setFiltersOpen(true)}>
+              Filters {activeFilterCount > 0 ? `(${activeFilterCount})` : ''}
             </button>
-          ) : undefined
-        }
-      />
-
-      {/* Main Content */}
-      <main className="wrap" style={{ flex: 1, padding: 'clamp(18px, 4vw, 36px) clamp(14px, 3vw, 20px) 60px' }}>
-        {/* Banner */}
-        <div style={{ marginBottom: '32px' }}>
-          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '12px', color: 'var(--forest)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '6px' }}>
-            Official Syllabus Library
-          </div>
-          <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: '32px', margin: '0 0 8px', color: 'var(--ink)' }}>
-            Curriculum Summaries & Formula Booklets
-          </h1>
-          <p style={{ color: 'var(--slate)', fontSize: '15px', margin: 0 }}>
-            Curated offline revision guides, essential mathematical formula sheets, and past question breakdown packs verified by senior Nigerian examiners.
-          </p>
-        </div>
-
-        {downloadSuccessMsg && (
-          <div style={{ padding: '12px 16px', background: '#eaf4ee', border: '1px solid var(--forest)', color: 'var(--forest)', fontSize: '13px', marginBottom: '24px' }}>
-            ✓ {downloadSuccessMsg}
-          </div>
-        )}
-
-        {downloadErrorMsg && (
-          <div style={{ padding: '14px 18px', background: '#fdf0ed', border: '1.5px solid var(--rust)', color: 'var(--rust)', fontSize: '13px', marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span>🔒 {downloadErrorMsg}</span>
-            <Link to="/pricing" className="btn btn-primary" style={{ padding: '6px 14px', fontSize: '12px', textDecoration: 'none' }}>
-              View Pro Plans →
-            </Link>
-          </div>
-        )}
-
-        {/* Filter Bar */}
-        <div className="responsive-filter-bar" style={{ background: 'var(--white)', border: '1px solid var(--ink)', padding: '18px 24px', marginBottom: '32px', boxShadow: '3px 3px 0 var(--ink)' }}>
-          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
-            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--ink)' }}>Exam Board:</span>
-            <button
-              onClick={() => setSelectedExamId('')}
-              style={{
-                padding: '6px 14px',
-                border: '1px solid var(--ink)',
-                background: selectedExamId === '' ? 'var(--ink)' : 'var(--white)',
-                color: selectedExamId === '' ? 'var(--white)' : 'var(--ink)',
-                fontSize: '12px',
-                fontFamily: "'JetBrains Mono', monospace",
-                cursor: 'pointer',
-              }}
-            >
-              All Boards
-            </button>
-            {exams?.map((e) => (
-              <button
-                key={e._id}
-                onClick={() => setSelectedExamId(e._id)}
-                style={{
-                  padding: '6px 14px',
-                  border: '1px solid var(--ink)',
-                  background: selectedExamId === e._id ? 'var(--ink)' : 'var(--white)',
-                  color: selectedExamId === e._id ? 'var(--white)' : 'var(--ink)',
-                  fontSize: '12px',
-                  fontFamily: "'JetBrains Mono', monospace",
-                  cursor: 'pointer',
-                }}
-              >
-                {e.shortCode}
-              </button>
-            ))}
-          </div>
-
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-            <select
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(e.target.value)}
-              style={{
-                padding: '8px 12px',
-                border: '1px solid var(--ink)',
-                fontSize: '13px',
-                fontFamily: "'Space Grotesk', sans-serif",
-                background: 'var(--white)',
-                cursor: 'pointer',
-              }}
-            >
-              <option value="">All Series Years</option>
-              <option value="2025">2025</option>
-              <option value="2024">2024</option>
-              <option value="2023">2023</option>
-              <option value="2022">2022</option>
-              <option value="2021">2021</option>
-              <option value="2020">2020</option>
-            </select>
-
-            <input
-              type="text"
-              placeholder="Search topics, formulas..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="responsive-search-input"
-              style={{
-                padding: '8px 12px',
-                border: '1px solid var(--ink)',
-                fontSize: '13px',
-                fontFamily: 'inherit',
-                minWidth: '220px',
-                boxSizing: 'border-box',
-              }}
-            />
             {isAdmin && (
-              <button
-                type="button"
-                onClick={() => setUploadModalOpen(true)}
-                style={{
-                  padding: '8px 16px',
-                  background: 'var(--ink)',
-                  color: '#fff',
-                  border: 'none',
-                  fontSize: '12px',
-                  fontFamily: "'JetBrains Mono', monospace",
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                + Upload Material
+              <button type="button" className="materials-primary-action" onClick={() => setUploadModalOpen(true)}>
+                Upload material
               </button>
             )}
           </div>
-        </div>
+        </section>
 
-        {/* Pro Upgrade or Status Banner */}
-        {downloadErrorMsg && (
-          <div
-            style={{
-              padding: '16px 20px',
-              backgroundColor: '#fffaf8',
-              border: '1.5px solid var(--rust)',
-              borderRadius: '3px',
-              marginBottom: '24px',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              gap: '12px',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span style={{ fontSize: '20px' }}>🔒</span>
-              <span style={{ fontSize: '13px', color: 'var(--ink)', fontWeight: 500 }}>
-                {downloadErrorMsg}
-              </span>
-            </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button
-                type="button"
-                className="btn-custom btn-custom-primary"
-                style={{ fontSize: '12px', padding: '6px 14px', backgroundColor: 'var(--rust)', borderColor: 'var(--rust)' }}
-                onClick={() => navigate('/pricing')}
-              >
-                Upgrade to Pro Pass (₦3,500/mo) ★
-              </button>
-              <button
-                type="button"
-                onClick={() => setDownloadErrorMsg(null)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', color: 'var(--ink-soft)' }}
-              >
-                ✕
-              </button>
-            </div>
-          </div>
-        )}
-
-        {downloadSuccessMsg && (
-          <div
-            style={{
-              padding: '12px 18px',
-              backgroundColor: '#eaf4ee',
-              border: '1px solid #65d996',
-              borderRadius: '3px',
-              marginBottom: '24px',
-              fontSize: '13px',
-              color: 'var(--forest)',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-            }}
-          >
-            <span>✓ {downloadSuccessMsg}</span>
-            <button
-              type="button"
-              onClick={() => setDownloadSuccessMsg(null)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', color: 'var(--forest)' }}
-            >
-              ✕
+        {statusMessage && (
+          <div className={`materials-status materials-status-${statusMessage.type}`} role="status">
+            <span>{statusMessage.text}</span>
+            {statusMessage.type === 'error' && (
+              <Link to="/portal/pricing">View Pro plans</Link>
+            )}
+            <button type="button" onClick={() => setStatusMessage(null)} aria-label="Dismiss message">
+              x
             </button>
           </div>
         )}
 
-        {/* Materials Grid */}
-        {isLoading ? (
-          <BrandLoader mode="contained" message="Retrieving official curriculum guides..." />
-        ) : materials && materials.length > 0 ? (
-          <div className="materials-responsive-grid">
-            {materials.map((item: StudyMaterialItem) => (
-              <div
-                key={item._id}
-                style={{
-                  background: 'var(--white)',
-                  border: item.isPremium ? '1.5px solid var(--rust)' : '1px solid var(--ink)',
-                  padding: '24px',
-                  boxShadow: item.isPremium ? '4px 4px 0 var(--rust)' : '4px 4px 0 var(--ink)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  boxSizing: 'border-box',
-                  minWidth: 0,
-                  overflow: 'hidden',
-                }}
-              >
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
-                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
-                      <span
-                        style={{
-                          padding: '3px 8px',
-                          background: 'var(--cream)',
-                          border: '1px solid var(--cream-deep)',
-                          fontSize: '11px',
-                          fontFamily: "'JetBrains Mono', monospace",
-                          fontWeight: 600,
-                          color: 'var(--ink)',
-                        }}
-                      >
-                        {item.examId?.shortCode} • {item.subjectId?.code}
-                      </span>
-                      {item.isPremium && (
-                        <span
-                          style={{
-                            padding: '2px 6px',
-                            background: 'var(--rust)',
-                            color: '#fff',
-                            fontSize: '10px',
-                            fontWeight: 700,
-                            borderRadius: '2px',
-                            fontFamily: "'JetBrains Mono', monospace",
-                          }}
-                        >
-                          PRO PASS
-                        </span>
-                      )}
-                    </div>
-                    <span
-                      style={{
-                        fontSize: '11px',
-                        color: 'var(--slate)',
-                        fontFamily: "'JetBrains Mono', monospace",
-                        fontWeight: 600,
-                      }}
-                    >
-                      {item.fileType.toUpperCase()} ({Math.round(item.fileSize / 1024)} KB)
-                    </span>
-                  </div>
+        <div className="materials-layout">
+          <aside className="materials-sidebar" aria-label="Study material filters">
+            {FilterPanel}
+          </aside>
 
-                  <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '20px', margin: '0 0 8px', color: 'var(--ink)', wordBreak: 'break-word' }}>
-                    {item.title}
-                  </h2>
-                  <p style={{ fontSize: '13px', color: 'var(--slate)', lineHeight: 1.6, margin: '0 0 20px', wordBreak: 'break-word' }}>
-                    {item.description}
-                  </p>
-                </div>
-
-                <div style={{ borderTop: '1px solid var(--cream-deep)', paddingTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-                  <div style={{ fontSize: '12px', color: 'var(--slate)', fontFamily: "'JetBrains Mono', monospace" }}>
-                    ⬇ {item.downloadCount} downloads
-                  </div>
-                  <button
-                    onClick={() => handleDownload(item._id, item.title, item.isPremium)}
-                    disabled={downloadingId === item._id}
-                    style={{
-                      padding: '8px 16px',
-                      background: item.isPremium ? (isPro ? 'var(--rust)' : 'var(--rust)') : 'var(--forest)',
-                      color: 'var(--white)',
-                      border: 'none',
-                      fontSize: '12px',
-                      fontFamily: "'JetBrains Mono', monospace",
-                      cursor: downloadingId === item._id ? 'not-allowed' : 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {downloadingId === item._id ? (
-                      <BrandLoader mode="inline" size="sm" message="Preparing..." />
-                    ) : item.isPremium ? (
-                      isPro ? 'Download Pro Packet ↓' : 'Unlock Pro Packet 🔒'
-                    ) : (
-                      'Download Free Guide ↓'
-                    )}
-                  </button>
-                </div>
+          <section className="materials-results" aria-live="polite">
+            <div className="materials-results-head">
+              <div>
+                <span className="materials-kicker">Library results</span>
+                <h2>
+                  {libraryQuery.isLoading
+                    ? 'Loading materials'
+                    : `${totalMaterials.toLocaleString()} material${totalMaterials === 1 ? '' : 's'} found`}
+                </h2>
+                <p>
+                  {selectedExam ? `${selectedExam.shortCode} materials` : 'All examination boards'}
+                  {searchTerm ? ` matching "${searchTerm}"` : ''}
+                </p>
               </div>
-            ))}
-          </div>
-        ) : (
-          <div style={{ padding: '60px 24px', background: 'var(--white)', border: '1px solid var(--ink)', textAlign: 'center' }}>
-            <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '20px', margin: '0 0 8px' }}>No study guides found</h3>
-            <p style={{ color: 'var(--slate)', fontSize: '14px', margin: '0 0 16px' }}>
-              Try adjusting your search criteria or selecting "All Boards".
-            </p>
-            <button
-              onClick={() => {
-                setSelectedExamId('');
-                setSearchTerm('');
-              }}
-              style={{
-                padding: '6px 14px',
-                border: '1px solid var(--ink)',
-                background: 'var(--cream)',
-                cursor: 'pointer',
-                fontSize: '12px',
-              }}
-            >
-              Reset Filters
-            </button>
-          </div>
-        )}
+              <div className="materials-support-note">
+                Material saving is not enabled for PDFs yet. Question bookmarks remain available in Settings.
+              </div>
+            </div>
+
+            {libraryQuery.isError && (
+              <div className="materials-empty" role="alert">
+                <h3>Materials could not load</h3>
+                <p>The library request failed. Please retry; no internal server details are exposed here.</p>
+                <button type="button" className="materials-secondary-action" onClick={() => libraryQuery.refetch()}>
+                  Retry
+                </button>
+              </div>
+            )}
+
+            {libraryQuery.isLoading && (
+              <div className="materials-grid" aria-label="Loading materials">
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <div className="materials-card materials-card-skeleton" key={index}>
+                    <span />
+                    <strong />
+                    <p />
+                    <p />
+                    <footer />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {!libraryQuery.isLoading && !libraryQuery.isError && materials.length > 0 && (
+              <>
+                <div className="materials-grid">
+                  {materials.map((material) => (
+                    <article className="materials-card" key={material._id}>
+                      {(() => {
+                        const visual = getMaterialVisual(material);
+                        return (
+                          <div className={`materials-card-visual ${visual.tone}`}>
+                            <div className="materials-card-visual-copy">
+                              <span>{visual.label}</span>
+                              <strong>{material.examId?.shortCode || 'STUDY'}</strong>
+                            </div>
+                            <img src={visual.image} alt={`${visual.label} visual identity`} loading="lazy" />
+                          </div>
+                        );
+                      })()}
+
+                      <div className="materials-card-top">
+                        <span className="materials-file-mark">{material.fileType?.toUpperCase() || 'DOC'}</span>
+                        <span className={material.isPremium ? 'materials-access-pro' : 'materials-access-free'}>
+                          {material.isPremium ? 'Pro access' : 'Free access'}
+                        </span>
+                      </div>
+
+                      <h3>{material.title}</h3>
+                      <p className="materials-meta">{materialMeta(material)}</p>
+                      {material.description ? (
+                        <p className="materials-description">{material.description}</p>
+                      ) : (
+                        <p className="materials-description materials-muted">No description has been provided for this material.</p>
+                      )}
+
+                      <dl className="materials-card-facts">
+                        <div>
+                          <dt>File</dt>
+                          <dd>{formatFileSize(material.fileSize)}</dd>
+                        </div>
+                        <div>
+                          <dt>Added</dt>
+                          <dd>{formatMaterialDate(material.createdAt)}</dd>
+                        </div>
+                        <div>
+                          <dt>Downloads</dt>
+                          <dd>{material.downloadCount.toLocaleString()}</dd>
+                        </div>
+                      </dl>
+
+                      <div className="materials-card-actions">
+                        <button type="button" className="materials-secondary-action" onClick={() => setSelectedMaterialId(material._id)}>
+                          Details
+                        </button>
+                        <button
+                          type="button"
+                          className="materials-primary-action"
+                          disabled={downloadingId === material._id}
+                          onClick={() => handleDownload(material)}
+                        >
+                          {downloadingId === material._id ? 'Preparing...' : material.isPremium && !hasProAccess ? 'Unlock' : 'Download'}
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+
+                <nav className="materials-pagination" aria-label="Study materials pages">
+                  <button
+                    type="button"
+                    className="materials-secondary-action"
+                    disabled={page <= 1}
+                    onClick={() => setPage((current) => Math.max(1, current - 1))}
+                  >
+                    Previous
+                  </button>
+                  <span>
+                    Page {page} of {totalPages}
+                  </span>
+                  <button
+                    type="button"
+                    className="materials-secondary-action"
+                    disabled={page >= totalPages}
+                    onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+                  >
+                    Next
+                  </button>
+                </nav>
+              </>
+            )}
+
+            {!libraryQuery.isLoading && !libraryQuery.isError && materials.length === 0 && (
+              <div className="materials-empty">
+                <h3>No matching study materials</h3>
+                <p>
+                  {searchTerm
+                    ? `No published material matches "${searchTerm}" with the current filters.`
+                    : 'No published material matches the current filters.'}
+                </p>
+                <button type="button" className="materials-secondary-action" onClick={resetFilters}>
+                  Reset search and filters
+                </button>
+              </div>
+            )}
+          </section>
+        </div>
       </main>
 
-      {/* Admin Upload Modal */}
+      {filtersOpen && (
+        <div className="materials-filter-drawer" role="dialog" aria-modal="true" aria-label="Study material filters">
+          <button type="button" className="materials-drawer-backdrop" aria-label="Close filters" onClick={() => setFiltersOpen(false)} />
+          <div className="materials-drawer-panel">
+            <div className="materials-drawer-title">
+              <strong>Filters</strong>
+              <button type="button" onClick={() => setFiltersOpen(false)} aria-label="Close filters">
+                x
+              </button>
+            </div>
+            {FilterPanel}
+          </div>
+        </div>
+      )}
+
+      {selectedMaterialId && (
+        <div className="materials-detail-modal" role="dialog" aria-modal="true" aria-labelledby="material-detail-title">
+          <button type="button" className="materials-drawer-backdrop" aria-label="Close material details" onClick={() => setSelectedMaterialId(null)} />
+          <div className="materials-detail-panel">
+            {detailLoading || !selectedMaterial ? (
+              <BrandLoader mode="contained" message="Loading material details..." />
+            ) : (
+              <>
+                <div className="materials-detail-head">
+                  <div>
+                    <span className="materials-kicker">Material details</span>
+                    <h2 id="material-detail-title">{selectedMaterial.title}</h2>
+                    <p>{materialMeta(selectedMaterial)}</p>
+                  </div>
+                  <button type="button" onClick={() => setSelectedMaterialId(null)} aria-label="Close material details">
+                    x
+                  </button>
+                </div>
+
+                <div className="materials-detail-body">
+                  {(() => {
+                    const visual = getMaterialVisual(selectedMaterial);
+                    return (
+                      <div className={`materials-detail-preview ${visual.tone}`}>
+                        <div>
+                          <span className="materials-kicker">Document preview</span>
+                          <strong>{visual.label}</strong>
+                          <p>
+                            Visual identity is based on the selected examination board. Official document contents are only served through the secure download endpoint.
+                          </p>
+                        </div>
+                        <img src={visual.image} alt={`${visual.label} preview mark`} loading="lazy" />
+                      </div>
+                    );
+                  })()}
+                  <p>{selectedMaterial.description || 'No description has been provided for this material.'}</p>
+                  <dl className="materials-detail-list">
+                    <div><dt>Exam board</dt><dd>{selectedMaterial.examId?.name || 'Not specified'}</dd></div>
+                    <div><dt>Subject</dt><dd>{selectedMaterial.subjectId?.name || 'Not specified'}</dd></div>
+                    <div><dt>Year</dt><dd>{selectedMaterial.year || 'Not specified'}</dd></div>
+                    <div><dt>Document</dt><dd>{selectedMaterial.originalFilename || selectedMaterial.fileType?.toUpperCase()}</dd></div>
+                    <div><dt>File size</dt><dd>{formatFileSize(selectedMaterial.fileSize)}</dd></div>
+                    <div><dt>Access</dt><dd>{selectedMaterial.isPremium ? 'Pro subscription required' : 'Free after sign-in'}</dd></div>
+                  </dl>
+                  <div className="materials-viewer-note">
+                    In-browser reading is not exposed by the current secure download endpoint. Use Download to retrieve the verified PDF after authentication and access checks.
+                  </div>
+                </div>
+
+                <div className="materials-detail-actions">
+                  <button type="button" className="materials-secondary-action" onClick={() => setSelectedMaterialId(null)}>
+                    Back to library
+                  </button>
+                  {selectedMaterial.isPremium && !hasProAccess ? (
+                    <button type="button" className="materials-primary-action" onClick={() => navigate('/portal/pricing')}>
+                      View Pro plans
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="materials-primary-action"
+                      disabled={downloadingId === selectedMaterial._id}
+                      onClick={() => handleDownload(selectedMaterial)}
+                    >
+                      {downloadingId === selectedMaterial._id ? 'Preparing...' : 'Download PDF'}
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {isAdmin && (
         <UploadMaterialModal
           open={uploadModalOpen}
           onClose={() => setUploadModalOpen(false)}
-          onSuccess={() => refetch()}
+          onSuccess={() => libraryQuery.refetch()}
         />
       )}
     </div>
   );
 };
+

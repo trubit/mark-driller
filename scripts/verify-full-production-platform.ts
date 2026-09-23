@@ -291,7 +291,7 @@ async function runCompleteVerification() {
   // -------------------------------------------------------------
   // 8. 6 EXAMINATION BOARDS AUDIT
   // -------------------------------------------------------------
-  const EXPECTED_BOARDS = ['JAMB / UTME', 'WAEC', 'NECO', 'GCE', 'POST-UTME', 'NB_828284'];
+  const EXPECTED_BOARDS = ['JAMB / UTME', 'WAEC', 'NECO', 'GCE', 'POST-UTME', 'NABTEB'];
   try {
     const existingBoards = await Exam.find();
     const boardCodes = new Set(existingBoards.map((b) => b.shortCode));
@@ -299,7 +299,7 @@ async function runCompleteVerification() {
 
     record(
       'Curriculum - Boards',
-      'All 6 Examination Boards Configured (JAMB/UTME, WAEC, NECO, GCE, POST-UTME, NB_828284)',
+      'All 6 Examination Boards Configured (JAMB/UTME, WAEC, NECO, GCE, POST-UTME, NABTEB)',
       allPresent && existingBoards.length >= 6,
       `Total boards: ${existingBoards.length}. Present: ${Array.from(boardCodes).join(', ')}`
     );

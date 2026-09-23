@@ -48,3 +48,4 @@ SubjectSchema.index({ examId: 1, code: 1 }, { unique: true });
 SubjectSchema.index({ examId: 1, order: 1 });
 
 export const Subject: Model<ISubject> = mongoose.models.Subject || mongoose.model<ISubject>('Subject', SubjectSchema);
+

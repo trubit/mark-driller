@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -12,6 +13,7 @@ import MenuItem from '@mui/material/MenuItem';
 import Alert from '@mui/material/Alert';
 import { useAppStore } from '../store/useAppStore.js';
 import { useRegisterMutation, useLoginMutation } from '../api/auth.js';
+import { BrandLogo } from './BrandLogo.js';
 
 const EXAM_OPTIONS = [
   'JAMB / UTME',
@@ -19,7 +21,7 @@ const EXAM_OPTIONS = [
   'NECO',
   'GCE',
   'POST-UTME',
-  'NB_828284',
+  'NABTEB',
 ];
 
 export const AuthModal: React.FC = () => {
@@ -37,6 +39,7 @@ export const AuthModal: React.FC = () => {
   const [fullName, setFullName] = useState('');
   const [targetExam, setTargetExam] = useState(selectedExamBoard || 'WAEC');
   const [successData, setSuccessData] = useState<{ name: string; email: string } | null>(null);
+  const navigate = useNavigate();
 
   const registerMutation = useRegisterMutation();
   const loginMutation = useLoginMutation();
@@ -51,9 +54,6 @@ export const AuthModal: React.FC = () => {
   const currentMutation = isSignUp ? registerMutation : loginMutation;
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
-    setSuccessData(null);
-    registerMutation.reset();
-    loginMutation.reset();
     openAuthModal(newValue === 0 ? 'signup' : 'login');
   };
 
@@ -70,10 +70,12 @@ export const AuthModal: React.FC = () => {
         },
         {
           onSuccess: (res) => {
-            closeAuthModal();
-            if (res.needsVerification) {
+            setSuccessData({ name: res.user.fullName, email: res.user.email });
+            setTimeout(() => {
+              setSuccessData(null);
+              closeAuthModal();
               openEmailVerificationModal(res.user.email);
-            }
+            }, 1200);
           },
         }
       );
@@ -91,6 +93,10 @@ export const AuthModal: React.FC = () => {
               closeAuthModal();
               if (res.needsVerification) {
                 openEmailVerificationModal(res.user.email);
+              } else if (res.user.role === 'ADMIN') {
+                navigate('/admin');
+              } else {
+                navigate('/dashboard');
               }
             }, 1200);
           },
@@ -107,22 +113,23 @@ export const AuthModal: React.FC = () => {
       fullWidth
       PaperProps={{
         style: {
-          backgroundColor: '#eceee6', // --paper
-          color: '#14181c', // --ink
-          borderRadius: '4px',
-          border: '1.5px solid #14181c',
+          backgroundColor: 'var(--paper)',
+          color: 'var(--ink)',
+          borderRadius: '6px',
+          border: '1.5px solid var(--paper-line)',
           padding: '8px',
+          boxShadow: 'var(--card-shadow)',
+          maxWidth: 'min(94vw, 420px)',
+          margin: '12px auto',
         },
       }}
     >
       <DialogTitle sx={{ m: 0, p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div className="logo" style={{ fontSize: '18px' }}>
-          Mark<span className="drill-suffix">Driller</span>
-        </div>
+        <BrandLogo size="sm" />
         <IconButton
           aria-label="close"
           onClick={closeAuthModal}
-          sx={{ color: '#14181c' }}
+          sx={{ color: 'var(--ink)' }}
         >
           <CloseIcon />
         </IconButton>
@@ -134,14 +141,14 @@ export const AuthModal: React.FC = () => {
           onChange={handleTabChange}
           sx={{
             mb: 3,
-            borderBottom: '1px solid rgba(20,24,28,0.14)',
-            '& .MuiTabs-indicator': { backgroundColor: '#a8562f' }, // --rust
+            borderBottom: '1px solid var(--paper-line)',
+            '& .MuiTabs-indicator': { backgroundColor: 'var(--rust)' },
             '& .MuiTab-root': {
-              fontFamily: "'Space Grotesk', sans-serif",
+              fontFamily: "var(--font-sans)",
               fontWeight: 600,
               fontSize: '14.5px',
-              color: '#3a4048',
-              '&.Mui-selected': { color: '#14181c' },
+              color: 'var(--ink-soft)',
+              '&.Mui-selected': { color: 'var(--ink)' },
             },
           }}
         >
@@ -152,22 +159,22 @@ export const AuthModal: React.FC = () => {
         {successData ? (
           <div style={{ textAlign: 'center', padding: '30px 10px' }}>
             <span className="eyebrow" style={{ display: 'block', marginBottom: '8px' }}>Authenticated</span>
-            <h3 style={{ fontSize: '20px', marginBottom: '10px' }}>
+            <h3 style={{ fontSize: '20px', marginBottom: '10px', color: 'var(--ink)' }}>
               Welcome, {successData.name}!
             </h3>
-            <p style={{ color: '#3a4048', fontSize: '14.5px', marginBottom: '12px' }}>
+            <p style={{ color: 'var(--ink-soft)', fontSize: '14.5px', marginBottom: '12px' }}>
               {isSignUp ? 'Your account has been created.' : 'You have logged in successfully.'} Loading session...
             </p>
             <div
               style={{
                 display: 'inline-block',
-                background: '#e0e3d9',
+                background: 'var(--paper-dim)',
                 padding: '6px 14px',
-                borderRadius: '3px',
-                fontFamily: "'JetBrains Mono', monospace",
+                borderRadius: '4px',
+                fontFamily: "var(--font-sans)",
                 fontSize: '12.5px',
-                color: '#14181c',
-                border: '1px solid rgba(20,24,28,0.14)',
+                color: 'var(--ink)',
+                border: '1px solid var(--paper-line)',
               }}
             >
               ✓ Verified Session
@@ -189,8 +196,8 @@ export const AuthModal: React.FC = () => {
                 size="small"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                InputLabelProps={{ style: { fontFamily: "'JetBrains Mono', monospace", fontSize: '13px' } }}
-                InputProps={{ style: { backgroundColor: '#f8f7f2', borderRadius: '3px' } }}
+                InputLabelProps={{ style: { fontFamily: "var(--font-sans)", fontSize: '13px', color: 'var(--ink-soft)' } }}
+                InputProps={{ style: { backgroundColor: 'var(--white)', color: 'var(--ink)', borderRadius: '4px' } }}
               />
             )}
 
@@ -202,8 +209,8 @@ export const AuthModal: React.FC = () => {
               size="small"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              InputLabelProps={{ style: { fontFamily: "'JetBrains Mono', monospace", fontSize: '13px' } }}
-              InputProps={{ style: { backgroundColor: '#f8f7f2', borderRadius: '3px' } }}
+              InputLabelProps={{ style: { fontFamily: "var(--font-sans)", fontSize: '13px', color: 'var(--ink-soft)' } }}
+              InputProps={{ style: { backgroundColor: 'var(--white)', color: 'var(--ink)', borderRadius: '4px' } }}
             />
 
             <TextField
@@ -214,8 +221,8 @@ export const AuthModal: React.FC = () => {
               size="small"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              InputLabelProps={{ style: { fontFamily: "'JetBrains Mono', monospace", fontSize: '13px' } }}
-              InputProps={{ style: { backgroundColor: '#f8f7f2', borderRadius: '3px' } }}
+              InputLabelProps={{ style: { fontFamily: "var(--font-sans)", fontSize: '13px', color: 'var(--ink-soft)' } }}
+              InputProps={{ style: { backgroundColor: 'var(--white)', color: 'var(--ink)', borderRadius: '4px' } }}
             />
 
             {!isSignUp && (
@@ -228,7 +235,7 @@ export const AuthModal: React.FC = () => {
                     border: 'none',
                     padding: 0,
                     fontSize: '11px',
-                    fontFamily: "'JetBrains Mono', monospace",
+                    fontFamily: "var(--font-sans)",
                     color: 'var(--rust)',
                     cursor: 'pointer',
                   }}
@@ -246,8 +253,8 @@ export const AuthModal: React.FC = () => {
                 size="small"
                 value={targetExam}
                 onChange={(e) => setTargetExam(e.target.value)}
-                InputLabelProps={{ style: { fontFamily: "'JetBrains Mono', monospace", fontSize: '13px' } }}
-                InputProps={{ style: { backgroundColor: '#f8f7f2', borderRadius: '3px' } }}
+                InputLabelProps={{ style: { fontFamily: "var(--font-sans)", fontSize: '13px', color: 'var(--ink-soft)' } }}
+                InputProps={{ style: { backgroundColor: 'var(--white)', color: 'var(--ink)', borderRadius: '4px' } }}
               >
                 {EXAM_OPTIONS.map((option) => (
                   <MenuItem key={option} value={option}>
@@ -279,8 +286,8 @@ export const AuthModal: React.FC = () => {
             <p style={{
               fontSize: '12px',
               textAlign: 'center',
-              color: '#6b7280',
-              fontFamily: "'JetBrains Mono', monospace",
+              color: 'var(--ink-soft)',
+              fontFamily: "var(--font-sans)",
               marginTop: '8px',
               display: 'flex',
               alignItems: 'center',
@@ -291,7 +298,7 @@ export const AuthModal: React.FC = () => {
                 'NO CREDIT CARD REQUIRED · INSTANT ACCESS'
               ) : (
                 <>
-                  <LockOutlinedIcon style={{ fontSize: '14px', color: '#16a34a' }} />
+                  <LockOutlinedIcon style={{ fontSize: '14px', color: 'var(--forest)' }} />
                   <span>SECURE & ENCRYPTED SIGN-IN</span>
                 </>
               )}
@@ -302,3 +309,4 @@ export const AuthModal: React.FC = () => {
     </Dialog>
   );
 };
+

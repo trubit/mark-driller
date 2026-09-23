@@ -71,3 +71,4 @@ const ExamSchema = new Schema<IExam>(
 ExamSchema.index({ isActive: 1, order: 1 });
 
 export const Exam: Model<IExam> = mongoose.models.Exam || mongoose.model<IExam>('Exam', ExamSchema);
+

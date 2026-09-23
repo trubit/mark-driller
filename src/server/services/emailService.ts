@@ -293,3 +293,4 @@ export async function sendSubscriptionEmail(
   const html = wrapBrandedTemplate(subject, content);
   return await dispatchEmail({ to, toName: fullName, subject, html });
 }
+

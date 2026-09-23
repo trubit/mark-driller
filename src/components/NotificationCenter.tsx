@@ -50,7 +50,7 @@ export const NotificationCenter: React.FC = () => {
             boxShadow: '0 8px 24px rgba(20, 24, 28, 0.22)',
             border: '1.5px solid rgba(20, 24, 28, 0.15)',
             borderRadius: '4px',
-            fontFamily: "'Space Grotesk', sans-serif",
+            fontFamily: "var(--font-sans)",
             fontSize: '14px',
             alignItems: 'center',
             '& .MuiAlert-icon': {
@@ -84,7 +84,7 @@ export const NotificationCenter: React.FC = () => {
               sx={{
                 fontWeight: 700,
                 fontSize: '15px',
-                fontFamily: "'Space Grotesk', sans-serif",
+                fontFamily: "var(--font-sans)",
                 mb: 0.25,
               }}
             >
@@ -97,3 +97,4 @@ export const NotificationCenter: React.FC = () => {
     </Snackbar>
   );
 };
+

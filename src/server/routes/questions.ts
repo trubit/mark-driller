@@ -27,6 +27,8 @@ const questionQuerySchema = z.object({
     .transform((val) => val.toUpperCase())
     .pipe(z.enum(['EASY', 'MEDIUM', 'HARD']))
     .optional(),
+  drillType: z.enum(['PAST_QUESTION', 'PRACTICE_MOCK', 'BOTH']).optional(),
+  questionType: z.enum(['MULTIPLE_CHOICE', 'FILL_IN_BLANKS', 'TRUE_FALSE']).optional(),
   search: z.string().trim().max(200).optional(),
   page: z.coerce.number().int().min(1).max(10000).default(1),
   limit: z.coerce.number().int().min(1).max(50).default(10),
@@ -52,6 +54,8 @@ const questionCreateSchema = z.object({
   correctAnswer: z.enum(['A', 'B', 'C', 'D']),
   explanation: z.string().default(''),
   difficulty: z.enum(['EASY', 'MEDIUM', 'HARD']).default('MEDIUM'),
+  questionType: z.enum(['MULTIPLE_CHOICE', 'FILL_IN_BLANKS', 'TRUE_FALSE']).default('MULTIPLE_CHOICE'),
+  drillType: z.enum(['PAST_QUESTION', 'PRACTICE_MOCK', 'BOTH']).default('PAST_QUESTION'),
   imageUrl: z.string().optional(),
 });
 
@@ -171,6 +175,8 @@ router.get('/', async (req: Request, res: Response, next: NextFunction): Promise
       topicId,
       year,
       difficulty,
+      drillType,
+      questionType,
       search,
       page: pageNum,
       limit: limitNum,
@@ -185,6 +191,8 @@ router.get('/', async (req: Request, res: Response, next: NextFunction): Promise
     if (topicId) filter.topicId = new mongoose.Types.ObjectId(topicId);
     if (year) filter.year = year;
     if (difficulty) filter.difficulty = difficulty;
+    if (drillType) filter.drillType = { $in: [drillType, 'BOTH'] };
+    if (questionType) filter.questionType = questionType;
 
     if (search && search.trim().length > 0) {
       const escaped = escapeRegex(search);
@@ -430,3 +438,4 @@ router.delete(
 );
 
 export default router;
+

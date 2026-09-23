@@ -36,3 +36,4 @@ BookmarkSchema.index({ userId: 1, questionId: 1 }, { unique: true });
 
 export const Bookmark: Model<IBookmark> =
   mongoose.models.Bookmark || mongoose.model<IBookmark>('Bookmark', BookmarkSchema);
+

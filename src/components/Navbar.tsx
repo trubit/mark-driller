@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore.js';
 import { useAuthStore } from '../store/useAuthStore.js';
 import { BrandLogo } from './BrandLogo.js';
+import { ThemeToggle } from './ThemeToggle.js';
 
 export const Navbar: React.FC = () => {
   const { mobileMenuOpen, setMobileMenuOpen, openAuthModal } = useAppStore();
@@ -28,33 +29,44 @@ export const Navbar: React.FC = () => {
         </Link>
 
         <div className="nav-links">
-          <Link to="/materials">Study Materials</Link>
-          <Link to="/questions">Past Questions</Link>
-          <a href="#cbt">CBT Practice</a>
-          <a href="#boards">Exam Boards</a>
-          <Link to="/pricing">Pricing</Link>
           {isAuthenticated && (
-            <Link to="/dashboard" style={{ color: 'var(--rust)', fontWeight: 600 }}>
-              Dashboard
+            <Link to="/dashboard" style={{ color: 'var(--rust)', fontWeight: 700 }}>
+              📊 Dashboard
             </Link>
           )}
-          {isAuthenticated && user?.role === 'ADMIN' && (
-            <Link to="/admin" style={{ color: '#14181c', fontWeight: 700 }}>
-              Admin
-            </Link>
-          )}
+          <Link to="/products">Products</Link>
+          <Link to="/cbt" style={{ fontWeight: 600, color: 'var(--rust)' }}>
+            💻 CBT Practice
+          </Link>
+          <Link to="/novels">JAMB Novels</Link>
+          <Link to="/pricing">Pricing</Link>
+          <Link to="/activate">Activate PIN</Link>
+          <Link to="/blog">Blog</Link>
+          <Link to="/contact">Contact</Link>
         </div>
 
-        <div className="nav-cta">
+        <div className="nav-cta" style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <ThemeToggle />
+
           {isAuthenticated && user ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <Link
-                to="/dashboard"
-                className="btn-custom btn-custom-ghost"
-                style={{ fontSize: '13.5px', padding: '8px 14px' }}
-              >
-                👤 {user.fullName.split(' ')[0]}
-              </Link>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              {user.role === 'ADMIN' ? (
+                <Link
+                  to="/admin"
+                  className="btn-custom btn-custom-primary"
+                  style={{ fontSize: '13px', padding: '7px 14px' }}
+                >
+                  🛡️ Admin Portal
+                </Link>
+              ) : (
+                <Link
+                  to="/dashboard"
+                  className="btn-custom btn-custom-ghost"
+                  style={{ fontSize: '13px', padding: '7px 12px' }}
+                >
+                  👤 {user.fullName ? user.fullName.split(' ')[0] : 'Student'}
+                </Link>
+              )}
               <button
                 type="button"
                 className="nav-login"
@@ -105,22 +117,34 @@ export const Navbar: React.FC = () => {
           </Offcanvas.Title>
         </Offcanvas.Header>
         <Offcanvas.Body>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', paddingBottom: '12px', borderBottom: '1px solid var(--paper-line)' }}>
+            <span style={{ fontSize: '12px', fontFamily: "var(--font-sans)", color: 'var(--ink-soft)' }}>
+              Appearance
+            </span>
+            <ThemeToggle showLabel />
+          </div>
+
           <div className="mobile-nav-links">
             {isAuthenticated && (
-              <Link to="/dashboard" onClick={handleNavClick} style={{ color: 'var(--rust)', fontWeight: 600 }}>
-                ★ My Dashboard
+              <Link to="/dashboard" onClick={handleNavClick} style={{ color: 'var(--rust)', fontWeight: 700 }}>
+                📊 Student Dashboard
               </Link>
             )}
             {isAuthenticated && user?.role === 'ADMIN' && (
-              <Link to="/admin" onClick={handleNavClick} style={{ color: '#14181c', fontWeight: 700 }}>
-                ⚙ Admin Portal
+              <Link to="/admin" onClick={handleNavClick} style={{ color: 'var(--ink)', fontWeight: 700 }}>
+                🛡️ Admin Portal
               </Link>
             )}
-            <Link to="/materials" onClick={handleNavClick}>Study Materials</Link>
-            <Link to="/questions" onClick={handleNavClick}>Past Questions</Link>
-            <a href="#cbt" onClick={handleNavClick}>CBT Practice</a>
-            <a href="#boards" onClick={handleNavClick}>Exam Boards</a>
-            <Link to="/pricing" onClick={handleNavClick}>Pricing</Link>
+            <Link to="/products" onClick={handleNavClick}>📦 Products &amp; Offline Downloads</Link>
+            <Link to="/cbt" onClick={handleNavClick} style={{ color: 'var(--rust)', fontWeight: 700 }}>
+              💻 CBT Practice Simulator
+            </Link>
+            <Link to="/novels" onClick={handleNavClick}>📖 JAMB Novels &amp; Summaries</Link>
+            <Link to="/pricing" onClick={handleNavClick}>★ Subscription Plans</Link>
+            <Link to="/activate" onClick={handleNavClick}>🏷️ Activate Voucher / PIN</Link>
+            <Link to="/blog" onClick={handleNavClick}>📰 Academic Blog &amp; Guides</Link>
+            <Link to="/reseller" onClick={handleNavClick}>🤝 Become an Accredited Reseller</Link>
+            <Link to="/contact" onClick={handleNavClick}>📞 24/7 Support &amp; Helpline</Link>
           </div>
           <div style={{ marginTop: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {isAuthenticated ? (
@@ -164,3 +188,4 @@ export const Navbar: React.FC = () => {
     </header>
   );
 };
+

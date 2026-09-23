@@ -1,6 +1,5 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import crypto from 'node:crypto';
 import { env } from '../config/env.js';
 import { Exam } from '../models/Exam.js';
 import { Subject } from '../models/Subject.js';
@@ -55,10 +54,10 @@ export const PRODUCTION_BOARDS = [
     order: 5,
   },
   {
-    name: 'National Board / Technical Examination NB_828284',
-    shortCode: 'NB_828284',
-    slug: 'nb-828284',
-    description: 'Specialized National Technical, Vocational, and Academic Evaluation Board examination code NB_828284.',
+    name: 'National Business and Technical Examinations Board (NABTEB)',
+    shortCode: 'NABTEB',
+    slug: 'nabteb',
+    description: 'National Business and Technical Examinations Board conducting NBC, NTC, and modular technical & vocational certifications in Nigeria.',
     region: 'Nigeria',
     syllabusYear: '2025/2026',
     order: 6,
@@ -573,64 +572,10 @@ export async function seedCompleteProductionCurriculum(): Promise<{
     }
   }
 
-  // 5. Seed Usable Study Materials (Only if local storage provider is explicitly used)
-  if (env.STORAGE_PROVIDER === 'cloudinary') {
-    console.log('\nℹ️ [CurriculumSeed] Cloudinary storage provider is active — skipping local dummy study material generation.');
-  } else {
-    console.log('\n--- Auditing & Seeding 50 Study Materials per Board (300 Total) ---');
-    for (const [shortCode, exam] of examMap.entries()) {
-      const existingMatCount = await StudyMaterial.countDocuments({ examId: exam._id });
-      console.log(`Board ${shortCode}: currently has ${existingMatCount} study materials.`);
-
-      if (existingMatCount < 50) {
-        const neededMats = 50 - existingMatCount;
-        console.log(`Generating ${neededMats} physical curriculum revision guides for ${shortCode}...`);
-
-      const sMap = subjectMap.get(exam._id.toString())!;
-      const subjectCodes = Array.from(sMap.keys());
-
-      for (let m = 0; m < neededMats; m++) {
-        const year = MANDATORY_YEARS[m % MANDATORY_YEARS.length];
-        const sCode = subjectCodes[m % subjectCodes.length];
-        const subject = sMap.get(sCode)!;
-        const topics = topicMap.get(subject._id.toString()) || [];
-        const topicNames = topics.map((t) => t.name);
-
-        const title = `${shortCode} ${subject.name} Comprehensive Revision Pack & Formula Digest [${year}]`;
-        const description = `Official curriculum-aligned revision guide covering core principles, verified formulas, and exam techniques for ${shortCode} ${subject.name} (Series ${year}).`;
-
-        // Generate physical %PDF-1.4 binary buffer
-        const pdfBuffer = generateCurriculumPdfBuffer(title, shortCode, subject.name, year, topicNames);
-        const storageFilename = `mat_${crypto.randomUUID()}.pdf`;
-        const physicalPath = path.join(storageDir, storageFilename);
-
-        fs.writeFileSync(physicalPath, pdfBuffer);
-
-        await StudyMaterial.create({
-          examId: exam._id,
-          subjectId: subject._id,
-          title,
-          description,
-          fileUrl: `/api/materials/storage/${storageFilename}`,
-          storageFilename,
-          originalFilename: `${shortCode.replace(/[^a-zA-Z0-9]/g, '_')}_${subject.code}_${year}_Revision_Guide.pdf`,
-          fileType: 'pdf',
-          mimeType: 'application/pdf',
-          fileSize: pdfBuffer.length,
-          year,
-          isPublished: true,
-          isPremium: m >= 10, // First 10 materials are foundation sample guides (Free), remaining 40 are Pro
-          downloadCount: 50 + (m * 7) % 200,
-          sourceType: 'development',
-          isDummy: true,
-        });
-      }
-
-      const finalMatCount = await StudyMaterial.countDocuments({ examId: exam._id });
-      console.log(`✔ Board ${shortCode} now has ${finalMatCount} study materials with physical %PDF files.`);
-    }
-  }
-}
+  // 5. Seed Usable Study Materials (Capped at 5 Official Guides)
+  console.log('\n--- Auditing Study Materials (Capped at 5 Official Guides) ---');
+  const globalMatCount = await StudyMaterial.countDocuments();
+  console.log(`Study Materials currently established: ${globalMatCount} in database.`);
 
   totalQuestionsCount = await Question.countDocuments();
   const totalMaterialsCount = await StudyMaterial.countDocuments();
@@ -646,3 +591,4 @@ export async function seedCompleteProductionCurriculum(): Promise<{
     materialsCount: totalMaterialsCount,
   };
 }
+

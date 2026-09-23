@@ -1,6 +1,10 @@
 import { create } from 'zustand';
 
 interface AppState {
+  theme: 'light' | 'dark';
+  toggleTheme: () => void;
+  setTheme: (theme: 'light' | 'dark') => void;
+
   mobileMenuOpen: boolean;
   setMobileMenuOpen: (open: boolean) => void;
   selectedExamBoard: string;
@@ -22,10 +26,42 @@ interface AppState {
   closeForgotPasswordModal: () => void;
 }
 
-export const useAppStore = create<AppState>((set) => ({
+const getInitialTheme = (): 'light' | 'dark' => {
+  if (typeof window !== 'undefined') {
+    const saved = localStorage.getItem('markdriller_theme');
+    if (saved === 'dark' || saved === 'light') {
+      document.documentElement.setAttribute('data-theme', saved);
+      return saved;
+    }
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+      return 'dark';
+    }
+  }
+  return 'light';
+};
+
+export const useAppStore = create<AppState>((set, get) => ({
+  theme: getInitialTheme(),
+  toggleTheme: () => {
+    const next = get().theme === 'light' ? 'dark' : 'light';
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('markdriller_theme', next);
+      document.documentElement.setAttribute('data-theme', next);
+    }
+    set({ theme: next });
+  },
+  setTheme: (theme) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('markdriller_theme', theme);
+      document.documentElement.setAttribute('data-theme', theme);
+    }
+    set({ theme });
+  },
+
   mobileMenuOpen: false,
   setMobileMenuOpen: (open) => set({ mobileMenuOpen: open }),
-  selectedExamBoard: 'WAEC',
+  selectedExamBoard: 'JAMB / UTME',
   setSelectedExamBoard: (board) => set({ selectedExamBoard: board }),
   authModalOpen: false,
   authModalMode: 'signup',
@@ -43,3 +79,4 @@ export const useAppStore = create<AppState>((set) => ({
     set({ forgotPasswordModalOpen: true, emailToVerify: initialEmail, authModalOpen: false }),
   closeForgotPasswordModal: () => set({ forgotPasswordModalOpen: false }),
 }));
+

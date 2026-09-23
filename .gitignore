@@ -24,9 +24,11 @@ dist-ssr
 *.sln
 *.sw?
 
-# Environment variables
+# Environment variables (Strictly prevent committing local secrets)
 .env
 .env*.local
+.env.production
+.env.staging
 .env.example
 
 # Uploads and temporary data

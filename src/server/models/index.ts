@@ -11,3 +11,12 @@ export * from './StudyMaterial.js';
 export * from './Subscription.js';
 export * from './Payment.js';
 export * from './QuestionSyncLog.js';
+export * from './ActivationKey.js';
+export * from './SystemSetting.js';
+export * from './Institution.js';
+export * from './Course.js';
+export * from './BlogPost.js';
+export * from './Testimonial.js';
+export * from './VideoLesson.js';
+export * from './Flashcard.js';
+

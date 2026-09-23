@@ -61,7 +61,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
           }}
         >
           <div style={{ fontSize: '36px', marginBottom: '16px' }}>✉️</div>
-          <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '24px', margin: '0 0 12px', color: 'var(--ink, #14181c)' }}>
+          <h2 style={{ fontFamily: "var(--font-sans)", fontSize: '24px', margin: '0 0 12px', color: 'var(--ink, #14181c)' }}>
             Email Verification Required
           </h2>
           <p style={{ color: 'var(--slate, #555)', fontSize: '14.5px', lineHeight: 1.6, marginBottom: '24px' }}>
@@ -102,3 +102,4 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   return <>{children}</>;
 };
+

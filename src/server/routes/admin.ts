@@ -1,5 +1,8 @@
 import { Router, Response, NextFunction } from 'express';
+import mongoose from 'mongoose';
 import { z } from 'zod';
+import fs from 'fs';
+import path from 'path';
 import { User } from '../models/User.js';
 import { Question } from '../models/Question.js';
 import { Exam } from '../models/Exam.js';
@@ -10,11 +13,21 @@ import { Subscription } from '../models/Subscription.js';
 import { Payment } from '../models/Payment.js';
 import { StudyMaterial } from '../models/StudyMaterial.js';
 import { QuestionSyncLog } from '../models/QuestionSyncLog.js';
+import { SystemSetting } from '../models/SystemSetting.js';
+import { Institution } from '../models/Institution.js';
+import { Course } from '../models/Course.js';
+import { BlogPost } from '../models/BlogPost.js';
+import { Testimonial } from '../models/Testimonial.js';
+import { VideoLesson } from '../models/VideoLesson.js';
+import { Flashcard } from '../models/Flashcard.js';
 import { authenticateToken, requireAdmin, AuthenticatedRequest } from '../middleware/auth.js';
+import { STORAGE_DIR_ABSOLUTE, RECEIPTS_DIR_ABSOLUTE } from '../middleware/upload.js';
 import { QuestionIngestionService } from '../services/questionIngestionService.js';
 import { questionSyncScheduler } from '../services/questionSyncScheduler.js';
 import { AuthorizedApiAdapter } from '../services/questionSourceAdapter.js';
 import { metadataCache } from '../utils/cache.js';
+import { sendSubscriptionEmail } from '../services/emailService.js';
+import { SUBSCRIPTION_PLANS, getDynamicBankDetails } from './subscriptions.js';
 
 const router = Router();
 
@@ -41,6 +54,11 @@ router.get('/overview', async (_req: AuthenticatedRequest, res: Response, next: 
       successfulPayments,
       revenueResult,
       recentUsers,
+      totalInstitutions,
+      totalCourses,
+      totalBlogArticles,
+      totalTestimonials,
+      totalVideos,
     ] = await Promise.all([
       User.countDocuments(),
       User.countDocuments({ role: 'STUDENT' }),
@@ -63,6 +81,11 @@ router.get('/overview', async (_req: AuthenticatedRequest, res: Response, next: 
         .limit(6)
         .select('fullName email role accountStatus isVerified createdAt')
         .lean(),
+      Institution.countDocuments(),
+      Course.countDocuments(),
+      BlogPost.countDocuments(),
+      Testimonial.countDocuments(),
+      VideoLesson.countDocuments(),
     ]);
 
     const totalRevenueNGN = revenueResult.length > 0 ? Math.round(revenueResult[0].totalKobo / 100) : 0;
@@ -84,6 +107,11 @@ router.get('/overview', async (_req: AuthenticatedRequest, res: Response, next: 
         successfulPayments,
         totalRevenueNGN,
         recentUsers,
+        totalInstitutions,
+        totalCourses,
+        totalBlogArticles,
+        totalTestimonials,
+        totalVideos,
       },
     });
   } catch (error) {
@@ -698,5 +726,942 @@ router.post('/questions/:id/review', async (req: AuthenticatedRequest, res: Resp
   }
 });
 
+// ----------------------------------------------------
+// 7. MANUAL BANK TRANSFER PAYMENT PROOF OVERSIGHT
+// ----------------------------------------------------
+
+// GET /api/admin/payments/manual-proofs — Paginated manual transfer submissions
+router.get('/payments/manual-proofs', async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { status, page = '1', limit = '20' } = req.query;
+    const pageNum = Math.max(1, parseInt(page as string, 10) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit as string, 10) || 20));
+    const skip = (pageNum - 1) * limitNum;
+
+    const filter: Record<string, any> = { provider: 'MANUAL_BANK_TRANSFER' };
+    if (status && typeof status === 'string' && status !== 'ALL') {
+      filter.status = status;
+    }
+
+    const [payments, total] = await Promise.all([
+      Payment.find(filter)
+        .populate('userId', 'fullName email isVerified role')
+        .populate('reviewedBy', 'fullName email')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limitNum)
+        .lean(),
+      Payment.countDocuments(filter),
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        payments,
+        pagination: {
+          total,
+          page: pageNum,
+          limit: limitNum,
+          totalPages: Math.max(1, Math.ceil(total / limitNum)),
+        },
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/admin/payments/:id/approve — Verify manual bank transfer and activate Pro tier
+router.post('/payments/:id/approve', async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const rawId = req.params.id;
+    const paymentId = Array.isArray(rawId) ? rawId[0] : rawId;
+    const adminUser = req.user!;
+
+    const payment = await Payment.findById(paymentId);
+    if (!payment) {
+      res.status(404).json({ success: false, error: { message: 'Payment record not found.' } });
+      return;
+    }
+
+    if (payment.status === 'SUCCESS') {
+      res.status(400).json({ success: false, error: { message: 'Payment has already been approved and activated.' } });
+      return;
+    }
+
+    const plan = payment.metadata?.plan || 'PRO_MONTHLY';
+    const durationDays = plan === 'PRO_ANNUAL' ? 365 : 30;
+    const startDate = new Date();
+    const endDate = new Date(startDate.getTime() + durationDays * 24 * 60 * 60 * 1000);
+
+    // Create or update subscription record
+    let subscription = await Subscription.findOne({ userId: payment.userId });
+    if (subscription) {
+      subscription.plan = plan;
+      subscription.status = 'ACTIVE';
+      subscription.startDate = startDate;
+      subscription.endDate = endDate;
+      await subscription.save();
+    } else {
+      subscription = await Subscription.create({
+        userId: payment.userId,
+        plan,
+        status: 'ACTIVE',
+        startDate,
+        endDate,
+      });
+    }
+
+    // Mark payment success with reviewer audit trail
+    payment.status = 'SUCCESS';
+    payment.subscriptionId = subscription._id;
+    payment.paidAt = new Date();
+    payment.reviewedBy = adminUser._id;
+    payment.reviewedAt = new Date();
+    if (req.body.adminReviewNotes) {
+      payment.adminReviewNotes = String(req.body.adminReviewNotes).trim();
+    }
+    await payment.save();
+
+    // Fetch user for confirmation email
+    const studentUser = await User.findById(payment.userId);
+    if (studentUser) {
+      const planConfig = SUBSCRIPTION_PLANS.find((p) => p.id === plan);
+      sendSubscriptionEmail(
+        studentUser.email,
+        studentUser.fullName,
+        planConfig?.name || plan,
+        Math.round(payment.amountKobo / 100),
+        payment.reference
+      );
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Payment proof approved successfully. Student account activated on ${plan} tier.`,
+      data: {
+        paymentId: payment._id,
+        reference: payment.reference,
+        status: payment.status,
+        plan,
+        expiresAt: endDate,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/admin/payments/:id/reject — Reject manual payment proof with feedback notes
+router.post('/payments/:id/reject', async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const rawId = req.params.id;
+    const paymentId = Array.isArray(rawId) ? rawId[0] : rawId;
+    const adminUser = req.user!;
+    const { reviewNotes } = z
+      .object({ reviewNotes: z.string().trim().min(3, 'Rejection reason must be at least 3 characters') })
+      .parse(req.body);
+
+    const payment = await Payment.findById(paymentId);
+    if (!payment) {
+      res.status(404).json({ success: false, error: { message: 'Payment record not found.' } });
+      return;
+    }
+
+    if (payment.status === 'SUCCESS') {
+      res.status(400).json({ success: false, error: { message: 'Cannot reject a payment that has already been approved.' } });
+      return;
+    }
+
+    payment.status = 'REJECTED';
+    payment.adminReviewNotes = reviewNotes;
+    payment.reviewedBy = adminUser._id;
+    payment.reviewedAt = new Date();
+    await payment.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Payment proof rejected. Rejection reason recorded.',
+      data: {
+        paymentId: payment._id,
+        reference: payment.reference,
+        status: payment.status,
+        reviewNotes,
+      },
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ success: false, error: { message: 'Validation failed', details: error.flatten().fieldErrors } });
+      return;
+    }
+    next(error);
+  }
+});
+
+// ----------------------------------------------------
+// 12. PHYSICAL RECEIVING BANK ACCOUNT MANAGEMENT
+// ----------------------------------------------------
+const bankDetailsUpdateSchema = z.object({
+  bankName: z
+    .string()
+    .trim()
+    .min(2, 'Bank name must be at least 2 characters')
+    .max(100, 'Bank name cannot exceed 100 characters')
+    .regex(/^[^<>{}$`]+$/, 'Bank name contains invalid characters'),
+  accountName: z
+    .string()
+    .trim()
+    .min(2, 'Account name must be at least 2 characters')
+    .max(100, 'Account name cannot exceed 100 characters')
+    .regex(/^[^<>{}$`]+$/, 'Account name contains invalid characters'),
+  accountNumber: z
+    .string()
+    .trim()
+    .min(5, 'Account number must be at least 5 digits')
+    .max(20, 'Account number cannot exceed 20 digits')
+    .regex(/^[0-9]+$/, 'Account number must consist only of digits'),
+  currency: z.string().trim().max(5).default('NGN'),
+  instructions: z
+    .string()
+    .trim()
+    .max(500, 'Instructions cannot exceed 500 characters')
+    .default('Use your registered MarkDriller email address as the payment narration or transfer remark.'),
+});
+
+// GET /api/admin/bank-details — Fetch current dynamic bank account details
+router.get('/bank-details', async (_req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const details = await getDynamicBankDetails();
+    res.status(200).json({ success: true, data: details });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// PUT /api/admin/bank-details — Only administrator can update receiving bank account
+router.put('/bank-details', async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const data = bankDetailsUpdateSchema.parse(req.body);
+    const adminUserId = req.user!._id;
+
+    const setting = await SystemSetting.findOneAndUpdate(
+      { key: 'OFFICIAL_BANK_DETAILS' },
+      {
+        value: data,
+        description: 'Official physical receiving bank account for direct candidate wire transfers and scratch card bulk payments',
+        updatedBy: adminUserId,
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: 'Official physical receiving bank account updated successfully.',
+      data: setting.value,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ success: false, error: { message: 'Validation failed', details: error.flatten().fieldErrors } });
+      return;
+    }
+    next(error);
+  }
+});
+
+// ----------------------------------------------------
+// 8. INSTITUTIONS & COURSES MANAGEMENT
+// ----------------------------------------------------
+const institutionSchema = z.object({
+  name: z.string().min(2, 'Name is required'),
+  shortCode: z.string().min(2, 'Short code is required'),
+  type: z.enum(['FEDERAL_UNI', 'STATE_UNI', 'PRIVATE_UNI', 'POLYTECHNIC', 'COLLEGE_OF_ED']),
+  state: z.string().min(2, 'State is required'),
+  founded: z.coerce.number().int().min(1900).max(2030),
+  minJambCutoff: z.coerce.number().int().min(100).max(400),
+  popularCourses: z.array(z.string()).default([]),
+  facultiesCount: z.coerce.number().int().min(1).default(1),
+  website: z.string().optional().default(''),
+  admissionNote: z.string().optional().default(''),
+  isPublished: z.boolean().default(true),
+});
+
+router.get('/institutions', async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { page = '1', limit = '20', search, type, state } = req.query;
+    const filter: Record<string, any> = {};
+    if (type && type !== 'ALL') filter.type = type;
+    if (state && state !== 'ALL') filter.state = new RegExp(String(state), 'i');
+    if (search) {
+      const sanitized = String(search).trim().slice(0, 60);
+      filter.$or = [
+        { name: { $regex: sanitized, $options: 'i' } },
+        { shortCode: { $regex: sanitized, $options: 'i' } },
+      ];
+    }
+
+    const pageNum = Math.max(1, parseInt(page as string, 10) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit as string, 10) || 20));
+    const skip = (pageNum - 1) * limitNum;
+
+    const [institutions, total] = await Promise.all([
+      Institution.find(filter).sort({ name: 1 }).skip(skip).limit(limitNum).lean(),
+      Institution.countDocuments(filter),
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        institutions,
+        pagination: {
+          total,
+          page: pageNum,
+          limit: limitNum,
+          totalPages: Math.max(1, Math.ceil(total / limitNum)),
+        },
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/institutions', async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const data = institutionSchema.parse(req.body);
+    const created = await Institution.create({
+      ...data,
+      shortCode: data.shortCode.toUpperCase().trim(),
+    });
+    res.status(201).json({ success: true, data: created });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ success: false, error: { message: 'Validation failed', details: error.flatten().fieldErrors } });
+      return;
+    }
+    next(error);
+  }
+});
+
+router.put('/institutions/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const rawId = req.params.id;
+    const id = Array.isArray(rawId) ? rawId[0] : rawId;
+    const updated = await Institution.findByIdAndUpdate(id, req.body, { new: true });
+    if (!updated) {
+      res.status(404).json({ success: false, error: { message: 'Institution not found.' } });
+      return;
+    }
+    res.status(200).json({ success: true, data: updated });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.delete('/institutions/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const rawId = req.params.id;
+    const id = Array.isArray(rawId) ? rawId[0] : rawId;
+    const deleted = await Institution.findByIdAndDelete(id);
+    if (!deleted) {
+      res.status(404).json({ success: false, error: { message: 'Institution not found.' } });
+      return;
+    }
+    await Course.deleteMany({ institutionId: id });
+    res.status(200).json({ success: true, message: 'Institution and associated courses deleted successfully.' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+const courseSchema = z.object({
+  institutionId: z.string().min(1, 'Institution ID is required'),
+  name: z.string().min(2, 'Course name is required'),
+  faculty: z.string().min(2, 'Faculty is required'),
+  jambCutoff: z.coerce.number().int().min(100).max(400),
+  utmeSubjectRequirements: z.array(z.string()).min(1, 'At least one subject requirement is required'),
+  directEntryRequirements: z.string().optional().default(''),
+  careerOpportunities: z.array(z.string()).default([]),
+  isAvailable: z.boolean().default(true),
+});
+
+router.get('/courses', async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { institutionId, page = '1', limit = '50' } = req.query;
+    const filter: Record<string, any> = {};
+    if (institutionId) filter.institutionId = institutionId;
+
+    const pageNum = Math.max(1, parseInt(page as string, 10) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit as string, 10) || 50));
+    const skip = (pageNum - 1) * limitNum;
+
+    const [courses, total] = await Promise.all([
+      Course.find(filter).populate('institutionId', 'name shortCode').sort({ name: 1 }).skip(skip).limit(limitNum).lean(),
+      Course.countDocuments(filter),
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        courses,
+        pagination: {
+          total,
+          page: pageNum,
+          limit: limitNum,
+          totalPages: Math.max(1, Math.ceil(total / limitNum)),
+        },
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/courses', async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const data = courseSchema.parse(req.body);
+    const created = await Course.create(data);
+    res.status(201).json({ success: true, data: created });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ success: false, error: { message: 'Validation failed', details: error.flatten().fieldErrors } });
+      return;
+    }
+    next(error);
+  }
+});
+
+router.put('/courses/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const rawId = req.params.id;
+    const id = Array.isArray(rawId) ? rawId[0] : rawId;
+    const updated = await Course.findByIdAndUpdate(id, req.body, { new: true });
+    if (!updated) {
+      res.status(404).json({ success: false, error: { message: 'Course not found.' } });
+      return;
+    }
+    res.status(200).json({ success: true, data: updated });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.delete('/courses/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const rawId = req.params.id;
+    const id = Array.isArray(rawId) ? rawId[0] : rawId;
+    const deleted = await Course.findByIdAndDelete(id);
+    if (!deleted) {
+      res.status(404).json({ success: false, error: { message: 'Course not found.' } });
+      return;
+    }
+    res.status(200).json({ success: true, message: 'Course deleted successfully.' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ----------------------------------------------------
+// 9. BLOG & EDITORIAL MANAGEMENT
+// ----------------------------------------------------
+const blogSchema = z.object({
+  title: z.string().min(3, 'Title is required'),
+  slug: z.string().min(2).optional(),
+  category: z.enum([
+    'JAMB_GUIDES',
+    'WAEC_INSIGHTS',
+    'NECO_EXCELLENCE',
+    'GCE_PREP',
+    'NABTEB_STRATEGY',
+    'POST_UTME',
+    'STUDY_TECHNIQUES',
+  ]),
+  examBoard: z
+    .enum(['JAMB', 'WAEC', 'NECO', 'GCE', 'NABTEB', 'POST-UTME', 'GENERAL'])
+    .optional()
+    .default('GENERAL'),
+  author: z.string().min(2, 'Author is required'),
+  authorRole: z.string().min(2, 'Author role is required'),
+  publishedDate: z.string().optional(),
+  readTime: z.string().optional().default('5 min read'),
+  summary: z.string().min(5, 'Summary is required'),
+  content: z.array(z.string()).min(1, 'At least one content paragraph is required'),
+  tags: z.array(z.string()).default([]),
+  imageUrl: z.string().optional().default(''),
+  imageCaption: z.string().optional().default(''),
+  keyTakeaways: z.array(z.string()).optional().default([]),
+  isPublished: z.boolean().default(true),
+});
+
+router.get('/blog', async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { page = '1', limit = '20', category, examBoard } = req.query;
+    const filter: Record<string, any> = {};
+    if (category && category !== 'ALL') filter.category = category;
+    if (examBoard && examBoard !== 'ALL') filter.examBoard = examBoard;
+
+    const pageNum = Math.max(1, parseInt(page as string, 10) || 1);
+    const limitNum = Math.min(50, Math.max(1, parseInt(limit as string, 10) || 20));
+    const skip = (pageNum - 1) * limitNum;
+
+    const [articles, total] = await Promise.all([
+      BlogPost.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limitNum).lean(),
+      BlogPost.countDocuments(filter),
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        articles,
+        pagination: {
+          total,
+          page: pageNum,
+          limit: limitNum,
+          totalPages: Math.max(1, Math.ceil(total / limitNum)),
+        },
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/blog', async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const data = blogSchema.parse(req.body);
+    const slug = data.slug || data.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    const publishedDate = data.publishedDate || new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+
+    const created = await BlogPost.create({
+      ...data,
+      slug,
+      publishedDate,
+    });
+    res.status(201).json({ success: true, data: created });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ success: false, error: { message: 'Validation failed', details: error.flatten().fieldErrors } });
+      return;
+    }
+    next(error);
+  }
+});
+
+router.put('/blog/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const rawId = req.params.id;
+    const id = Array.isArray(rawId) ? rawId[0] : rawId;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      res.status(400).json({ success: false, error: { message: 'Invalid article ID' } });
+      return;
+    }
+    const validatedData = blogSchema.partial().parse(req.body);
+    const updated = await BlogPost.findByIdAndUpdate(id, validatedData, { new: true, runValidators: true });
+    if (!updated) {
+      res.status(404).json({ success: false, error: { message: 'Article not found.' } });
+      return;
+    }
+    res.status(200).json({ success: true, data: updated });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ success: false, error: { message: 'Validation failed', details: error.flatten().fieldErrors } });
+      return;
+    }
+    next(error);
+  }
+});
+
+router.delete('/blog/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const rawId = req.params.id;
+    const id = Array.isArray(rawId) ? rawId[0] : rawId;
+    const deleted = await BlogPost.findByIdAndDelete(id);
+    if (!deleted) {
+      res.status(404).json({ success: false, error: { message: 'Article not found.' } });
+      return;
+    }
+    res.status(200).json({ success: true, message: 'Article deleted successfully.' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ----------------------------------------------------
+// 10. TESTIMONIALS MANAGEMENT
+// ----------------------------------------------------
+const testimonialSchema = z.object({
+  studentName: z.string().min(2, 'Student name is required'),
+  examTaken: z.string().min(2, 'Exam taken is required'),
+  score: z.string().min(1, 'Score is required'),
+  year: z.coerce.number().int().default(2025),
+  quote: z.string().min(5, 'Quote is required'),
+  universityAdmitted: z.string().optional().default(''),
+  avatarUrl: z.string().optional().default(''),
+  isFeatured: z.boolean().default(true),
+  isApproved: z.boolean().default(true),
+});
+
+router.get('/testimonials', async (_req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const testimonials = await Testimonial.find().sort({ createdAt: -1 }).lean();
+    res.status(200).json({ success: true, data: testimonials });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/testimonials', async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const data = testimonialSchema.parse(req.body);
+    const created = await Testimonial.create(data);
+    res.status(201).json({ success: true, data: created });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ success: false, error: { message: 'Validation failed', details: error.flatten().fieldErrors } });
+      return;
+    }
+    next(error);
+  }
+});
+
+router.put('/testimonials/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const rawId = req.params.id;
+    const id = Array.isArray(rawId) ? rawId[0] : rawId;
+    const updated = await Testimonial.findByIdAndUpdate(id, req.body, { new: true });
+    if (!updated) {
+      res.status(404).json({ success: false, error: { message: 'Testimonial not found.' } });
+      return;
+    }
+    res.status(200).json({ success: true, data: updated });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.delete('/testimonials/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const rawId = req.params.id;
+    const id = Array.isArray(rawId) ? rawId[0] : rawId;
+    const deleted = await Testimonial.findByIdAndDelete(id);
+    if (!deleted) {
+      res.status(404).json({ success: false, error: { message: 'Testimonial not found.' } });
+      return;
+    }
+    res.status(200).json({ success: true, message: 'Testimonial deleted successfully.' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ----------------------------------------------------
+// 11. VIDEO LESSONS MANAGEMENT
+// ----------------------------------------------------
+const videoSchema = z.object({
+  title: z.string().min(2, 'Title is required'),
+  videoId: z.string().min(3, 'YouTube Video ID is required'),
+  duration: z.string().default('15:00'),
+  examId: z.string().optional(),
+  subjectId: z.string().optional(),
+  topicName: z.string().optional().default('General Revision'),
+  isPremium: z.boolean().default(false),
+  order: z.coerce.number().int().default(0),
+  isPublished: z.boolean().default(true),
+});
+
+router.get('/videos', async (_req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const videos = await VideoLesson.find()
+      .populate('examId', 'name shortCode')
+      .populate('subjectId', 'name code')
+      .sort({ order: 1, createdAt: 1 })
+      .lean();
+    res.status(200).json({ success: true, data: videos });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/videos', async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const data = videoSchema.parse(req.body);
+    const created = await VideoLesson.create(data);
+    res.status(201).json({ success: true, data: created });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ success: false, error: { message: 'Validation failed', details: error.flatten().fieldErrors } });
+      return;
+    }
+    next(error);
+  }
+});
+
+router.put('/videos/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const rawId = req.params.id;
+    const id = Array.isArray(rawId) ? rawId[0] : rawId;
+    const updated = await VideoLesson.findByIdAndUpdate(id, req.body, { new: true });
+    if (!updated) {
+      res.status(404).json({ success: false, error: { message: 'Video not found.' } });
+      return;
+    }
+    res.status(200).json({ success: true, data: updated });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.delete('/videos/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const rawId = req.params.id;
+    const id = Array.isArray(rawId) ? rawId[0] : rawId;
+    const deleted = await VideoLesson.findByIdAndDelete(id);
+    if (!deleted) {
+      res.status(404).json({ success: false, error: { message: 'Video not found.' } });
+      return;
+    }
+    res.status(200).json({ success: true, message: 'Video deleted successfully.' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ----------------------------------------------------
+// 12. FLASHCARDS MANAGEMENT
+// ----------------------------------------------------
+const flashcardSchema = z.object({
+  examId: z.string().min(1, 'Exam ID is required'),
+  subjectId: z.string().min(1, 'Subject ID is required'),
+  topicId: z.string().optional(),
+  front: z.string().min(2, 'Front prompt is required'),
+  back: z.string().min(2, 'Back answer is required'),
+  difficulty: z.enum(['EASY', 'MEDIUM', 'HARD']).default('MEDIUM'),
+  isPublished: z.boolean().default(true),
+});
+
+router.get('/flashcards', async (_req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const flashcards = await Flashcard.find()
+      .populate('examId', 'name shortCode')
+      .populate('subjectId', 'name code')
+      .populate('topicId', 'name')
+      .sort({ createdAt: -1 })
+      .lean();
+    res.status(200).json({ success: true, data: flashcards });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/flashcards', async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const data = flashcardSchema.parse(req.body);
+    const created = await Flashcard.create(data);
+    res.status(201).json({ success: true, data: created });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ success: false, error: { message: 'Validation failed', details: error.flatten().fieldErrors } });
+      return;
+    }
+    next(error);
+  }
+});
+
+router.put('/flashcards/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const rawId = req.params.id;
+    const id = Array.isArray(rawId) ? rawId[0] : rawId;
+    const updated = await Flashcard.findByIdAndUpdate(id, req.body, { new: true });
+    if (!updated) {
+      res.status(404).json({ success: false, error: { message: 'Flashcard not found.' } });
+      return;
+    }
+    res.status(200).json({ success: true, data: updated });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.delete('/flashcards/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const rawId = req.params.id;
+    const id = Array.isArray(rawId) ? rawId[0] : rawId;
+    const deleted = await Flashcard.findByIdAndDelete(id);
+    if (!deleted) {
+      res.status(404).json({ success: false, error: { message: 'Flashcard not found.' } });
+      return;
+    }
+    res.status(200).json({ success: true, message: 'Flashcard deleted successfully.' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ----------------------------------------------------
+// 13. SUBSCRIPTIONS DIRECTORY & MANAGEMENT
+// ----------------------------------------------------
+router.get('/subscriptions', async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { status, plan, page = '1', limit = '20' } = req.query;
+    const filter: Record<string, any> = {};
+    if (status && status !== 'ALL') filter.status = status;
+    if (plan && plan !== 'ALL') filter.plan = plan;
+
+    const pageNum = Math.max(1, parseInt(page as string, 10) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit as string, 10) || 20));
+    const skip = (pageNum - 1) * limitNum;
+
+    const [subscriptions, total] = await Promise.all([
+      Subscription.find(filter)
+        .populate('userId', 'fullName email role isVerified')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limitNum)
+        .lean(),
+      Subscription.countDocuments(filter),
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        subscriptions,
+        pagination: {
+          total,
+          page: pageNum,
+          limit: limitNum,
+          totalPages: Math.max(1, Math.ceil(total / limitNum)),
+        },
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+const modifySubscriptionSchema = z.object({
+  plan: z.enum(['FREE', 'PRO_MONTHLY', 'PRO_ANNUAL']).optional(),
+  status: z.enum(['ACTIVE', 'EXPIRED', 'CANCELLED']).optional(),
+  extendDays: z.number().int().optional(),
+});
+
+router.post('/subscriptions/:id/modify', async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const rawId = req.params.id;
+    const id = Array.isArray(rawId) ? rawId[0] : rawId;
+    const data = modifySubscriptionSchema.parse(req.body);
+
+    const sub = await Subscription.findById(id);
+    if (!sub) {
+      res.status(404).json({ success: false, error: { message: 'Subscription not found.' } });
+      return;
+    }
+
+    if (data.plan) sub.plan = data.plan;
+    if (data.status) sub.status = data.status;
+    if (data.extendDays && data.extendDays > 0) {
+      const currentEnd = sub.endDate && new Date(sub.endDate) > new Date() ? new Date(sub.endDate) : new Date();
+      sub.endDate = new Date(currentEnd.getTime() + data.extendDays * 24 * 60 * 60 * 1000);
+      sub.status = 'ACTIVE';
+    }
+
+    await sub.save();
+    res.status(200).json({ success: true, message: 'Subscription modified successfully.', data: sub });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ success: false, error: { message: 'Validation failed', details: error.flatten().fieldErrors } });
+      return;
+    }
+    next(error);
+  }
+});
+
+// ----------------------------------------------------
+// 14. PAYMENTS AUDIT DIRECTORY
+// ----------------------------------------------------
+router.get('/payments', async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { status, provider, page = '1', limit = '20' } = req.query;
+    const filter: Record<string, any> = {};
+    if (status && status !== 'ALL') filter.status = status;
+    if (provider && provider !== 'ALL') filter.provider = provider;
+
+    const pageNum = Math.max(1, parseInt(page as string, 10) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit as string, 10) || 20));
+    const skip = (pageNum - 1) * limitNum;
+
+    const [payments, total] = await Promise.all([
+      Payment.find(filter)
+        .populate('userId', 'fullName email')
+        .populate('reviewedBy', 'fullName email')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limitNum)
+        .lean(),
+      Payment.countDocuments(filter),
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        payments,
+        pagination: {
+          total,
+          page: pageNum,
+          limit: limitNum,
+          totalPages: Math.max(1, Math.ceil(total / limitNum)),
+        },
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ----------------------------------------------------
+// 15. MEDIA AUDIT & STORAGE TELEMETRY
+// ----------------------------------------------------
+router.get('/media', async (_req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const materialsFiles = fs.existsSync(STORAGE_DIR_ABSOLUTE)
+      ? fs.readdirSync(STORAGE_DIR_ABSOLUTE).map((file) => {
+          const stats = fs.statSync(path.join(STORAGE_DIR_ABSOLUTE, file));
+          return {
+            filename: file,
+            sizeBytes: stats.size,
+            createdAt: stats.birthtime,
+            type: 'study_material',
+          };
+        })
+      : [];
+
+    const receiptFiles = fs.existsSync(RECEIPTS_DIR_ABSOLUTE)
+      ? fs.readdirSync(RECEIPTS_DIR_ABSOLUTE).map((file) => {
+          const stats = fs.statSync(path.join(RECEIPTS_DIR_ABSOLUTE, file));
+          return {
+            filename: file,
+            sizeBytes: stats.size,
+            createdAt: stats.birthtime,
+            type: 'payment_receipt',
+          };
+        })
+      : [];
+
+    const allFiles = [...materialsFiles, ...receiptFiles];
+    const totalBytes = allFiles.reduce((acc, f) => acc + f.sizeBytes, 0);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        totalFiles: allFiles.length,
+        totalBytes,
+        totalMegabytes: Math.round((totalBytes / (1024 * 1024)) * 100) / 100,
+        files: allFiles.slice(0, 100),
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;
+
 

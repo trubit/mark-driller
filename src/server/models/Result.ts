@@ -8,6 +8,15 @@ export interface ITopicScore {
   accuracyPercentage: number;
 }
 
+export interface ISubjectScore {
+  subjectId: Types.ObjectId;
+  subjectName: string;
+  subjectCode: string;
+  totalQuestions: number;
+  correctAnswers: number;
+  accuracyPercentage: number;
+}
+
 export interface IResult extends Document {
   _id: Types.ObjectId;
   attemptId: Types.ObjectId;
@@ -22,6 +31,7 @@ export interface IResult extends Document {
   unansweredCount: number;
   timeSpentSeconds: number;
   topicBreakdown: ITopicScore[];
+  subjectBreakdown?: ISubjectScore[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -30,6 +40,18 @@ const TopicScoreSchema = new Schema<ITopicScore>(
   {
     topicId: { type: Schema.Types.ObjectId, ref: 'Topic' },
     topicName: { type: String, required: true },
+    totalQuestions: { type: Number, required: true },
+    correctAnswers: { type: Number, required: true },
+    accuracyPercentage: { type: Number, required: true },
+  },
+  { _id: false }
+);
+
+const SubjectScoreSchema = new Schema<ISubjectScore>(
+  {
+    subjectId: { type: Schema.Types.ObjectId, ref: 'Subject', required: true },
+    subjectName: { type: String, required: true },
+    subjectCode: { type: String, required: true },
     totalQuestions: { type: Number, required: true },
     correctAnswers: { type: Number, required: true },
     accuracyPercentage: { type: Number, required: true },
@@ -91,6 +113,7 @@ const ResultSchema = new Schema<IResult>(
       required: true,
     },
     topicBreakdown: [TopicScoreSchema],
+    subjectBreakdown: [SubjectScoreSchema],
   },
   {
     timestamps: true,
@@ -101,3 +124,4 @@ ResultSchema.index({ userId: 1, createdAt: -1 });
 
 export const Result: Model<IResult> =
   mongoose.models.Result || mongoose.model<IResult>('Result', ResultSchema);
+
