@@ -1060,6 +1060,11 @@ export const CbtResultView: React.FC = () => {
                         <img
                           src={(q as any).imageUrl}
                           alt={`Figure diagram for Question ${originalIndex + 1}`}
+                          onError={(e) => {
+                            if (e.currentTarget.parentElement) {
+                              e.currentTarget.parentElement.style.display = 'none';
+                            }
+                          }}
                           style={{ maxWidth: '100%', maxHeight: '280px', objectFit: 'contain', borderRadius: '4px' }}
                         />
                       </div>

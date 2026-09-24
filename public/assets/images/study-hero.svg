@@ -1,0 +1,178 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 700" width="1200" height="700">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0A101D"/>
+      <stop offset="50%" stop-color="#111B2E"/>
+      <stop offset="100%" stop-color="#090E17"/>
+    </linearGradient>
+    <linearGradient id="laptopGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1E293B"/>
+      <stop offset="100%" stop-color="#0F172A"/>
+    </linearGradient>
+    <linearGradient id="screenGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0B132B"/>
+      <stop offset="100%" stop-color="#17223B"/>
+    </linearGradient>
+    <linearGradient id="brandGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#c2410c"/>
+      <stop offset="100%" stop-color="#ea580c"/>
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#2563eb"/>
+      <stop offset="100%" stop-color="#38bdf8"/>
+    </linearGradient>
+    <linearGradient id="glowRust" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ea580c" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#c2410c" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="glowBlue" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#1e3a8a" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="softShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="18" stdDeviation="24" flood-color="#000000" flood-opacity="0.55"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="700" fill="url(#bgGrad)"/>
+
+  <!-- Ambient Glow Orbs -->
+  <circle cx="280" cy="180" r="260" fill="url(#glowRust)"/>
+  <circle cx="920" cy="520" r="320" fill="url(#glowBlue)"/>
+
+  <!-- Subtle Blueprint Grid Pattern -->
+  <g opacity="0.08" stroke="#ffffff" stroke-width="1">
+    <line x1="100" y1="0" x2="100" y2="700"/>
+    <line x1="250" y1="0" x2="250" y2="700"/>
+    <line x1="400" y1="0" x2="400" y2="700"/>
+    <line x1="550" y1="0" x2="550" y2="700"/>
+    <line x1="700" y1="0" x2="700" y2="700"/>
+    <line x1="850" y1="0" x2="850" y2="700"/>
+    <line x1="1000" y1="0" x2="1000" y2="700"/>
+    <line x1="1150" y1="0" x2="1150" y2="700"/>
+    <line x1="0" y1="100" x2="1200" y2="100"/>
+    <line x1="0" y1="220" x2="1200" y2="220"/>
+    <line x1="0" y1="340" x2="1200" y2="340"/>
+    <line x1="0" y1="460" x2="1200" y2="460"/>
+    <line x1="0" y1="580" x2="1200" y2="580"/>
+  </g>
+
+  <!-- Laptop Container -->
+  <g transform="translate(180, 80)" filter="url(#softShadow)">
+    <!-- Laptop Lid Bezel -->
+    <rect x="0" y="0" width="840" height="490" rx="18" fill="url(#laptopGrad)" stroke="#334155" stroke-width="2"/>
+    <circle cx="420" cy="12" r="4" fill="#0f172a"/>
+    <circle cx="420" cy="12" r="1.5" fill="#38bdf8"/>
+
+    <!-- Screen Display Area -->
+    <rect x="18" y="24" width="804" height="446" rx="8" fill="url(#screenGrad)"/>
+
+    <!-- CBT App Bar Header -->
+    <rect x="18" y="24" width="804" height="46" rx="8" fill="#0d1527"/>
+    <text x="38" y="53" fill="#f8fafc" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="800" font-size="15" letter-spacing="0.5">MARKDRILLER CBT ENGINE</text>
+    <rect x="250" y="38" width="82" height="20" rx="10" fill="#c2410c"/>
+    <text x="264" y="52" fill="#ffffff" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="700" font-size="10" letter-spacing="0.5">JAMB UTME</text>
+    <rect x="340" y="38" width="60" height="20" rx="10" fill="#1e293b"/>
+    <text x="352" y="52" fill="#94a3b8" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="700" font-size="10">WAEC</text>
+    <rect x="408" y="38" width="60" height="20" rx="10" fill="#1e293b"/>
+    <text x="420" y="52" fill="#94a3b8" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="700" font-size="10">NECO</text>
+
+    <!-- Timer Widget on Screen -->
+    <rect x="680" y="36" width="124" height="24" rx="12" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+    <circle cx="694" cy="48" r="4" fill="#22c55e"/>
+    <text x="706" y="53" fill="#f8fafc" font-family="monospace" font-weight="700" font-size="12">01:45:20</text>
+
+    <!-- Question View Container -->
+    <g transform="translate(42, 90)">
+      <!-- Question Metadata Tag -->
+      <text x="0" y="14" fill="#ea580c" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="700" font-size="12" letter-spacing="1">QUESTION 24 OF 40 • MATHEMATICS &amp; SCIENCES</text>
+      
+      <!-- Question Prompt -->
+      <rect x="0" y="28" width="756" height="64" rx="8" fill="#111c33" stroke="#1e293b" stroke-width="1"/>
+      <text x="18" y="55" fill="#f1f5f9" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="600" font-size="14.5">
+        Evaluate the rate of cellular energy yield (ATP) during aerobic oxidative phosphorylation:
+      </text>
+      <text x="18" y="76" fill="#94a3b8" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12">
+        Official UTME Curriculum Syllabus • Solved Step-by-Step with Verified Explanations
+      </text>
+
+      <!-- Options Grid -->
+      <!-- Option A -->
+      <g transform="translate(0, 108)">
+        <rect width="368" height="52" rx="8" fill="#111c33" stroke="#1e293b" stroke-width="1"/>
+        <rect x="12" y="14" width="24" height="24" rx="12" fill="#1e293b"/>
+        <text x="19" y="30" fill="#94a3b8" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-weight="700" font-size="11">A</text>
+        <text x="46" y="31" fill="#cbd5e1" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="13">2 ATP molecules per glucose</text>
+      </g>
+
+      <!-- Option B (Correct Answer Selected) -->
+      <g transform="translate(388, 108)">
+        <rect width="368" height="52" rx="8" fill="#064e3b" stroke="#10b981" stroke-width="1.5"/>
+        <rect x="12" y="14" width="24" height="24" rx="12" fill="#10b981"/>
+        <text x="19" y="30" fill="#ffffff" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-weight="700" font-size="11">B</text>
+        <text x="46" y="31" fill="#ecfdf5" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-weight="600" font-size="13">30 to 32 ATP molecules (Correct)</text>
+      </g>
+
+      <!-- Option C -->
+      <g transform="translate(0, 172)">
+        <rect width="368" height="52" rx="8" fill="#111c33" stroke="#1e293b" stroke-width="1"/>
+        <rect x="12" y="14" width="24" height="24" rx="12" fill="#1e293b"/>
+        <text x="19" y="30" fill="#94a3b8" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-weight="700" font-size="11">C</text>
+        <text x="46" y="31" fill="#cbd5e1" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="13">4 ATP molecules net gain</text>
+      </g>
+
+      <!-- Option D -->
+      <g transform="translate(388, 172)">
+        <rect width="368" height="52" rx="8" fill="#111c33" stroke="#1e293b" stroke-width="1"/>
+        <rect x="12" y="14" width="24" height="24" rx="12" fill="#1e293b"/>
+        <text x="19" y="30" fill="#94a3b8" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-weight="700" font-size="11">D</text>
+        <text x="46" y="31" fill="#cbd5e1" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="13">18 ATP molecules in cytosol</text>
+      </g>
+
+      <!-- Explanation Drawer Preview -->
+      <rect x="0" y="238" width="756" height="82" rx="8" fill="#13233f" stroke="#2563eb" stroke-dasharray="4 4" stroke-width="1"/>
+      <text x="18" y="262" fill="#38bdf8" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-weight="700" font-size="12">💡 OFFICIAL CURRICULUM WORKED SOLUTION &amp; KEY EXPLANATION</text>
+      <text x="18" y="284" fill="#cbd5e1" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="12">
+        Glycolysis yields 2 ATP, Krebs cycle generates 2 ATP, and mitochondrial electron transport produces 26-28 ATP.
+      </text>
+      <text x="18" y="304" fill="#94a3b8" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="11">
+        Accredited reference: Biology &amp; Chemistry Unified Secondary Syllabus (2020–2026 Archive)
+      </text>
+
+      <!-- Navigation & Action Buttons -->
+      <g transform="translate(0, 334)">
+        <rect x="0" y="0" width="100" height="34" rx="6" fill="#1e293b"/>
+        <text x="22" y="22" fill="#94a3b8" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-weight="600" font-size="12">← Previous</text>
+
+        <rect x="112" y="0" width="110" height="34" rx="6" fill="#78350f" stroke="#b45309" stroke-width="1"/>
+        <text x="126" y="22" fill="#fef3c7" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-weight="600" font-size="12">Skip Question</text>
+
+        <rect x="234" y="0" width="110" height="34" rx="6" fill="#1e3a8a"/>
+        <text x="254" y="22" fill="#bfdbfe" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-weight="600" font-size="12">★ Bookmark</text>
+
+        <rect x="646" y="0" width="110" height="34" rx="6" fill="url(#brandGrad)"/>
+        <text x="676" y="22" fill="#ffffff" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-weight="700" font-size="12">Next →</text>
+      </g>
+    </g>
+
+    <!-- Laptop Base / Hinge -->
+    <path d="M -70 490 L 910 490 L 890 514 L -50 514 Z" fill="#334155"/>
+    <rect x="360" y="490" width="120" height="8" rx="4" fill="#64748b"/>
+  </g>
+
+  <!-- Floating Achievement Badges -->
+  <!-- Badge 1: 98% Pass Rate -->
+  <g transform="translate(60, 260)" filter="url(#softShadow)">
+    <rect width="180" height="74" rx="12" fill="#0f172a" stroke="#334155" stroke-width="1.5"/>
+    <text x="18" y="28" fill="#94a3b8" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="11" font-weight="600">STUDENT ACCURACY</text>
+    <text x="18" y="58" fill="#22c55e" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="26" font-weight="800">96.4%</text>
+  </g>
+
+  <!-- Badge 2: Real-Time Timer -->
+  <g transform="translate(960, 360)" filter="url(#softShadow)">
+    <rect width="180" height="74" rx="12" fill="#0f172a" stroke="#334155" stroke-width="1.5"/>
+    <text x="18" y="28" fill="#94a3b8" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="11" font-weight="600">QUESTION POOL</text>
+    <text x="18" y="58" fill="#38bdf8" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="26" font-weight="800">20+ YRS</text>
+  </g>
+</svg>

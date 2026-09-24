@@ -3,9 +3,9 @@ import { Link } from 'react-router-dom';
 import { useAnalyticsOverviewQuery, useResultsHistoryQuery } from '../api/results.js';
 import { useAuthStore } from '../store/useAuthStore.js';
 import { BrandLoader } from './BrandLoader.js';
+import { handleImageError, FALLBACK_STUDY_HERO } from '../utils/imageFallbacks.js';
 
-const analyticsHeroImage =
-  'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1200&q=82';
+const analyticsHeroImage = '/assets/images/study-hero.svg';
 
 const getReadinessLabel = (score: number) => {
   if (score >= 75) return 'High preparedness';
@@ -80,7 +80,7 @@ export const StudentAnalytics: React.FC = () => {
           </div>
 
           <div className="analytics-score-panel">
-            <img src={analyticsHeroImage} alt="Student using a laptop for CBT exam preparation" loading="eager" />
+            <img src={analyticsHeroImage} alt="Student using a laptop for CBT exam preparation" loading="eager" onError={handleImageError(FALLBACK_STUDY_HERO)} />
             <div className={`analytics-score-card score-${getScoreTone(readiness)}`}>
               <span>Benchmark score</span>
               <strong>{readiness}%</strong>

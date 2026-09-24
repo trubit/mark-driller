@@ -106,6 +106,7 @@ export const Testimonial: React.FC = () => {
                       border: '2px solid var(--amber)',
                     }}
                     loading="lazy"
+                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
                   />
                 )}
                 <div>

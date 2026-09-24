@@ -11,6 +11,7 @@ import {
   useAcquireCurriculumMutation,
   type QuestionItem,
 } from '../api/questions.js';
+import { handleImageError, FALLBACK_STUDY_HERO } from '../utils/imageFallbacks.js';
 
 interface QuestionCardProps {
   question: QuestionItem;
@@ -426,9 +427,10 @@ export const QuestionCatalog: React.FC = () => {
           </div>
           <div className="premium-portal-hero-media">
             <img
-              src="https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1200&q=82"
+              src="/assets/images/study-hero.svg"
               alt="Student working through a computer-based exam practice session"
               loading="eager"
+              onError={handleImageError(FALLBACK_STUDY_HERO)}
             />
             <div className="premium-portal-hero-stat">
               <span>Exam-Ready Workflow</span>

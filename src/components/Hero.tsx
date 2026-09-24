@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
 import { useTelemetryQuery } from '../api/exams';
+import { handleImageError, FALLBACK_STUDY_HERO } from '../utils/imageFallbacks';
 
 export const Hero: React.FC = () => {
   const { openAuthModal } = useAppStore();
@@ -111,8 +112,9 @@ export const Hero: React.FC = () => {
           >
             {/* Licensed Unsplash photography used as a real student-study context visual. */}
             <img
-              src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=1200&q=82"
+              src="/assets/images/study-hero.svg"
               alt="Students studying together with a laptop and notebooks"
+              onError={handleImageError(FALLBACK_STUDY_HERO)}
               style={{
                 width: '100%',
                 height: 'clamp(240px, 42vw, 420px)',
