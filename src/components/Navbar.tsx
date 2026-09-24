@@ -34,13 +34,11 @@ export const Navbar: React.FC = () => {
               📊 Dashboard
             </Link>
           )}
-          <Link to="/products">Products</Link>
           <Link to="/cbt" style={{ fontWeight: 600, color: 'var(--rust)' }}>
             💻 CBT Practice
           </Link>
           <Link to="/novels">JAMB Novels</Link>
           <Link to="/pricing">Pricing</Link>
-          <Link to="/activate">Activate PIN</Link>
           <Link to="/blog">Blog</Link>
           <Link to="/contact">Contact</Link>
         </div>
@@ -135,15 +133,12 @@ export const Navbar: React.FC = () => {
                 🛡️ Admin Portal
               </Link>
             )}
-            <Link to="/products" onClick={handleNavClick}>📦 Products &amp; Offline Downloads</Link>
             <Link to="/cbt" onClick={handleNavClick} style={{ color: 'var(--rust)', fontWeight: 700 }}>
               💻 CBT Practice Simulator
             </Link>
             <Link to="/novels" onClick={handleNavClick}>📖 JAMB Novels &amp; Summaries</Link>
             <Link to="/pricing" onClick={handleNavClick}>★ Subscription Plans</Link>
-            <Link to="/activate" onClick={handleNavClick}>🏷️ Activate Voucher / PIN</Link>
             <Link to="/blog" onClick={handleNavClick}>📰 Academic Blog &amp; Guides</Link>
-            <Link to="/reseller" onClick={handleNavClick}>🤝 Become an Accredited Reseller</Link>
             <Link to="/contact" onClick={handleNavClick}>📞 24/7 Support &amp; Helpline</Link>
           </div>
           <div style={{ marginTop: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>

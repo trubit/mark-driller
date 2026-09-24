@@ -78,27 +78,34 @@ export interface AnalyticsOverview {
   }[];
 }
 
+import { useAuthStore } from '../store/useAuthStore.js';
+
 export function useResultsHistoryQuery(page = 1, limit = 10) {
+  const { token } = useAuthStore();
   return useQuery<ResultsHistoryResponse>({
     queryKey: ['resultsHistory', page, limit],
     queryFn: () => apiClient<ResultsHistoryResponse>(`/api/results?page=${page}&limit=${limit}`),
     staleTime: 1000 * 60 * 2,
+    enabled: Boolean(token),
   });
 }
 
 export function useResultDetailQuery(resultId?: string) {
+  const { token } = useAuthStore();
   return useQuery<any>({
     queryKey: ['resultDetail', resultId],
     queryFn: () => apiClient(`/api/results/${resultId}`),
-    enabled: !!resultId,
+    enabled: Boolean(token) && !!resultId,
   });
 }
 
 export function useAnalyticsOverviewQuery() {
+  const { token } = useAuthStore();
   return useQuery<AnalyticsOverview>({
     queryKey: ['analyticsOverview'],
     queryFn: () => apiClient<AnalyticsOverview>('/api/results/analytics/overview'),
     staleTime: 1000 * 60 * 2,
+    enabled: Boolean(token),
   });
 }
 

@@ -1,6 +1,6 @@
 import { env } from '../config/env.js';
 import { QuestionIngestionService } from './questionIngestionService.js';
-import { AuthorizedApiAdapter } from './questionSourceAdapter.js';
+import { CompositeQuestionSourceAdapter } from './questionSourceAdapter.js';
 import { QuestionSyncLog } from '../models/QuestionSyncLog.js';
 import { Exam } from '../models/Exam.js';
 import { Subject } from '../models/Subject.js';
@@ -101,7 +101,7 @@ export class QuestionSyncScheduler {
     console.log(`🔄 [QuestionSyncScheduler] Starting ${trigger} sync job...`);
 
     try {
-      const adapter = new AuthorizedApiAdapter();
+      const adapter = new CompositeQuestionSourceAdapter();
 
       // Check adapter health first
       const health = await adapter.validateHealth?.();

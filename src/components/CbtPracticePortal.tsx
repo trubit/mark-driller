@@ -980,21 +980,6 @@ export const CbtPracticePortal: React.FC = () => {
                 >
                   View Pro Plans ➔
                 </Link>
-                <Link
-                  to="/portal/activate"
-                  style={{
-                    textDecoration: 'none',
-                    padding: '10px 18px',
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    borderRadius: '6px',
-                    backgroundColor: 'var(--paper)',
-                    color: 'var(--ink)',
-                    border: '1px solid var(--paper-line)',
-                  }}
-                >
-                  Activate PIN
-                </Link>
               </div>
             </section>
           )}

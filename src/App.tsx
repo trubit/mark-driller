@@ -28,10 +28,7 @@ import { VideoLessonsView } from './components/VideoLessonsView.js';
 import { BlogPortal } from './components/BlogPortal.js';
 import { UserProfileView } from './components/UserProfileView.js';
 import { UserSettingsView } from './components/UserSettingsView.js';
-import { ProductsShowcase } from './components/ProductsShowcase.js';
 import { LiteratureNovelsView } from './components/LiteratureNovelsView.js';
-import { OfflineActivationView } from './components/OfflineActivationView.js';
-import { ResellerPortal } from './components/ResellerPortal.js';
 import { ContactPortal } from './components/ContactPortal.js';
 import { FloatingWhatsApp } from './components/FloatingWhatsApp.js';
 import { AuthModal } from './components/AuthModal.js';
@@ -69,16 +66,13 @@ export const App: React.FC = () => {
           {/* ======================================================== */}
           <Route element={<PublicLayout />}>
             <Route path="/" element={<PublicLandingRoute />} />
-            <Route path="/products" element={<ProductsShowcase />} />
             <Route path="/pricing" element={<SubscriptionPlans />} />
             <Route path="/blog" element={<BlogPortal />} />
-            <Route path="/reseller" element={<ResellerPortal />} />
             <Route path="/contact" element={<ContactPortal />} />
 
             {/* Public Academic Discovery & Practice Tools */}
             <Route path="/cbt" element={<CbtPracticePortal />} />
             <Route path="/novels" element={<LiteratureNovelsView />} />
-            <Route path="/activate" element={<OfflineActivationView />} />
             <Route path="/questions" element={<QuestionCatalog />} />
             <Route path="/materials" element={<StudyMaterialsView />} />
             <Route path="/post-utme" element={<PostUtmePortal />} />
@@ -218,14 +212,6 @@ export const App: React.FC = () => {
               }
             />
             <Route
-              path="/portal/activate"
-              element={
-                <ProtectedRoute allowedRoles={['STUDENT', 'ADMIN']}>
-                  <OfflineActivationView />
-                </ProtectedRoute>
-              }
-            />
-            <Route
               path="/portal/formulas"
               element={
                 <ProtectedRoute allowedRoles={['STUDENT', 'ADMIN']}>
@@ -270,22 +256,6 @@ export const App: React.FC = () => {
               element={
                 <ProtectedRoute allowedRoles={['STUDENT', 'ADMIN']}>
                   <BlogPortal />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/portal/products"
-              element={
-                <ProtectedRoute allowedRoles={['STUDENT', 'ADMIN']}>
-                  <ProductsShowcase />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/portal/reseller"
-              element={
-                <ProtectedRoute allowedRoles={['STUDENT', 'ADMIN']}>
-                  <ResellerPortal />
                 </ProtectedRoute>
               }
             />

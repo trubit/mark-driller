@@ -62,8 +62,8 @@ export const Hero: React.FC = () => {
             >
               Start practising free
             </button>
-            <Link to="/products" className="btn-custom btn-custom-ghost btn-custom-lg">
-              Download Offline App 💻
+            <Link to="/cbt" className="btn-custom btn-custom-ghost btn-custom-lg">
+              Explore CBT Simulator 💻
             </Link>
           </div>
 
@@ -91,7 +91,7 @@ export const Hero: React.FC = () => {
             <span>·</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span style={{ color: 'var(--amber)', fontSize: '14px' }}>✓</span>
-              <span>WORKS 100% OFFLINE</span>
+              <span>EXAM-STANDARD CBT ENGINE</span>
             </div>
           </div>
         </div>
@@ -235,7 +235,7 @@ export const Hero: React.FC = () => {
             }}
           >
             <span style={{ color: '#22c55e' }}>●</span>
-            <span style={{ whiteSpace: 'nowrap' }}>100% OFFLINE APP AVAILABLE</span>
+            <span style={{ whiteSpace: 'nowrap' }}>FULL EXAM SIMULATION ENGINE</span>
           </div>
         </div>
       </div>

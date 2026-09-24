@@ -6,7 +6,6 @@ import fs from 'fs';
 import { Subscription, PlanType } from '../models/Subscription.js';
 import { Payment } from '../models/Payment.js';
 import { User } from '../models/User.js';
-import { ActivationKey } from '../models/ActivationKey.js';
 import { SystemSetting } from '../models/SystemSetting.js';
 import { authenticateToken, requireVerified, AuthenticatedRequest } from '../middleware/auth.js';
 import { sendSubscriptionEmail } from '../services/emailService.js';
@@ -35,10 +34,10 @@ export const SUBSCRIPTION_PLANS = [
   },
   {
     id: 'PRO_MONTHLY',
-    name: 'Pro Monthly Pass',
+    name: '1 Month Pro Pass',
     priceNGN: 3500,
     priceKobo: 350000,
-    billingPeriod: 'per month',
+    billingPeriod: '1 Month',
     description: 'Complete high-stakes preparation suite for JAMB / UTME and WAEC candidates.',
     features: [
       'Unlimited CBT mock examinations with official timer',
@@ -47,17 +46,49 @@ export const SUBSCRIPTION_PLANS = [
       'In-depth syllabus topic mastery & weakness analytics',
       'Downloadable formula sheets and revision summaries',
     ],
+    isPopular: false,
+  },
+  {
+    id: 'PRO_BIMONTHLY',
+    name: '2 Months Intensive Pass',
+    priceNGN: 6500,
+    priceKobo: 650000,
+    billingPeriod: '2 Months (Fixed Duration)',
+    description: 'Two-month dedicated preparation pass for exam revision and multi-subject mocks.',
+    features: [
+      'All Pro features for a fixed 60-day period',
+      'Multi-year past question pooling (2020–2025)',
+      'Advanced timing & shuffle options',
+      'Instant study mode with worked explanations',
+      'Full performance analytics & weakness diagnostics',
+    ],
     isPopular: true,
   },
   {
+    id: 'PRO_QUARTERLY',
+    name: '3 Months Term Scholar',
+    priceNGN: 10000,
+    priceKobo: 1000000,
+    billingPeriod: '3 Months (Quarterly)',
+    description: 'Complete academic term syllabus coverage for secondary & UTME candidates.',
+    features: [
+      'All Pro features for full 90-day term',
+      'Unlimited CBT timed mocks & study mode',
+      'Priority offline study material access',
+      'Topic-by-topic mastery tracking',
+      'Save ₦500 compared to monthly renewal',
+    ],
+    isPopular: false,
+  },
+  {
     id: 'PRO_ANNUAL',
-    name: 'Pro Annual Scholar',
+    name: '1 Year Annual Scholar',
     priceNGN: 25000,
     priceKobo: 2500000,
-    billingPeriod: 'per year (Save 40%)',
-    description: 'Full-year comprehensive coverage for Post-UTME, WAEC, and university admissions.',
+    billingPeriod: '1 Year (Save 40%)',
+    description: 'Full-year comprehensive coverage for Post-UTME, WAEC, NECO and university admissions.',
     features: [
-      'All Pro Monthly features included',
+      'All Pro features included for 365 days',
       'Post-UTME university-specific screening drills',
       'Offline PDF download bundles for all subjects',
       'Dedicated academic counseling webinars',
@@ -66,6 +97,20 @@ export const SUBSCRIPTION_PLANS = [
     isPopular: false,
   },
 ];
+
+export function getPlanDurationDays(plan: PlanType): number {
+  switch (plan) {
+    case 'PRO_ANNUAL':
+      return 365;
+    case 'PRO_QUARTERLY':
+      return 90;
+    case 'PRO_BIMONTHLY':
+      return 60;
+    case 'PRO_MONTHLY':
+    default:
+      return 30;
+  }
+}
 
 // GET /api/subscriptions/plans — Public subscription tiers
 router.get('/plans', (_req: Request, res: Response) => {
@@ -200,7 +245,7 @@ router.post('/webhook', async (req: Request, res: Response): Promise<void> => {
       await payment.save();
 
       const plan: PlanType = payment.metadata?.plan || 'PRO_MONTHLY';
-      const durationDays = plan === 'PRO_ANNUAL' ? 365 : 30;
+      const durationDays = getPlanDurationDays(plan);
       const startDate = new Date();
       const endDate = new Date(startDate.getTime() + durationDays * 24 * 60 * 60 * 1000);
 
@@ -302,7 +347,7 @@ router.get('/my-subscription', async (req: AuthenticatedRequest, res: Response, 
 });
 
 const initializeSchema = z.object({
-  plan: z.enum(['PRO_MONTHLY', 'PRO_ANNUAL']),
+  plan: z.enum(['PRO_MONTHLY', 'PRO_BIMONTHLY', 'PRO_QUARTERLY', 'PRO_ANNUAL']),
 });
 
 // POST /api/subscriptions/initialize — Generate Paystack transaction reference
@@ -433,7 +478,7 @@ router.post('/verify', async (req: AuthenticatedRequest, res: Response, next: Ne
     await payment.save();
 
     const plan: PlanType = payment.metadata?.plan || 'PRO_MONTHLY';
-    const durationDays = plan === 'PRO_ANNUAL' ? 365 : 30;
+    const durationDays = getPlanDurationDays(plan);
 
     const startDate = new Date();
     const endDate = new Date(startDate.getTime() + durationDays * 24 * 60 * 60 * 1000);
@@ -487,7 +532,7 @@ router.post('/verify', async (req: AuthenticatedRequest, res: Response, next: Ne
 });
 
 const manualProofSchema = z.object({
-  plan: z.enum(['PRO_MONTHLY', 'PRO_ANNUAL']),
+  plan: z.enum(['PRO_MONTHLY', 'PRO_BIMONTHLY', 'PRO_QUARTERLY', 'PRO_ANNUAL']),
   depositorName: z.string().trim().min(2, 'Depositor name must be at least 2 characters'),
   bankName: z.string().trim().min(2, 'Bank name is required'),
   amountPaidNGN: z.number().positive('Amount paid must be greater than zero'),
@@ -636,116 +681,6 @@ router.post(
           plan: data.plan,
           amountPaidNGN: data.amountPaidNGN,
           submittedAt: payment.createdAt,
-        },
-      });
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        res.status(400).json({
-          success: false,
-          error: { message: 'Validation failed', details: error.flatten().fieldErrors },
-        });
-        return;
-      }
-      next(error);
-    }
-  }
-);
-
-// POST /api/subscriptions/redeem-pin — Redeem a physical scratch card PIN or reseller activation key
-const redeemPinSchema = z.object({
-  pinCode: z
-    .string()
-    .min(6, 'Valid PIN or activation code is required')
-    .max(64, 'Activation key exceeds maximum length')
-    .regex(/^[A-Za-z0-9\-_ ]+$/, 'PIN must contain valid alphanumeric characters only'),
-});
-
-router.post(
-  '/redeem-pin',
-  authenticateToken,
-  requireVerified,
-  async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
-    try {
-      const { pinCode } = redeemPinSchema.parse(req.body);
-      const cleanCode = pinCode.trim().toUpperCase();
-
-      const key = await ActivationKey.findOne({ code: cleanCode });
-      if (!key) {
-        res.status(404).json({
-          success: false,
-          error: { message: 'Invalid scratch card PIN or product activation key. Please check and try again.' },
-        });
-        return;
-      }
-
-      if (key.isRedeemed) {
-        res.status(400).json({
-          success: false,
-          error: { message: 'This activation key has already been redeemed on another account.' },
-        });
-        return;
-      }
-
-      const userId = req.user!._id;
-      const durationMs = (key.durationDays || 30) * 24 * 60 * 60 * 1000;
-      const now = new Date();
-      const expiryDate = new Date(now.getTime() + durationMs);
-
-      // Update or create Subscription
-      let subscription = await Subscription.findOne({ userId });
-      if (subscription) {
-        subscription.plan = key.plan;
-        subscription.status = 'ACTIVE';
-        subscription.startDate = now;
-        subscription.endDate = expiryDate;
-        await subscription.save();
-      } else {
-        subscription = await Subscription.create({
-          userId,
-          plan: key.plan,
-          status: 'ACTIVE',
-          startDate: now,
-          endDate: expiryDate,
-        });
-      }
-
-      // Update User profile
-      await User.findByIdAndUpdate(userId, {
-        subscriptionStatus: 'ACTIVE',
-        subscriptionPlan: key.plan,
-        subscriptionEndDate: expiryDate,
-      });
-
-      // Mark Key as redeemed
-      key.isRedeemed = true;
-      key.redeemedBy = userId;
-      key.redeemedAt = now;
-      await key.save();
-
-      // Log payment audit entry
-      await Payment.create({
-        userId,
-        reference: `PIN-${key.code}-${Date.now()}`,
-        amountKobo: key.plan === 'PRO_ANNUAL' ? 2500000 : 350000,
-        currency: 'NGN',
-        provider: 'SCRATCH_CARD_PIN',
-        status: 'SUCCESS',
-        channel: 'pin_redemption',
-        metadata: {
-          keyId: key._id.toString(),
-          batchId: key.batchId || 'RETAIL',
-          resellerName: key.resellerName || 'Direct Scratch Card',
-        },
-      });
-
-      res.status(200).json({
-        success: true,
-        message: `Congratulations! Your ${key.plan.replace('_', ' ')} has been successfully activated.`,
-        data: {
-          plan: key.plan,
-          status: 'ACTIVE',
-          expiryDate: expiryDate.toISOString(),
-          durationDays: key.durationDays,
         },
       });
     } catch (error) {

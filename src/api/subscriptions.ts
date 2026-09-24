@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from './client.js';
 
 export interface PlanTier {
-  id: 'FREE' | 'PRO_MONTHLY' | 'PRO_ANNUAL';
+  id: 'FREE' | 'PRO_MONTHLY' | 'PRO_BIMONTHLY' | 'PRO_QUARTERLY' | 'PRO_ANNUAL';
   name: string;
   priceNGN: number;
   priceKobo: number;
@@ -13,7 +13,7 @@ export interface PlanTier {
 }
 
 export interface UserSubscription {
-  plan: 'FREE' | 'PRO_MONTHLY' | 'PRO_ANNUAL';
+  plan: 'FREE' | 'PRO_MONTHLY' | 'PRO_BIMONTHLY' | 'PRO_QUARTERLY' | 'PRO_ANNUAL';
   status: 'ACTIVE' | 'EXPIRED' | 'CANCELLED';
   startDate: string;
   endDate?: string | null;
@@ -42,7 +42,7 @@ export function useMySubscriptionQuery() {
 
 export function useInitializePaymentMutation() {
   return useMutation({
-    mutationFn: (plan: 'PRO_MONTHLY' | 'PRO_ANNUAL') =>
+    mutationFn: (plan: 'PRO_MONTHLY' | 'PRO_BIMONTHLY' | 'PRO_QUARTERLY' | 'PRO_ANNUAL') =>
       apiClient<{
         reference: string;
         amountKobo: number;
@@ -92,7 +92,7 @@ export function useBankDetailsQuery() {
 }
 
 export interface ManualProofPayload {
-  plan: 'PRO_MONTHLY' | 'PRO_ANNUAL';
+  plan: 'PRO_MONTHLY' | 'PRO_BIMONTHLY' | 'PRO_QUARTERLY' | 'PRO_ANNUAL';
   depositorName: string;
   bankName: string;
   amountPaidNGN: number;
@@ -147,26 +147,6 @@ export function useSubmitManualProofMutation() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['subscription'] });
-    },
-  });
-}
-
-export function useRedeemPinMutation() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (pinCode: string) =>
-      apiClient<{
-        plan: string;
-        status: string;
-        expiryDate: string;
-        durationDays: number;
-      }>('/api/subscriptions/redeem-pin', {
-        method: 'POST',
-        body: JSON.stringify({ pinCode }),
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['subscription'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboardStats'] });
     },
   });
 }

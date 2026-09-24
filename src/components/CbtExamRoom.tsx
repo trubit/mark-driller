@@ -23,7 +23,7 @@ export const CbtExamRoom: React.FC = () => {
   const toggleBookmark = useToggleBookmarkMutation();
 
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [answersMap, setAnswersMap] = useState<Record<string, { selectedOption: 'A' | 'B' | 'C' | 'D' | null; markedForReview: boolean }>>({});
+  const [answersMap, setAnswersMap] = useState<Record<string, { selectedOption: 'A' | 'B' | 'C' | 'D' | null; isSkipped?: boolean; markedForReview: boolean }>>({});
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [autoSubmitting, setAutoSubmitting] = useState(false);
@@ -41,10 +41,11 @@ export const CbtExamRoom: React.FC = () => {
 
       setRemainingSeconds(attemptData.remainingSeconds);
 
-      const map: Record<string, { selectedOption: 'A' | 'B' | 'C' | 'D' | null; markedForReview: boolean }> = {};
+      const map: Record<string, { selectedOption: 'A' | 'B' | 'C' | 'D' | null; isSkipped?: boolean; markedForReview: boolean }> = {};
       attemptData.answers.forEach((ans) => {
         map[ans.questionId] = {
           selectedOption: ans.selectedOption,
+          isSkipped: !!ans.isSkipped,
           markedForReview: !!ans.markedForReview,
         };
       });
@@ -232,14 +233,32 @@ export const CbtExamRoom: React.FC = () => {
   };
 
   const handleSelectOption = (opt: 'A' | 'B' | 'C' | 'D') => {
-    const updated = { ...currentAnswer, selectedOption: opt };
+    const updated = { ...currentAnswer, selectedOption: opt, isSkipped: false };
     setAnswersMap((prev) => ({ ...prev, [currentQuestion._id]: updated }));
 
     saveAnswer.mutate({
       questionId: currentQuestion._id,
       selectedOption: opt,
+      isSkipped: false,
       markedForReview: updated.markedForReview,
     });
+  };
+
+  const handleSkipQuestion = () => {
+    if (!currentQuestion) return;
+    const updated = { ...currentAnswer, selectedOption: null, isSkipped: true };
+    setAnswersMap((prev) => ({ ...prev, [currentQuestion._id]: updated }));
+
+    saveAnswer.mutate({
+      questionId: currentQuestion._id,
+      selectedOption: null,
+      isSkipped: true,
+      markedForReview: updated.markedForReview,
+    });
+
+    if (currentIndex < totalQuestions - 1) {
+      setCurrentIndex((prev) => prev + 1);
+    }
   };
 
   const handleToggleReview = () => {
@@ -249,6 +268,7 @@ export const CbtExamRoom: React.FC = () => {
     saveAnswer.mutate({
       questionId: currentQuestion._id,
       selectedOption: currentAnswer.selectedOption,
+      isSkipped: !!currentAnswer.isSkipped,
       markedForReview: updated.markedForReview,
     });
   };
@@ -694,13 +714,33 @@ export const CbtExamRoom: React.FC = () => {
             })}
           </div>
 
-          {/* Practice mode hint/explanation */}
-          {attemptData.mode === 'PRACTICE' && currentQuestion.explanation && (
+          {/* Practice and Study mode hint/explanation (Req 8) */}
+          {(attemptData.mode === 'PRACTICE' || attemptData.mode === 'STUDY') && (
             <div style={{ padding: '14px 18px', backgroundColor: 'var(--paper)', borderRadius: '3px', borderLeft: '4px solid var(--steel)' }}>
-              <strong style={{ fontSize: '13px', fontFamily: "var(--font-sans)", color: 'var(--steel-deep)' }}>
-                CORRECT ANSWER: {currentQuestion.correctAnswer}
-              </strong>
-              <p style={{ margin: '6px 0 0', fontSize: '14px', color: 'var(--ink)' }}>{currentQuestion.explanation}</p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <strong style={{ fontSize: '13px', fontFamily: "var(--font-sans)", color: 'var(--steel-deep)' }}>
+                  {attemptData.mode === 'STUDY' ? '💡 STUDY MODE LEARNING FEEDBACK' : 'CORRECT ANSWER'}: {currentQuestion.correctAnswer || 'Displayed upon submission'}
+                </strong>
+                {attemptData.mode === 'STUDY' && currentAnswer.selectedOption && (
+                  <span
+                    style={{
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      padding: '2px 8px',
+                      borderRadius: '12px',
+                      backgroundColor: currentAnswer.selectedOption === currentQuestion.correctAnswer ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                      color: currentAnswer.selectedOption === currentQuestion.correctAnswer ? '#16a34a' : '#dc2626',
+                    }}
+                  >
+                    {currentAnswer.selectedOption === currentQuestion.correctAnswer ? '✓ Correct Choice' : '✗ Incorrect Choice'}
+                  </span>
+                )}
+              </div>
+              {currentQuestion.explanation && (
+                <p style={{ margin: '6px 0 0', fontSize: '14px', color: 'var(--ink)', lineHeight: 1.5 }}>
+                  {currentQuestion.explanation}
+                </p>
+              )}
             </div>
           )}
 
@@ -716,9 +756,26 @@ export const CbtExamRoom: React.FC = () => {
               ← Previous Question
             </button>
 
-            <span style={{ fontSize: '12px', fontFamily: "var(--font-sans)", color: 'var(--ink-soft)' }}>
-              {saveAnswer.isPending ? 'Autosaving answer...' : 'Answer saved to server ✓'}
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={handleSkipQuestion}
+                className="btn-custom btn-custom-ghost"
+                style={{
+                  color: 'var(--rust)',
+                  borderColor: 'rgba(194, 65, 12, 0.3)',
+                  backgroundColor: currentAnswer.isSkipped ? 'var(--rust-soft)' : 'transparent',
+                  fontWeight: 600,
+                }}
+                title="Skip this question without answering. It will be recorded as Skipped."
+              >
+                ⏭ Skip Question
+              </button>
+
+              <span style={{ fontSize: '12px', fontFamily: "var(--font-sans)", color: 'var(--ink-soft)' }}>
+                {saveAnswer.isPending ? 'Autosaving answer...' : 'Answer saved to server ✓'}
+              </span>
+            </div>
 
             <button
               type="button"
@@ -758,16 +815,16 @@ export const CbtExamRoom: React.FC = () => {
               <span>Answered</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ width: '12px', height: '12px', borderRadius: '2px', backgroundColor: '#fee2e2', border: '1px solid #ef4444' }} />
+              <span>Skipped</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span style={{ width: '12px', height: '12px', borderRadius: '2px', backgroundColor: 'var(--paper)', border: '1px solid var(--paper-line)' }} />
               <span>Unanswered</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span style={{ width: '12px', height: '12px', borderRadius: '2px', backgroundColor: '#fef3e2', border: '1px solid var(--amber)' }} />
               <span>Flagged</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ width: '12px', height: '12px', borderRadius: '2px', backgroundColor: 'var(--ink)' }} />
-              <span>Current</span>
             </div>
           </div>
 
@@ -777,6 +834,7 @@ export const CbtExamRoom: React.FC = () => {
               const ans = answersMap[q._id];
               const isCurrent = idx === currentIndex;
               const hasAnswered = ans && ans.selectedOption !== null;
+              const isSkipped = ans && ans.isSkipped && ans.selectedOption === null;
               const isFlagged = ans && ans.markedForReview;
 
               let bg = 'var(--paper)';
@@ -795,6 +853,10 @@ export const CbtExamRoom: React.FC = () => {
                 bg = '#e4f5ea';
                 border = '1.5px solid #217844';
                 color = '#11532c';
+              } else if (isSkipped) {
+                bg = '#fee2e2';
+                border = '1.5px solid #ef4444';
+                color = '#b91c1c';
               }
 
               return (

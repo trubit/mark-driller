@@ -21,9 +21,12 @@ const startCbtSchema = z.object({
   subjectIds: z.array(z.string()).optional(),
   topicId: z.string().optional(),
   year: z.number().int().min(1970).max(2030).optional(),
+  years: z.array(z.number().int().min(1970).max(2030)).optional(),
+  allYears: z.boolean().optional(),
   difficulty: z.enum(['EASY', 'MEDIUM', 'HARD']).optional(),
+  questionOrder: z.enum(['NORMAL', 'SHUFFLE', 'RANDOM']).default('NORMAL').optional(),
   onlyBookmarked: z.boolean().optional(),
-  mode: z.enum(['PRACTICE', 'TIMED_MOCK']).default('TIMED_MOCK'),
+  mode: z.enum(['PRACTICE', 'TIMED_MOCK', 'STUDY']).default('TIMED_MOCK'),
   drillType: z.enum(['PAST_QUESTION', 'PRACTICE_MOCK', 'BOTH']).optional(),
   durationMinutes: z.number().int().min(5).max(180).default(30),
   questionCount: z.number().int().min(1).max(100).default(10),
@@ -31,7 +34,8 @@ const startCbtSchema = z.object({
 
 const answerCbtSchema = z.object({
   questionId: z.string().min(1, 'Question ID is required'),
-  selectedOption: z.enum(['A', 'B', 'C', 'D']).nullable(),
+  selectedOption: z.enum(['A', 'B', 'C', 'D']).nullable().optional(),
+  isSkipped: z.boolean().optional(),
   markedForReview: z.boolean().optional(),
 });
 
@@ -66,6 +70,7 @@ async function processAttemptSubmission(attempt: any, userId: Types.ObjectId) {
   let correctCount = 0;
   let incorrectCount = 0;
   let unansweredCount = 0;
+  let skippedCount = 0;
 
   const topicMap = new Map<string, { topicId?: Types.ObjectId; topicName: string; total: number; correct: number }>();
   const subjectMap = new Map<string, { subjectId: Types.ObjectId; subjectName: string; subjectCode: string; total: number; correct: number }>();
@@ -107,7 +112,11 @@ async function processAttemptSubmission(attempt: any, userId: Types.ObjectId) {
     const sStat = subjectMap.get(subjKey)!;
     sStat.total += 1;
 
-    if (ans.selectedOption === null || ans.selectedOption === undefined) {
+    if (ans.isSkipped) {
+      skippedCount += 1;
+      unansweredCount += 1;
+      ans.isCorrect = false;
+    } else if (ans.selectedOption === null || ans.selectedOption === undefined) {
       unansweredCount += 1;
       ans.isCorrect = false;
     } else if (ans.selectedOption === q.correctAnswer) {
@@ -163,6 +172,7 @@ async function processAttemptSubmission(attempt: any, userId: Types.ObjectId) {
       correctCount,
       incorrectCount,
       unansweredCount,
+      skippedCount,
       timeSpentSeconds,
       topicBreakdown,
       subjectBreakdown,
@@ -285,7 +295,7 @@ router.post('/start', requireCbtEntitlement(), async (req: AuthenticatedRequest,
         subjectName: q.subjectId?.name || 'Subject',
         subjectCode: q.subjectId?.code || 'SUB',
         imageUrl: q.imageUrl || '',
-        ...(data.mode === 'PRACTICE'
+        ...(data.mode === 'PRACTICE' || data.mode === 'STUDY'
           ? { correctAnswer: q.correctAnswer, explanation: q.explanation }
           : {}),
       }));
@@ -345,7 +355,10 @@ router.post('/start', requireCbtEntitlement(), async (req: AuthenticatedRequest,
       }
       if (data.year) {
         queryFilter.year = data.year;
+      } else if (data.years && data.years.length > 0) {
+        queryFilter.year = { $in: data.years };
       }
+      // If data.allYears is true, no year restriction is applied
       if (data.difficulty) {
         queryFilter.difficulty = data.difficulty;
       }
@@ -386,7 +399,26 @@ router.post('/start', requireCbtEntitlement(), async (req: AuthenticatedRequest,
       questionsPool = questionsPool.concat(subQuestions);
     }
 
-    const questions = questionsPool.slice(0, data.questionCount);
+    // Deterministic question shuffling / randomization against selected pool (Req 12, 14, 40)
+    if (data.questionOrder === 'SHUFFLE' || data.questionOrder === 'RANDOM') {
+      for (let i = questionsPool.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [questionsPool[i], questionsPool[j]] = [questionsPool[j], questionsPool[i]];
+      }
+    }
+
+    // Anti-duplication: enforce unique question IDs (Req 40)
+    const seenIds = new Set<string>();
+    const uniquePool: any[] = [];
+    for (const q of questionsPool) {
+      const qIdStr = q._id.toString();
+      if (!seenIds.has(qIdStr)) {
+        seenIds.add(qIdStr);
+        uniquePool.push(q);
+      }
+    }
+
+    const questions = uniquePool.slice(0, data.questionCount);
     if (questions.length === 0) {
       res.status(400).json({
         success: false,
@@ -466,7 +498,7 @@ router.post('/start', requireCbtEntitlement(), async (req: AuthenticatedRequest,
       subjectName: (q.subjectId as any)?.name || primarySubject.name,
       subjectCode: (q.subjectId as any)?.code || primarySubject.code,
       imageUrl: q.imageUrl || '',
-      ...(data.mode === 'PRACTICE'
+      ...(data.mode === 'PRACTICE' || data.mode === 'STUDY'
         ? { correctAnswer: q.correctAnswer, explanation: q.explanation }
         : {}),
     }));
@@ -651,8 +683,14 @@ router.post('/:attemptId/answer', async (req: AuthenticatedRequest, res: Respons
     // Save answer
     const existing = attempt.answers.find((a) => a.questionId.toString() === data.questionId);
     if (existing) {
-      if (data.selectedOption !== undefined) {
-        existing.selectedOption = data.selectedOption;
+      if (data.isSkipped) {
+        existing.isSkipped = true;
+        existing.selectedOption = null;
+      } else {
+        if (data.selectedOption !== undefined) {
+          existing.selectedOption = data.selectedOption;
+          existing.isSkipped = false;
+        }
       }
       if (data.markedForReview !== undefined) {
         existing.markedForReview = data.markedForReview;
@@ -661,7 +699,8 @@ router.post('/:attemptId/answer', async (req: AuthenticatedRequest, res: Respons
     } else {
       attempt.answers.push({
         questionId: new Types.ObjectId(data.questionId),
-        selectedOption: data.selectedOption,
+        selectedOption: data.isSkipped ? null : (data.selectedOption ?? null),
+        isSkipped: !!data.isSkipped,
         markedForReview: data.markedForReview || false,
         timeSpentSeconds: 0,
         answeredAt: new Date(),

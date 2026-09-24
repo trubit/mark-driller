@@ -24,7 +24,7 @@ import { authenticateToken, requireAdmin, AuthenticatedRequest } from '../middle
 import { STORAGE_DIR_ABSOLUTE, RECEIPTS_DIR_ABSOLUTE } from '../middleware/upload.js';
 import { QuestionIngestionService } from '../services/questionIngestionService.js';
 import { questionSyncScheduler } from '../services/questionSyncScheduler.js';
-import { AuthorizedApiAdapter } from '../services/questionSourceAdapter.js';
+import { CompositeQuestionSourceAdapter } from '../services/questionSourceAdapter.js';
 import { metadataCache } from '../utils/cache.js';
 import { sendSubscriptionEmail } from '../services/emailService.js';
 import { SUBSCRIPTION_PLANS, getDynamicBankDetails } from './subscriptions.js';
@@ -530,26 +530,31 @@ router.get('/questions/sync-status', async (_req: AuthenticatedRequest, res: Res
 const manualSyncSchema = z.object({
   examShortCode: z.string().optional(),
   subjectCode: z.string().optional(),
-  year: z.number().int().optional(),
-  batchSize: z.number().int().min(1).max(200).optional(),
+  year: z.coerce.number().int().optional(),
+  count: z.coerce.number().int().optional(),
+  batchSize: z.coerce.number().int().min(1).max(200).optional(),
 });
 
-router.post('/questions/sync', async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+router.post('/questions/sync', async (req: AuthenticatedRequest, res: Response, _next: NextFunction): Promise<void> => {
   try {
     const params = manualSyncSchema.parse(req.body);
 
     if (params.examShortCode || params.subjectCode) {
-      // Sync specific exam / subject
-      const adapter = new AuthorizedApiAdapter();
+      // Sync specific exam / subject using Composite adapter (falls back to verified curriculum feed)
+      const adapter = new CompositeQuestionSourceAdapter();
       const result = await QuestionIngestionService.ingestFromAdapter(
         adapter,
         {
           examShortCode: params.examShortCode,
           subjectCode: params.subjectCode,
           year: params.year,
-          limit: params.batchSize || 50,
+          limit: params.batchSize || params.count || 50,
         },
-        'MANUAL_ADMIN'
+        'MANUAL_ADMIN',
+        {
+          autoPublish: true,
+          defaultReviewStatus: 'PUBLISHED',
+        }
       );
 
       res.status(200).json({
@@ -562,17 +567,21 @@ router.post('/questions/sync', async (req: AuthenticatedRequest, res: Response, 
 
     // Run full scheduler cycle
     const result = await questionSyncScheduler.runSyncJob('MANUAL_ADMIN');
-    res.status(result.success ? 200 : 400).json({
+    res.status(200).json({
       success: result.success,
       message: result.message,
       data: result.stats,
     });
-  } catch (error) {
+  } catch (error: any) {
     if (error instanceof z.ZodError) {
       res.status(400).json({ success: false, error: { message: 'Validation failed', details: error.flatten().fieldErrors } });
       return;
     }
-    next(error);
+    console.error('[Admin Question Sync Error]:', error);
+    res.status(400).json({
+      success: false,
+      error: { message: error?.message || 'Question synchronization failed.' },
+    });
   }
 });
 
@@ -1538,7 +1547,7 @@ router.get('/subscriptions', async (req: AuthenticatedRequest, res: Response, ne
 });
 
 const modifySubscriptionSchema = z.object({
-  plan: z.enum(['FREE', 'PRO_MONTHLY', 'PRO_ANNUAL']).optional(),
+  plan: z.enum(['FREE', 'PRO_MONTHLY', 'PRO_BIMONTHLY', 'PRO_QUARTERLY', 'PRO_ANNUAL']).optional(),
   status: z.enum(['ACTIVE', 'EXPIRED', 'CANCELLED']).optional(),
   extendDays: z.number().int().optional(),
 });

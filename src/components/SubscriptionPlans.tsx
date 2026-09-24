@@ -9,7 +9,6 @@ import {
   useVerifyPaymentMutation,
   useBankDetailsQuery,
   useSubmitManualProofMutation,
-  useRedeemPinMutation,
   useUploadReceiptMutation,
   PlanTier,
 } from '../api/subscriptions.js';
@@ -26,20 +25,14 @@ export const SubscriptionPlans: React.FC = () => {
   const initializeMutation = useInitializePaymentMutation();
   const verifyMutation = useVerifyPaymentMutation();
   const submitProofMutation = useSubmitManualProofMutation();
-  const redeemPinMutation = useRedeemPinMutation();
 
   const [processingPlan, setProcessingPlan] = useState<string | null>(null);
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
   const [errorNotice, setErrorNotice] = useState<string | null>(null);
 
-  // Scratch Card PIN Redemption State
-  const [showPinModal, setShowPinModal] = useState(false);
-  const [pinInput, setPinInput] = useState('');
-  const [isRedeemingPin, setIsRedeemingPin] = useState(false);
-
   // Manual Transfer Form State
   const [showManualModal, setShowManualModal] = useState(false);
-  const [manualPlan, setManualPlan] = useState<'PRO_MONTHLY' | 'PRO_ANNUAL'>('PRO_MONTHLY');
+  const [manualPlan, setManualPlan] = useState<'PRO_MONTHLY' | 'PRO_BIMONTHLY' | 'PRO_QUARTERLY' | 'PRO_ANNUAL'>('PRO_MONTHLY');
   const [depositorName, setDepositorName] = useState('');
   const [bankName, setBankName] = useState('');
   const [amountPaid, setAmountPaid] = useState('3500');
@@ -80,7 +73,7 @@ export const SubscriptionPlans: React.FC = () => {
     }
   };
 
-  const handleSubscribe = async (planId: 'PRO_MONTHLY' | 'PRO_ANNUAL') => {
+  const handleSubscribe = async (planId: 'PRO_MONTHLY' | 'PRO_BIMONTHLY' | 'PRO_QUARTERLY' | 'PRO_ANNUAL') => {
     if (!isAuthenticated) {
       openAuthModal('signup');
       notifyInfo('Please sign in or create an account to activate your Pro subscription.');
@@ -236,33 +229,6 @@ export const SubscriptionPlans: React.FC = () => {
     }
   };
 
-  const handleRedeemPin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!isAuthenticated) {
-      openAuthModal('signup');
-      notifyInfo('Please sign in or create an account to redeem your activation key.');
-      return;
-    }
-    if (!pinInput.trim()) {
-      notifyError('Please enter your 12-digit scratch card PIN or product activation code.');
-      return;
-    }
-
-    setIsRedeemingPin(true);
-    try {
-      const res = await redeemPinMutation.mutateAsync(pinInput.trim());
-      notifySuccess(res.plan ? `Pass activated! ${res.plan.replace('_', ' ')} is now active.` : 'Pass activated successfully!');
-      setShowPinModal(false);
-      setPinInput('');
-      setSuccessNotice(`Activation successful! Your ${res.plan.replace('_', ' ')} is active until ${new Date(res.expiryDate).toLocaleDateString()}.`);
-      refetchSub();
-    } catch (err: any) {
-      notifyError(err.message || 'Invalid or already redeemed activation key.');
-    } finally {
-      setIsRedeemingPin(false);
-    }
-  };
-
   return (
     <div className="premium-portal-page premium-more-page" style={{ minHeight: '100vh', backgroundColor: 'var(--paper)', display: 'flex', flexDirection: 'column' }}>
       {/* Main Pricing / Subscription Content */}
@@ -333,14 +299,6 @@ export const SubscriptionPlans: React.FC = () => {
               <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                 <button
                   type="button"
-                  onClick={() => setShowPinModal(true)}
-                  className="btn-custom btn-custom-outline"
-                  style={{ fontSize: '12.5px', padding: '8px 14px' }}
-                >
-                  🎟️ Redeem Scratch PIN
-                </button>
-                <button
-                  type="button"
                   onClick={() => {
                     setManualPlan('PRO_ANNUAL');
                     setAmountPaid('15000');
@@ -393,18 +351,6 @@ export const SubscriptionPlans: React.FC = () => {
                   Step-by-step mathematical proofs
                 </div>
               </div>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', background: 'var(--cream, #f7f5ed)', padding: '12px 16px', borderLeft: '4px solid var(--rust)' }}>
-              <div style={{ fontSize: '13px', color: 'var(--ink)' }}>
-                <strong>Need offline access for Windows/Android?</strong> Use your activation key on MarkDriller Offline Desktop App.
-              </div>
-              <a
-                href="/products"
-                style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--rust)', textDecoration: 'none' }}
-              >
-                Download Desktop App →
-              </a>
             </div>
           </div>
         )}
@@ -597,151 +543,10 @@ export const SubscriptionPlans: React.FC = () => {
           </button>
         </div>
 
-        {/* Scratch Card / Activation Key Redemption Card */}
-        <div
-          style={{
-            marginTop: '20px',
-            backgroundColor: 'var(--white)',
-            border: '1.5px solid var(--paper-line)',
-            borderRadius: '4px',
-            padding: '28px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: '20px',
-          }}
-        >
-          <div>
-            <span className="eyebrow" style={{ color: 'var(--rust)', marginBottom: '6px', display: 'block' }}>
-              Physical Scratch Card or Product Key
-            </span>
-            <h3 style={{ fontFamily: "var(--font-sans)", fontSize: '20px', margin: '0 0 6px', color: 'var(--ink)' }}>
-              Redeem Scratch Card / Activation PIN
-            </h3>
-            <p style={{ color: 'var(--ink-soft)', fontSize: '14px', maxWidth: '60ch', margin: 0 }}>
-              Purchased a physical scratch card from your school, CBT centre, or bookshop? Enter your 12-digit PIN to immediately unlock full Pro subscriber access.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              if (!isAuthenticated) {
-                openAuthModal('signup');
-                notifyInfo('Please sign in or create an account to redeem your activation key.');
-                return;
-              }
-              setShowPinModal(true);
-            }}
-            className="btn-custom btn-custom-primary"
-            style={{ padding: '12px 24px', flexShrink: 0 }}
-          >
-            Redeem Activation PIN →
-          </button>
-        </div>
-
         {/* Security & Payment Badge */}
         <div style={{ marginTop: '36px', textAlign: 'center', color: 'var(--slate)', fontSize: '12px', fontFamily: "var(--font-sans)" }}>
           🔒 Secure 256-bit encryption • Processed via Paystack Nigeria or Direct Bank Transfer • Official Educational Preparation
         </div>
-
-        {/* Scratch Card PIN Redemption Modal */}
-        {showPinModal && (
-          <div
-            style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: 'rgba(20,24,28,0.7)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 9999,
-              padding: '16px',
-            }}
-            onClick={() => setShowPinModal(false)}
-          >
-            <div
-              style={{
-                backgroundColor: 'var(--white)',
-                borderRadius: '6px',
-                width: '100%',
-                maxWidth: '480px',
-                padding: 'clamp(18px, 4vw, 32px)',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.25)',
-                maxHeight: 'min(90vh, 90dvh)',
-                overflowY: 'auto',
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-                <div>
-                  <span className="eyebrow" style={{ fontSize: '10.5px' }}>Instant Product Activation</span>
-                  <h3 style={{ fontSize: '20px', margin: '4px 0 0 0', color: 'var(--ink)' }}>
-                    Redeem Scratch Card PIN
-                  </h3>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowPinModal(false)}
-                  style={{ background: 'none', border: 'none', fontSize: '22px', cursor: 'pointer', color: 'var(--ink-soft)' }}
-                >
-                  ✕
-                </button>
-              </div>
-
-              <p style={{ fontSize: '13.5px', color: 'var(--ink-soft)', lineHeight: 1.5, marginBottom: '20px' }}>
-                Gently scratch off the silver panel on the back of your official MarkDriller card and enter the serial activation key below:
-              </p>
-
-              <form onSubmit={handleRedeemPin}>
-                <div style={{ marginBottom: '20px' }}>
-                  <label style={{ display: 'block', fontSize: '12px', fontFamily: "var(--font-sans)", marginBottom: '6px' }}>
-                    12-DIGIT ACTIVATION PIN / CODE *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. MD-PRO-7842-9901"
-                    value={pinInput}
-                    onChange={(e) => setPinInput(e.target.value.toUpperCase())}
-                    style={{
-                      width: '100%',
-                      padding: '12px 14px',
-                      fontSize: '16px',
-                      fontFamily: "var(--font-sans)",
-                      letterSpacing: '2px',
-                      border: '1.5px solid var(--paper-line)',
-                      borderRadius: '4px',
-                      textTransform: 'uppercase',
-                    }}
-                  />
-                </div>
-
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <button
-                    type="submit"
-                    disabled={isRedeemingPin}
-                    className="btn-custom btn-custom-primary"
-                    style={{ flex: 1, padding: '12px', textAlign: 'center', fontSize: '14px' }}
-                  >
-                    {isRedeemingPin ? 'Validating PIN...' : 'Activate Pro Subscription ✓'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowPinModal(false)}
-                    className="btn-custom btn-custom-ghost"
-                    style={{ padding: '12px 16px', fontSize: '13px' }}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
 
         {/* Manual Payment Proof Submission Modal */}
         {showManualModal && (
@@ -825,14 +630,19 @@ export const SubscriptionPlans: React.FC = () => {
                   <select
                     value={manualPlan}
                     onChange={(e) => {
-                      const p = e.target.value as 'PRO_MONTHLY' | 'PRO_ANNUAL';
+                      const p = e.target.value as 'PRO_MONTHLY' | 'PRO_BIMONTHLY' | 'PRO_QUARTERLY' | 'PRO_ANNUAL';
                       setManualPlan(p);
-                      setAmountPaid(p === 'PRO_ANNUAL' ? '25000' : '3500');
+                      if (p === 'PRO_ANNUAL') setAmountPaid('25000');
+                      else if (p === 'PRO_QUARTERLY') setAmountPaid('10000');
+                      else if (p === 'PRO_BIMONTHLY') setAmountPaid('6500');
+                      else setAmountPaid('3500');
                     }}
                     style={{ width: '100%', padding: '10px', borderRadius: '3px', border: '1px solid var(--paper-line)' }}
                   >
-                    <option value="PRO_MONTHLY">Pro Monthly Pass — ₦3,500</option>
-                    <option value="PRO_ANNUAL">Pro Annual Scholar — ₦25,000</option>
+                    <option value="PRO_MONTHLY">1 Month Pro Pass — ₦3,500</option>
+                    <option value="PRO_BIMONTHLY">2 Months Intensive Pass — ₦6,500</option>
+                    <option value="PRO_QUARTERLY">3 Months Term Scholar — ₦10,000</option>
+                    <option value="PRO_ANNUAL">1 Year Annual Scholar — ₦25,000</option>
                   </select>
                 </div>
 

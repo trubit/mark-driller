@@ -1085,13 +1085,6 @@ export const UserSettingsView: React.FC<UserSettingsViewProps> = ({ defaultTab =
                     >
                       {isPro ? 'Extend / Change Tier' : 'Upgrade to Pro ➔'}
                     </Link>
-                    <Link
-                      to="/portal/activate"
-                      className="btn-custom btn-custom-ghost"
-                      style={{ textDecoration: 'none', padding: '10px 18px', fontSize: '13.5px' }}
-                    >
-                      Redeem Scratch Card PIN
-                    </Link>
                   </div>
                 </div>
 

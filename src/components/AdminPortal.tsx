@@ -13,6 +13,7 @@ import {
   useAdminCreateTopicMutation,
   useAdminDeleteTopicMutation,
   useAdminCreateQuestionMutation,
+  useAdminUpdateQuestionMutation,
   useAdminDeleteQuestionMutation,
   useAdminIngestQuestionsMutation,
   useAdminQuestionSyncStatusQuery,
@@ -99,6 +100,24 @@ export const AdminPortal: React.FC = () => {
   const [qExplanation, setQExplanation] = useState('');
   const [qDifficulty, setQDifficulty] = useState<'EASY' | 'MEDIUM' | 'HARD'>('MEDIUM');
 
+  // Questions filter & search state (Req 41, 49)
+  const [qSearchTerm, setQSearchTerm] = useState('');
+  const [qFilterExamId, setQFilterExamId] = useState('');
+  const [qFilterDifficulty, setQFilterDifficulty] = useState('');
+  const [qFilterYear, setQFilterYear] = useState('');
+  const [qPage, setQPage] = useState(1);
+
+  // Question editing modal state (Req 41, 46, 47, 48)
+  const [editingQuestion, setEditingQuestion] = useState<QuestionItem | null>(null);
+  const [editQText, setEditQText] = useState('');
+  const [editQOptA, setEditQOptA] = useState('');
+  const [editQOptB, setEditQOptB] = useState('');
+  const [editQOptC, setEditQOptC] = useState('');
+  const [editQOptD, setEditQOptD] = useState('');
+  const [editQCorrect, setEditQCorrect] = useState<'A' | 'B' | 'C' | 'D'>('A');
+  const [editQDifficulty, setEditQDifficulty] = useState<'EASY' | 'MEDIUM' | 'HARD'>('MEDIUM');
+  const [editQExplanation, setEditQExplanation] = useState('');
+
   // Materials tab form state
   const [matFile, setMatFile] = useState<File | null>(null);
   const [matTitle, setMatTitle] = useState('');
@@ -162,7 +181,14 @@ export const AdminPortal: React.FC = () => {
   const { data: qSubjects } = useExamSubjectsQuery(qExamId || undefined);
   const { data: qTopics } = useSubjectTopicsQuery(qSubjectId || undefined);
   const { data: matSubjects } = useExamSubjectsQuery(matExamId || undefined);
-  const { data: questionsList } = useQuestionsQuery({ limit: 15 });
+  const { data: questionsList, isLoading: questionsLoading } = useQuestionsQuery({
+    search: qSearchTerm || undefined,
+    examId: qFilterExamId || undefined,
+    difficulty: qFilterDifficulty || undefined,
+    year: qFilterYear ? parseInt(qFilterYear, 10) : undefined,
+    page: qPage,
+    limit: 10,
+  });
   const { data: materialsList } = useStudyMaterialsQuery();
   const { data: syncStatusData } = useAdminQuestionSyncStatusQuery();
   const { data: manualPaymentsData, isLoading: manualPaymentsLoading } = useAdminManualPaymentProofsQuery({
@@ -181,6 +207,7 @@ export const AdminPortal: React.FC = () => {
   const createTopicMutation = useAdminCreateTopicMutation();
   const deleteTopicMutation = useAdminDeleteTopicMutation();
   const createQuestionMutation = useAdminCreateQuestionMutation();
+  const updateQuestionMutation = useAdminUpdateQuestionMutation();
   const deleteQuestionMutation = useAdminDeleteQuestionMutation();
   const ingestQuestionsMutation = useAdminIngestQuestionsMutation();
   const triggerSyncMutation = useAdminTriggerQuestionSyncMutation();
@@ -256,6 +283,7 @@ export const AdminPortal: React.FC = () => {
         subjectCode: ingestSubjectCode,
         year: ingestYear,
         count: 20,
+        batchSize: 20,
       });
       setIngestNotice(`✓ ${res.message}`);
       showNotice('success', res.message);
@@ -524,6 +552,44 @@ export const AdminPortal: React.FC = () => {
         }
       },
     });
+  };
+
+  const handleOpenEditQuestion = (q: QuestionItem) => {
+    setEditingQuestion(q);
+    setEditQText(q.questionText);
+    setEditQOptA(q.optionA);
+    setEditQOptB(q.optionB);
+    setEditQOptC(q.optionC);
+    setEditQOptD(q.optionD);
+    setEditQCorrect(q.correctAnswer);
+    setEditQDifficulty(q.difficulty);
+    setEditQExplanation(q.explanation || '');
+  };
+
+  const handleSaveEditQuestion = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingQuestion) return;
+
+    try {
+      await updateQuestionMutation.mutateAsync({
+        questionId: editingQuestion._id,
+        payload: {
+          questionText: editQText,
+          optionA: editQOptA,
+          optionB: editQOptB,
+          optionC: editQOptC,
+          optionD: editQOptD,
+          correctAnswer: editQCorrect,
+          difficulty: editQDifficulty,
+          explanation: editQExplanation,
+        },
+      });
+
+      showNotice('success', `Question #${editingQuestion.questionNumber} successfully updated.`);
+      setEditingQuestion(null);
+    } catch (err: any) {
+      showNotice('error', err.message || 'Failed to update question.');
+    }
   };
 
   const handleUploadMaterial = async (e: React.FormEvent) => {
@@ -1388,25 +1454,280 @@ export const AdminPortal: React.FC = () => {
               </form>
             </div>
 
-            {/* List Questions */}
+            {/* List Questions with Search, Filter & Edit Modal (Req 41, 46-51) */}
             <div style={{ background: 'var(--white)', border: '1px solid var(--ink)', padding: '24px', boxShadow: '3px 3px 0 var(--ink)' }}>
-              <h3 style={{ fontFamily: "var(--font-sans)", fontSize: '18px', margin: '0 0 16px' }}>Question Bank Entries</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {questionsList?.questions.map((q: QuestionItem) => (
-                  <div key={q._id} style={{ border: '1px solid var(--cream-deep)', padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div>
-                      <span style={{ fontSize: '11px', fontFamily: "var(--font-sans)", color: 'var(--rust)', fontWeight: 700 }}>
-                        {q.examId?.shortCode} • {q.subjectId?.name} • Year {q.year} (Q{q.questionNumber})
-                      </span>
-                      <p style={{ margin: '6px 0 0', fontSize: '14px', color: 'var(--ink)' }}>{q.questionText}</p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
+                <h3 style={{ fontFamily: "var(--font-sans)", fontSize: '18px', margin: 0 }}>
+                  Question Bank Archive ({questionsList?.pagination?.total || 0} Total Entries)
+                </h3>
+              </div>
+
+              {/* Filters Header (Req 49) */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px', marginBottom: '16px', background: 'var(--paper)', padding: '12px', border: '1px solid var(--paper-line)', borderRadius: '4px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '11px', fontFamily: "var(--font-sans)", color: 'var(--ink-soft)', marginBottom: '3px' }}>Search Question</label>
+                  <input
+                    type="text"
+                    value={qSearchTerm}
+                    onChange={(e) => { setQSearchTerm(e.target.value); setQPage(1); }}
+                    placeholder="Search keywords..."
+                    style={{ width: '100%', padding: '6px 8px', fontSize: '12px', border: '1px solid var(--paper-line)', borderRadius: '3px' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '11px', fontFamily: "var(--font-sans)", color: 'var(--ink-soft)', marginBottom: '3px' }}>Exam Board</label>
+                  <select
+                    value={qFilterExamId}
+                    onChange={(e) => { setQFilterExamId(e.target.value); setQPage(1); }}
+                    style={{ width: '100%', padding: '6px 8px', fontSize: '12px', border: '1px solid var(--paper-line)', borderRadius: '3px' }}
+                  >
+                    <option value="">All Boards</option>
+                    {exams?.map((e: ExamItem) => (
+                      <option key={e._id} value={e._id}>{e.shortCode}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '11px', fontFamily: "var(--font-sans)", color: 'var(--ink-soft)', marginBottom: '3px' }}>Difficulty</label>
+                  <select
+                    value={qFilterDifficulty}
+                    onChange={(e) => { setQFilterDifficulty(e.target.value); setQPage(1); }}
+                    style={{ width: '100%', padding: '6px 8px', fontSize: '12px', border: '1px solid var(--paper-line)', borderRadius: '3px' }}
+                  >
+                    <option value="">All Difficulties</option>
+                    <option value="EASY">Easy</option>
+                    <option value="MEDIUM">Medium</option>
+                    <option value="HARD">Hard</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '11px', fontFamily: "var(--font-sans)", color: 'var(--ink-soft)', marginBottom: '3px' }}>Year</label>
+                  <input
+                    type="number"
+                    value={qFilterYear}
+                    onChange={(e) => { setQFilterYear(e.target.value); setQPage(1); }}
+                    placeholder="e.g. 2024"
+                    style={{ width: '100%', padding: '6px 8px', fontSize: '12px', border: '1px solid var(--paper-line)', borderRadius: '3px' }}
+                  />
+                </div>
+              </div>
+
+              {questionsLoading ? (
+                <div style={{ padding: '24px', textAlign: 'center', fontSize: '13px', color: 'var(--ink-soft)' }}>
+                  Loading question bank entries...
+                </div>
+              ) : questionsList?.questions && questionsList.questions.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {questionsList.questions.map((q: QuestionItem) => (
+                    <div key={q._id} style={{ border: '1px solid var(--cream-deep)', padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
+                      <div style={{ flex: 1, minWidth: '260px' }}>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '4px' }}>
+                          <span style={{ fontSize: '11px', fontFamily: "var(--font-sans)", color: 'var(--rust)', fontWeight: 700 }}>
+                            {q.examId?.shortCode} • {q.subjectId?.name} • Year {q.year} (Q{q.questionNumber})
+                          </span>
+                          <span style={{ fontSize: '10px', background: 'var(--paper)', border: '1px solid var(--paper-line)', padding: '1px 6px', borderRadius: '2px', fontWeight: 600 }}>
+                            {q.difficulty}
+                          </span>
+                          <span style={{ fontSize: '10px', background: 'rgba(34, 197, 94, 0.1)', color: '#16a34a', border: '1px solid rgba(34, 197, 94, 0.3)', padding: '1px 6px', borderRadius: '2px', fontWeight: 700 }}>
+                            Key: {q.correctAnswer}
+                          </span>
+                        </div>
+                        <p style={{ margin: '6px 0 8px', fontSize: '14px', color: 'var(--ink)', lineHeight: 1.5 }}>
+                          {q.questionText}
+                        </p>
+                        {q.explanation && (
+                          <div style={{ fontSize: '12px', color: 'var(--ink-soft)', background: 'var(--paper)', padding: '6px 10px', borderRadius: '3px', borderLeft: '3px solid var(--steel)' }}>
+                            💡 {q.explanation}
+                          </div>
+                        )}
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditQuestion(q)}
+                          style={{ padding: '5px 10px', background: 'var(--paper)', border: '1px solid var(--ink)', color: 'var(--ink)', fontSize: '11px', fontWeight: 600, cursor: 'pointer', borderRadius: '2px' }}
+                        >
+                          ✎ Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteQuestion(q._id, q.questionNumber)}
+                          style={{ padding: '5px 10px', background: 'var(--rust-soft)', border: '1px solid var(--rust)', color: 'var(--rust)', fontSize: '11px', cursor: 'pointer', borderRadius: '2px' }}
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
-                    <button onClick={() => handleDeleteQuestion(q._id, q.questionNumber)} style={{ padding: '4px 8px', background: 'var(--rust-soft)', border: '1px solid var(--rust)', color: 'var(--rust)', fontSize: '11px', cursor: 'pointer', flexShrink: 0, marginLeft: '12px' }}>
-                      Delete
+                  ))}
+
+                  {/* Pagination */}
+                  {questionsList.pagination && questionsList.pagination.totalPages > 1 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '12px', borderTop: '1px solid var(--paper-line)' }}>
+                      <button
+                        type="button"
+                        disabled={!questionsList.pagination.hasPrevPage}
+                        onClick={() => setQPage((prev) => Math.max(1, prev - 1))}
+                        className="btn-custom btn-custom-ghost"
+                        style={{ opacity: questionsList.pagination.hasPrevPage ? 1 : 0.4, padding: '4px 12px', fontSize: '12px' }}
+                      >
+                        ← Previous
+                      </button>
+                      <span style={{ fontSize: '12px', fontFamily: "var(--font-sans)", color: 'var(--ink-soft)' }}>
+                        Page {questionsList.pagination.page} of {questionsList.pagination.totalPages}
+                      </span>
+                      <button
+                        type="button"
+                        disabled={!questionsList.pagination.hasNextPage}
+                        onClick={() => setQPage((prev) => prev + 1)}
+                        className="btn-custom btn-custom-ghost"
+                        style={{ opacity: questionsList.pagination.hasNextPage ? 1 : 0.4, padding: '4px 12px', fontSize: '12px' }}
+                      >
+                        Next →
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div style={{ padding: '32px', textAlign: 'center', color: 'var(--ink-soft)', fontSize: '13px' }}>
+                  No questions match your current search and filter criteria.
+                </div>
+              )}
+            </div>
+
+            {/* Edit Question Modal (Section 41, 46, 47, 48) */}
+            {editingQuestion && (
+              <div
+                style={{
+                  position: 'fixed',
+                  inset: 0,
+                  backgroundColor: 'rgba(11, 17, 32, 0.75)',
+                  backdropFilter: 'blur(3px)',
+                  zIndex: 9999,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '16px',
+                  overflowY: 'auto',
+                }}
+                onClick={() => setEditingQuestion(null)}
+              >
+                <div
+                  style={{
+                    backgroundColor: 'var(--white)',
+                    border: '1.5px solid var(--ink)',
+                    borderRadius: '6px',
+                    width: '100%',
+                    maxWidth: '580px',
+                    padding: '24px',
+                    boxShadow: '0 20px 48px rgba(0,0,0,0.35)',
+                    maxHeight: 'min(90vh, 90dvh)',
+                    overflowY: 'auto',
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                    <h3 style={{ margin: 0, fontFamily: "var(--font-sans)", fontSize: '18px' }}>
+                      Edit Question #{editingQuestion.questionNumber} ({editingQuestion.examId?.shortCode} • {editingQuestion.year})
+                    </h3>
+                    <button type="button" onClick={() => setEditingQuestion(null)} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--ink-soft)' }}>
+                      ✕
                     </button>
                   </div>
-                ))}
+
+                  <form onSubmit={handleSaveEditQuestion}>
+                    <div style={{ marginBottom: '12px' }}>
+                      <label style={{ display: 'block', fontSize: '11px', fontFamily: "var(--font-sans)", fontWeight: 700, marginBottom: '4px' }}>
+                        Question Text *
+                      </label>
+                      <textarea
+                        required
+                        rows={3}
+                        value={editQText}
+                        onChange={(e) => setEditQText(e.target.value)}
+                        style={{ width: '100%', padding: '8px', border: '1px solid var(--paper-line)', borderRadius: '3px', fontSize: '13px', fontFamily: 'inherit' }}
+                      />
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '12px' }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, marginBottom: '2px' }}>Option A</label>
+                        <input type="text" required value={editQOptA} onChange={(e) => setEditQOptA(e.target.value)} style={{ width: '100%', padding: '6px', border: '1px solid var(--paper-line)', borderRadius: '3px', fontSize: '12px' }} />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, marginBottom: '2px' }}>Option B</label>
+                        <input type="text" required value={editQOptB} onChange={(e) => setEditQOptB(e.target.value)} style={{ width: '100%', padding: '6px', border: '1px solid var(--paper-line)', borderRadius: '3px', fontSize: '12px' }} />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, marginBottom: '2px' }}>Option C</label>
+                        <input type="text" required value={editQOptC} onChange={(e) => setEditQOptC(e.target.value)} style={{ width: '100%', padding: '6px', border: '1px solid var(--paper-line)', borderRadius: '3px', fontSize: '12px' }} />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, marginBottom: '2px' }}>Option D</label>
+                        <input type="text" required value={editQOptD} onChange={(e) => setEditQOptD(e.target.value)} style={{ width: '100%', padding: '6px', border: '1px solid var(--paper-line)', borderRadius: '3px', fontSize: '12px' }} />
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, marginBottom: '2px' }}>Correct Answer Key *</label>
+                        <select
+                          value={editQCorrect}
+                          onChange={(e) => setEditQCorrect(e.target.value as any)}
+                          style={{ width: '100%', padding: '6px', border: '1px solid var(--paper-line)', borderRadius: '3px', fontSize: '12px' }}
+                        >
+                          <option value="A">Option A</option>
+                          <option value="B">Option B</option>
+                          <option value="C">Option C</option>
+                          <option value="D">Option D</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, marginBottom: '2px' }}>Difficulty</label>
+                        <select
+                          value={editQDifficulty}
+                          onChange={(e) => setEditQDifficulty(e.target.value as any)}
+                          style={{ width: '100%', padding: '6px', border: '1px solid var(--paper-line)', borderRadius: '3px', fontSize: '12px' }}
+                        >
+                          <option value="EASY">EASY</option>
+                          <option value="MEDIUM">MEDIUM</option>
+                          <option value="HARD">HARD</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div style={{ marginBottom: '16px' }}>
+                      <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, marginBottom: '2px' }}>Explanation / Worked Solution</label>
+                      <textarea
+                        rows={3}
+                        value={editQExplanation}
+                        onChange={(e) => setEditQExplanation(e.target.value)}
+                        placeholder="Step-by-step worked mathematical proof or syllabus explanation..."
+                        style={{ width: '100%', padding: '8px', border: '1px solid var(--paper-line)', borderRadius: '3px', fontSize: '12px', fontFamily: 'inherit' }}
+                      />
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                      <button type="button" onClick={() => setEditingQuestion(null)} className="btn-custom btn-custom-ghost">
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={updateQuestionMutation.isPending}
+                        className="btn-custom btn-custom-primary"
+                        style={{ padding: '8px 18px', fontSize: '13px' }}
+                      >
+                        {updateQuestionMutation.isPending ? 'Saving Updates...' : 'Save Question Changes ✓'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         )}
 

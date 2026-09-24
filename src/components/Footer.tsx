@@ -36,15 +36,15 @@ export const Footer: React.FC = () => {
             </ul>
           </div>
 
-          {/* Col 3: Educational Tools & Apps */}
+          {/* Col 3: Educational Tools */}
           <div className="foot-col">
             <h4 style={{ fontSize: '13px', fontFamily: "var(--font-sans)", letterSpacing: '1px', textTransform: 'uppercase', color: '#ffffff', marginBottom: '14px' }}>
-              Products &amp; Software
+              Learning Tools
             </h4>
             <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px' }}>
-              <li><Link to="/products">Windows PC Offline App</Link></li>
-              <li><Link to="/products">Android Mobile APK</Link></li>
-              <li><Link to="/activate">Activate Scratch Card PIN</Link></li>
+              <li><Link to="/cbt">CBT Exam Simulator</Link></li>
+              <li><Link to="/materials">Curriculum Notes &amp; PDFs</Link></li>
+              <li><Link to="/dictionary">Academic Term Dictionary</Link></li>
               <li><Link to="/flashcards">Interactive Flashcards</Link></li>
               <li><Link to="/formulas">Science &amp; Math Notebook</Link></li>
               <li><Link to="/challenge">Weekly UTME Sprint</Link></li>
@@ -57,8 +57,8 @@ export const Footer: React.FC = () => {
               Partners &amp; Support
             </h4>
             <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px' }}>
-              <li><Link to="/reseller">Become a Reseller (50% Margin)</Link></li>
-              <li><Link to="/products">School &amp; CBT Centre Server</Link></li>
+              <li><Link to="/contact">Institutional Partnerships</Link></li>
+              <li><Link to="/blog">Academic Blog &amp; Guides</Link></li>
               <li><Link to="/schools">Nigerian School Finder</Link></li>
               <li><Link to="/careers">JAMB Subject Combinations</Link></li>
               <li><Link to="/contact">24/7 Helpline &amp; WhatsApp</Link></li>

@@ -45,8 +45,7 @@ const SEARCH_DATABASE: SearchEntry[] = [
   { id: 'settings', title: 'Account Settings & Preferences', category: 'Account & Billing', path: '/settings', icon: '⚙️', keywords: ['password', 'phone', 'state', 'preferences'] },
   { id: 'bookmarks', title: 'Saved Bookmarks & Tricky Questions', category: 'Account & Billing', path: '/settings?tab=bookmarks', icon: '📑', keywords: ['saved', 'favorites', 'revision', 'tricky'] },
   { id: 'history', title: 'Full CBT Attempt & Score History', category: 'Account & Billing', path: '/settings?tab=history', icon: '📝', keywords: ['records', 'past results', 'mock history', 'grades'] },
-  { id: 'pricing', title: 'Pro Scholar Subscription & Pass Plans', category: 'Account & Billing', path: '/portal/pricing', icon: '★', keywords: ['upgrade', 'billing', 'paystack', 'scratch card', 'activation'] },
-  { id: 'activate', title: 'Redeem Physical Scratch Card PIN', category: 'Account & Billing', path: '/portal/activate', icon: '🏷️', keywords: ['reseller', 'scratch card', 'pin', 'token'] },
+  { id: 'pricing', title: 'Pro Scholar Subscription & Pass Plans', category: 'Account & Billing', path: '/portal/pricing', icon: '★', keywords: ['upgrade', 'billing', 'paystack', 'bank transfer', 'subscription'] },
   { id: 'contact', title: 'Customer Support & WhatsApp Helpdesk', category: 'Account & Billing', path: '/portal/contact', icon: '💬', keywords: ['help', 'enquiries', 'whatsapp', 'support'] },
 ];
 

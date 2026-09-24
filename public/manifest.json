@@ -1,0 +1,31 @@
+{
+  "short_name": "MarkDriller",
+  "name": "MarkDriller CBT & Examination Platform",
+  "description": "Comprehensive CBT Practice, Mock Examinations, and Past Questions for WAEC, NECO, and JAMB/UTME candidates.",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/logos/jamb.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/logos/neco.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any"
+    }
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0b1120",
+  "theme_color": "#c2410c",
+  "categories": ["education", "productivity"]
+}

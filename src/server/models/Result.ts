@@ -29,6 +29,7 @@ export interface IResult extends Document {
   correctCount: number;
   incorrectCount: number;
   unansweredCount: number;
+  skippedCount?: number;
   timeSpentSeconds: number;
   topicBreakdown: ITopicScore[];
   subjectBreakdown?: ISubjectScore[];
@@ -107,6 +108,10 @@ const ResultSchema = new Schema<IResult>(
     unansweredCount: {
       type: Number,
       required: true,
+    },
+    skippedCount: {
+      type: Number,
+      default: 0,
     },
     timeSpentSeconds: {
       type: Number,

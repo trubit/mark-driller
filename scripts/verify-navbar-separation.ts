@@ -148,14 +148,11 @@ async function runNavbarAudit() {
     );
     const publicRoutes = [
       'path="/"',
-      'path="/products"',
       'path="/pricing"',
       'path="/blog"',
-      'path="/reseller"',
       'path="/contact"',
       'path="/cbt"',
       'path="/novels"',
-      'path="/activate"',
       'path="/questions"',
       'path="/materials"',
       'path="/post-utme"',
@@ -166,6 +163,23 @@ async function runNavbarAudit() {
     ];
     for (const route of publicRoutes) {
       check(`Public Route Present: ${route}`, appContent.includes(route), `Public route ${route} is registered`);
+    }
+
+    // Verify Decommissioned Routes are permanently removed
+    const decommissionedRoutes = [
+      'path="/products"',
+      'path="/reseller"',
+      'path="/activate"',
+      'path="/portal/activate"',
+      'path="/portal/products"',
+      'path="/portal/reseller"',
+    ];
+    for (const route of decommissionedRoutes) {
+      check(
+        `Decommissioned Route Absent: ${route}`,
+        !appContent.includes(route),
+        `Route ${route} has been permanently decommissioned and is not present in App.tsx`
+      );
     }
 
     // Group 2: StudentPortalLayout Route Nesting
@@ -284,6 +298,20 @@ async function runNavbarAudit() {
     rogueFooterCount === 0,
     `No dashboard/portal page components render marketing <Footer /> directly (found: ${rogueFooterCount})`
   );
+
+  const decommissionedFiles = [
+    'OfflineActivationView.tsx',
+    'ProductsShowcase.tsx',
+    'ResellerPortal.tsx',
+  ];
+  for (const f of decommissionedFiles) {
+    const fPath = path.join(componentsDir, f);
+    check(
+      `Decommissioned File Deleted: ${f}`,
+      !fs.existsSync(fPath),
+      `File ${f} is permanently deleted from src/components`
+    );
+  }
 
   // =========================================================================
   // 4. FORBIDDEN CSS & PATHNAME HACKS AUDIT

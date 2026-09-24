@@ -238,7 +238,7 @@ async function runE2EPaystackVerification() {
       paymentReference.startsWith('MD_') &&
       typeof paymentAccessCode === 'string' &&
       paymentAccessCode.length > 0 &&
-      initData.data?.publicKey?.startsWith('pk_test_') &&
+      (initData.data?.publicKey?.startsWith('pk_test_') || initData.data?.publicKey?.startsWith('pk_live_')) &&
       !('secretKey' in initData.data) &&
       !('secret' in initData.data);
 

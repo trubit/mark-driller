@@ -6,6 +6,8 @@
   <title>Mark Driller — Drill down. Hit the mark.</title>
   <meta name="description" content="Study materials, past questions and full CBT simulations for WAEC, NECO, JAMB/UTME and university exams — built for secondary and university students across West Africa.">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#c2410c">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -13,5 +15,14 @@
 <body>
   <div id="root"></div>
   <script type="module" src="/src/main.tsx"></script>
+  <script>
+    if ('serviceWorker' in navigator && window.location.protocol === 'https:') {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('/sw.js').catch(function(err) {
+          console.warn('[SW Registration Notice]', err);
+        });
+      });
+    }
+  </script>
 </body>
 </html>

@@ -13,7 +13,6 @@ if (!MONGODB_URI) {
 
 import { User } from '../src/server/models/User.js';
 import { Subscription } from '../src/server/models/Subscription.js';
-import { ActivationKey } from '../src/server/models/ActivationKey.js';
 import { Payment } from '../src/server/models/Payment.js';
 import { Exam } from '../src/server/models/Exam.js';
 import { Question } from '../src/server/models/Question.js';
@@ -76,25 +75,21 @@ async function runVerification() {
   console.log(`  ✓ Completed CBT Mock Attempts: ${totalAttempts}`);
   console.log(`  ✓ Enrolled Students: ${totalStudents}`);
 
-  // 4. Test Activation Key / Scratch Card Lifecycle
-  console.log('\n--- 4. TESTING SCRATCH CARD / ACTIVATION PIN LIFECYCLE ---');
-  const testCode = `MD-TEST-${Date.now().toString().slice(-6)}`;
-  const testKey = await ActivationKey.create({
-    code: testCode,
-    plan: 'PRO_MONTHLY',
-    durationDays: 30,
-    batchId: 'VERIFICATION_BATCH',
-    resellerName: 'Automated Test Reseller',
-    notes: 'Generated during headless platform verification',
-  });
-  console.log(`  ✓ Created test activation PIN: ${testKey.code} (Plan: ${testKey.plan}, 30 days)`);
+  // 4. Test Digital Subscription Lifecycle & Decommission Audit
+  console.log('\n--- 4. TESTING DIGITAL SUBSCRIPTION LIFECYCLE & DECOMMISSION AUDIT ---');
+  // Confirm ActivationKey model is deleted from source
+  const activationKeyFile = path.resolve(process.cwd(), 'src/server/models/ActivationKey.ts');
+  if (fs.existsSync(activationKeyFile)) {
+    throw new Error('CRITICAL: src/server/models/ActivationKey.ts still exists! Voucher/PIN model must be decommissioned.');
+  }
+  console.log('  ✓ Verified: ActivationKey model permanently decommissioned from codebase.');
 
   // Find or create a test student user
-  let testUser = await User.findOne({ email: 'pin-tester@markdriller.com' });
+  let testUser = await User.findOne({ email: 'sub-tester@markdriller.com' });
   if (!testUser) {
     testUser = await User.create({
-      email: 'pin-tester@markdriller.com',
-      fullName: 'PIN Test Student',
+      email: 'sub-tester@markdriller.com',
+      fullName: 'Subscription Test Student',
       passwordHash: '$2a$10$dummyhashforverificationpurposesonly1234567890',
       role: 'STUDENT',
       isVerified: true,
@@ -104,14 +99,14 @@ async function runVerification() {
     console.log(`  ✓ Created test student: ${testUser.email}`);
   }
 
-  // Redeem key
+  // Create digital subscription
   const durationMs = 30 * 24 * 60 * 60 * 1000;
   const now = new Date();
   const expiryDate = new Date(now.getTime() + durationMs);
 
   let sub = await Subscription.findOne({ userId: testUser._id });
   if (sub) {
-    sub.plan = testKey.plan;
+    sub.plan = 'PRO_MONTHLY';
     sub.status = 'ACTIVE';
     sub.startDate = now;
     sub.endDate = expiryDate;
@@ -119,44 +114,31 @@ async function runVerification() {
   } else {
     sub = await Subscription.create({
       userId: testUser._id,
-      plan: testKey.plan,
+      plan: 'PRO_MONTHLY',
       status: 'ACTIVE',
       startDate: now,
       endDate: expiryDate,
     });
   }
 
-  testKey.isRedeemed = true;
-  testKey.redeemedBy = testUser._id;
-  testKey.redeemedAt = now;
-  await testKey.save();
-
+  const testRef = `TEST-PAY-${Date.now()}`;
   await Payment.create({
     userId: testUser._id,
-    reference: `PIN-${testKey.code}-${Date.now()}`,
+    reference: testRef,
     amountKobo: 350000,
     currency: 'NGN',
-    provider: 'SCRATCH_CARD_PIN',
+    provider: 'PAYSTACK',
     status: 'SUCCESS',
-    channel: 'pin_redemption',
-    metadata: { keyId: testKey._id.toString() },
+    channel: 'card',
   });
 
-  console.log(`  ✓ PIN ${testKey.code} successfully redeemed.`);
+  console.log(`  ✓ Test subscription activated successfully.`);
   console.log(`  ✓ Subscription status: ${sub.status}, Plan: ${sub.plan}, Expiry: ${sub.endDate?.toISOString()}`);
 
-  // Test duplicate redemption guard
-  const duplicateAttempt = await ActivationKey.findOne({ code: testCode });
-  if (!duplicateAttempt || !duplicateAttempt.isRedeemed) {
-    throw new Error('Duplicate guard check failed: Key was not marked redeemed.');
-  }
-  console.log('  ✓ Duplicate protection guard confirmed: Key is permanently flagged redeemed.');
-
   // Clean up verification data
-  await ActivationKey.deleteOne({ _id: testKey._id });
   await User.deleteOne({ _id: testUser._id });
   await Subscription.deleteOne({ _id: sub._id });
-  await Payment.deleteMany({ reference: new RegExp(`PIN-${testCode}`) });
+  await Payment.deleteMany({ reference: testRef });
   console.log('  ✓ Cleaned up test records from database.');
 
   // 5. Verify Dynamic System Settings & Physical Bank Account in Atlas

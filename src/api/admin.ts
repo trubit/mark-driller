@@ -212,6 +212,21 @@ export function useAdminCreateQuestionMutation() {
   });
 }
 
+export function useAdminUpdateQuestionMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ questionId, payload }: { questionId: string; payload: any }) =>
+      apiClient<any>(`/api/admin/questions/${questionId}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['questions'] });
+      queryClient.invalidateQueries({ queryKey: ['admin'] });
+    },
+  });
+}
+
 export function useAdminDeleteQuestionMutation() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -229,7 +244,7 @@ export function useAdminDeleteQuestionMutation() {
 export function useAdminIngestQuestionsMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (payload: { examShortCode?: string; subjectCode?: string; year?: number; count?: number }) =>
+    mutationFn: (payload: { examShortCode?: string; subjectCode?: string; year?: number; count?: number; batchSize?: number }) =>
       apiClient<any>('/api/admin/questions/sync', {
         method: 'POST',
         body: JSON.stringify(payload),

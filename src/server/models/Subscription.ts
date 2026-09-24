@@ -1,6 +1,6 @@
 import mongoose, { Schema, Document, Model, Types } from 'mongoose';
 
-export type PlanType = 'FREE' | 'PRO_MONTHLY' | 'PRO_ANNUAL';
+export type PlanType = 'FREE' | 'PRO_MONTHLY' | 'PRO_BIMONTHLY' | 'PRO_QUARTERLY' | 'PRO_ANNUAL';
 export type SubStatus = 'ACTIVE' | 'EXPIRED' | 'CANCELLED';
 
 export interface ISubscription extends Document {
@@ -25,7 +25,7 @@ const SubscriptionSchema = new Schema<ISubscription>(
     },
     plan: {
       type: String,
-      enum: ['FREE', 'PRO_MONTHLY', 'PRO_ANNUAL'],
+      enum: ['FREE', 'PRO_MONTHLY', 'PRO_BIMONTHLY', 'PRO_QUARTERLY', 'PRO_ANNUAL'],
       default: 'FREE',
     },
     status: {

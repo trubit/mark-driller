@@ -23,6 +23,7 @@ import adminRouter from './routes/admin.js';
 import materialsRouter from './routes/materials.js';
 import subscriptionsRouter from './routes/subscriptions.js';
 import contentRouter from './routes/content.js';
+import supportRouter from './routes/support.js';
 
 const __filename = fileURLToPath(import.meta.url);
 
@@ -164,6 +165,7 @@ app.use('/api/materials', materialsRouter);
 app.use('/api/subscriptions', subscriptionsRouter);
 app.use('/api/exam-boards', examBoardsRouter);
 app.use('/api/leads', leadsRouter);
+app.use('/api/support', supportRouter);
 app.use('/api', contentRouter);
 app.use('/api/content', contentRouter);
 

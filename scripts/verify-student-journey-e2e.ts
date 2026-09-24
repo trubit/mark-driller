@@ -21,22 +21,41 @@ function record(category: string, title: string, success: boolean, detail: strin
 }
 
 async function ensureServerRunning() {
-  for (let i = 0; i < 15; i++) {
+  for (let i = 0; i < 30; i++) {
     try {
       const res = await fetch(`${BASE_URL}/api/health`);
       if (res.ok) {
-        return;
+        const body = (await res.json()) as any;
+        if (body.database === 'connected' || body.db === 'connected') {
+          return;
+        }
       }
     } catch {
       // wait and retry
     }
-    await new Promise((r) => setTimeout(r, 300));
+    await new Promise((r) => setTimeout(r, 400));
   }
 
   // If external server is not running, dynamically import server
   console.log('[Setup] Starting in-process MarkDriller server on port ' + API_PORT);
-  await import('../src/server/index.js');
-  await new Promise((r) => setTimeout(r, 2000));
+  const serverModule = await import('../src/server/index.js');
+  if (serverModule.dbPromise) {
+    await serverModule.dbPromise;
+  }
+  for (let i = 0; i < 30; i++) {
+    try {
+      const res = await fetch(`${BASE_URL}/api/health`);
+      if (res.ok) {
+        const body = (await res.json()) as any;
+        if (body.database === 'connected' || body.db === 'connected') {
+          return;
+        }
+      }
+    } catch {
+      // wait and retry
+    }
+    await new Promise((r) => setTimeout(r, 400));
+  }
 }
 
 async function runEndToEndStudentJourney() {

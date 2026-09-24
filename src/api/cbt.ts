@@ -23,6 +23,7 @@ export interface CbtQuestion {
 export interface CbtAnswer {
   questionId: string;
   selectedOption: 'A' | 'B' | 'C' | 'D' | null;
+  isSkipped?: boolean;
   isCorrect?: boolean;
   markedForReview?: boolean;
 }
@@ -30,7 +31,7 @@ export interface CbtAnswer {
 export interface CbtAttemptState {
   attemptId: string;
   status: 'IN_PROGRESS' | 'COMPLETED' | 'EXPIRED';
-  mode: 'PRACTICE' | 'TIMED_MOCK';
+  mode: 'PRACTICE' | 'TIMED_MOCK' | 'STUDY';
   allocatedDurationSeconds: number;
   remainingSeconds: number;
   startTime: string;
@@ -54,16 +55,20 @@ export interface StartCbtPayload {
   subjectIds?: string[];
   topicId?: string;
   year?: number;
+  years?: number[];
+  allYears?: boolean;
   difficulty?: 'EASY' | 'MEDIUM' | 'HARD';
+  questionOrder?: 'NORMAL' | 'SHUFFLE' | 'RANDOM';
   onlyBookmarked?: boolean;
-  mode?: 'PRACTICE' | 'TIMED_MOCK';
+  mode?: 'PRACTICE' | 'TIMED_MOCK' | 'STUDY';
   durationMinutes?: number;
   questionCount?: number;
 }
 
 export interface SaveAnswerPayload {
   questionId: string;
-  selectedOption: 'A' | 'B' | 'C' | 'D' | null;
+  selectedOption?: 'A' | 'B' | 'C' | 'D' | null;
+  isSkipped?: boolean;
   markedForReview?: boolean;
 }
 
@@ -94,6 +99,7 @@ export interface CbtResultResponse {
     correctCount: number;
     incorrectCount: number;
     unansweredCount: number;
+    skippedCount?: number;
     timeSpentSeconds: number;
     topicBreakdown: TopicBreakdownItem[];
     subjectBreakdown?: SubjectBreakdownItem[];

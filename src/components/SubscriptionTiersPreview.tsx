@@ -164,14 +164,14 @@ export const SubscriptionTiersPreview: React.FC = () => {
               INDIVIDUAL CANDIDATE PASS
             </span>
             <h3 style={{ fontSize: '20px', margin: '0 0 12px 0', color: 'var(--ink)' }}>
-              Pro Full Access
+              Pro Candidate Pass
             </h3>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginBottom: '16px' }}>
               <span style={{ fontSize: '36px', fontWeight: 800, fontFamily: "var(--font-sans)", color: 'var(--rust)' }}>
                 ₦3,500
               </span>
               <span style={{ fontSize: '13px', color: 'var(--ink-soft)', fontFamily: "var(--font-sans)" }}>
-                / 1 full year access
+                / month (From ₦6,500 for 2 mos)
               </span>
             </div>
 
@@ -259,56 +259,20 @@ export const SubscriptionTiersPreview: React.FC = () => {
                 flex: 1,
               }}
             >
-              <li>Deploy across 50 to 500+ computers on local LAN</li>
-              <li>Works 100% offline without internet connection</li>
+              <li>Deploy across 50 to 500+ student seats</li>
+              <li>Official JAMB, WAEC & NECO curriculum coverage</li>
               <li>Administrative dashboard &amp; school batch reporting</li>
-              <li>Custom mock exam creator with school branding</li>
-              <li>Bulk activation scratch cards (up to 50% profit margin)</li>
+              <li>Custom mock exam creator with institutional analytics</li>
             </ul>
 
             <Link
-              to="/reseller"
+              to="/contact"
               className="btn-custom btn-custom-ghost"
               style={{ width: '100%', fontSize: '13px', padding: '10px', textAlign: 'center', justifyContent: 'center' }}
             >
-              Explore School &amp; Reseller Portal
+              Contact Institutional Desk ➔
             </Link>
           </div>
-        </div>
-
-        {/* Scratch Card Activation Notice */}
-        <div
-          style={{
-            backgroundColor: 'var(--paper)',
-            borderRadius: '8px',
-            padding: '16px 20px',
-            border: '1px solid var(--paper-line)',
-            display: 'flex',
-            flexWrap: 'wrap',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            gap: '12px',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ fontSize: '20px' }}>🏷️</span>
-            <div>
-              <strong style={{ fontSize: '13.5px', color: 'var(--ink)', display: 'block' }}>
-                Bought a physical MarkDriller scratch card or license key from an agent?
-              </strong>
-              <span style={{ fontSize: '12px', color: 'var(--ink-soft)' }}>
-                You don't need to pay again online. Enter your 16-digit PIN on our activation portal.
-              </span>
-            </div>
-          </div>
-
-          <Link
-            to="/activate"
-            className="btn-custom btn-custom-ghost"
-            style={{ fontSize: '12px', padding: '6px 14px' }}
-          >
-            Activate Scratch Card PIN →
-          </Link>
         </div>
       </div>
     </section>

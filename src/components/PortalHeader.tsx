@@ -37,11 +37,8 @@ const LEARNING_TOOLS = [
 ];
 
 const MORE_TOOLS = [
-  { label: 'Activate Voucher / PIN', path: '/portal/activate', icon: '🏷️', desc: 'Redeem scratch card or license token' },
   { label: 'Pro Subscription Plans', path: '/portal/pricing', icon: '★', desc: 'Upgrade for unlimited mocks & analytics' },
   { label: 'MarkDriller Study Blog', path: '/portal/blog', icon: '📰', desc: 'Examination guides, tips & news' },
-  { label: 'Desktop & Mobile Apps', path: '/portal/products', icon: '💻', desc: 'Download offline CBT software' },
-  { label: 'Reseller & Agent Portal', path: '/portal/reseller', icon: '🤝', desc: 'Distribute MarkDriller activation cards' },
   { label: 'Help & Contact Support', path: '/portal/contact', icon: '💬', desc: 'WhatsApp support & customer service' },
 ];
 
@@ -53,7 +50,6 @@ const ROUTE_BADGE_MAP: Record<string, { badge: string; color: 'rust' | 'forest' 
   '/materials': { badge: '📄 STUDY MATERIALS', color: 'forest' },
   '/post-utme': { badge: '🏛️ POST-UTME', color: 'rust' },
   '/novels': { badge: '📖 JAMB NOVELS', color: 'forest' },
-  '/activate': { badge: '🏷️ OFFLINE PIN', color: 'forest' },
   '/profile': { badge: '👤 STUDENT PROFILE', color: 'forest' },
   '/settings': { badge: '⚙️ SETTINGS', color: 'forest' },
   '/bookmarks': { badge: '🔖 BOOKMARKS', color: 'rust' },
@@ -995,7 +991,6 @@ export const PortalHeader: React.FC<PortalHeaderProps> = ({
                   { label: 'Saved Bookmarks', path: '/settings?tab=bookmarks', icon: '📑' },
                   { label: 'Attempt History', path: '/settings?tab=history', icon: '📝' },
                   { label: 'Subscription & Pricing', path: '/portal/pricing', icon: '★' },
-                  { label: 'Redeem Scratch Card PIN', path: '/portal/activate', icon: '🏷️' },
                   { label: 'Academic Blog & Guides', path: '/portal/blog', icon: '📰' },
                 ].map((item) => {
                   const active = currentPath === normalizePortalPath(item.path);

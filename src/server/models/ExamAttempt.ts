@@ -1,11 +1,12 @@
 import mongoose, { Schema, Document, Model, Types } from 'mongoose';
 
 export type AttemptStatus = 'IN_PROGRESS' | 'COMPLETED' | 'EXPIRED';
-export type AttemptMode = 'PRACTICE' | 'TIMED_MOCK';
+export type AttemptMode = 'PRACTICE' | 'TIMED_MOCK' | 'STUDY';
 
 export interface IAttemptAnswer {
   questionId: Types.ObjectId;
   selectedOption: 'A' | 'B' | 'C' | 'D' | null;
+  isSkipped?: boolean;
   isCorrect?: boolean;
   timeSpentSeconds?: number;
   markedForReview?: boolean;
@@ -67,6 +68,10 @@ const AttemptAnswerSchema = new Schema<IAttemptAnswer>(
       type: String,
       enum: ['A', 'B', 'C', 'D', null],
       default: null,
+    },
+    isSkipped: {
+      type: Boolean,
+      default: false,
     },
     isCorrect: {
       type: Boolean,
@@ -193,7 +198,7 @@ const ExamAttemptSchema = new Schema<IExamAttempt>(
     },
     mode: {
       type: String,
-      enum: ['PRACTICE', 'TIMED_MOCK'],
+      enum: ['PRACTICE', 'TIMED_MOCK', 'STUDY'],
       default: 'TIMED_MOCK',
     },
     status: {
