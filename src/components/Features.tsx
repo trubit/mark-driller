@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useTelemetryQuery } from '../api/exams';
 import { useAuthStore } from '../store/useAuthStore';
 import { useAppStore } from '../store/useAppStore';
-import { handleImageError, FALLBACK_EXAM_PREP } from '../utils/imageFallbacks';
 
 export const Features: React.FC = () => {
   const navigate = useNavigate();
@@ -140,7 +139,7 @@ export const Features: React.FC = () => {
             >
               <div>
                 <div className="feature-card-media">
-                  <img src={item.image} alt={item.imageAlt} loading="lazy" onError={handleImageError(FALLBACK_EXAM_PREP)} />
+                  <img src={item.image} alt={item.imageAlt} loading="lazy" />
                 </div>
                 <div className="f-icon">{item.icon}</div>
                 <h3>{item.title}</h3>

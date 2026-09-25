@@ -12,9 +12,9 @@ import { CbtSetupModal } from './CbtSetupModal.js';
 import { useNotificationStore } from '../store/useNotificationStore.js';
 import { useMySubscriptionQuery } from '../api/subscriptions.js';
 import { SyllabusSubjectCard } from './SyllabusSubjectCard.js';
-import { handleImageError, FALLBACK_STUDY_HERO } from '../utils/imageFallbacks.js';
 
-const studentWorkspaceImage = '/assets/images/study-hero.svg';
+const studentWorkspaceImage =
+  'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=1200&q=82';
 
 export const StudentDashboard: React.FC = () => {
   const { user, isAuthenticated } = useAuthStore();
@@ -215,7 +215,7 @@ export const StudentDashboard: React.FC = () => {
           </div>
 
           <div className="student-hero-panel">
-            <img src={studentWorkspaceImage} alt="Students studying together for examination preparation" loading="eager" onError={handleImageError(FALLBACK_STUDY_HERO)} />
+            <img src={studentWorkspaceImage} alt="Students studying together for examination preparation" loading="eager" />
             <div className="student-exam-switcher">
               <label htmlFor="targetExamSelect">Target examination</label>
               <select

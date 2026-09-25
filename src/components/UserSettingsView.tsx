@@ -615,12 +615,7 @@ export const UserSettingsView: React.FC<UserSettingsViewProps> = ({ defaultTab =
                     {avatarPreview ? (
                       <img src={avatarPreview} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     ) : currentUser.avatar ? (
-                      <img
-                        src={currentUser.avatar}
-                        alt={currentUser.fullName}
-                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                      />
+                      <img src={currentUser.avatar} alt={currentUser.fullName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     ) : (
                       initials
                     )}

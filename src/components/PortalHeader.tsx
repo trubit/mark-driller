@@ -832,12 +832,7 @@ export const PortalHeader: React.FC<PortalHeaderProps> = ({
                     }}
                   >
                     {user.avatar ? (
-                      <img
-                        src={user.avatar}
-                        alt={user.fullName}
-                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                      />
+                      <img src={user.avatar} alt={user.fullName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     ) : (
                       user.fullName ? user.fullName[0].toUpperCase() : 'U'
                     )}

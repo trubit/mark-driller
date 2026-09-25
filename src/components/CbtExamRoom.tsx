@@ -643,11 +643,6 @@ export const CbtExamRoom: React.FC = () => {
               <img
                 src={currentQuestion.imageUrl}
                 alt={`Figure for question ${currentIndex + 1}`}
-                onError={(e) => {
-                  if (e.currentTarget.parentElement) {
-                    e.currentTarget.parentElement.style.display = 'none';
-                  }
-                }}
                 style={{ maxWidth: '100%', maxHeight: '340px', objectFit: 'contain', borderRadius: '3px' }}
               />
             </div>

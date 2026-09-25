@@ -4,7 +4,6 @@ import { useAppStore } from '../store/useAppStore.js';
 import { useAuthStore } from '../store/useAuthStore.js';
 import { useExamBoards } from '../api/useExamBoards.js';
 import { ExamBoardLogo } from './ExamBoardLogo.js';
-import { handleImageError, FALLBACK_EXAM_PREP } from '../utils/imageFallbacks.js';
 
 export interface ExamCardData {
   id: string;
@@ -259,7 +258,6 @@ export const ExamBoards: React.FC = () => {
                   <img
                     src={card.heroImage}
                     alt={card.imageAlt}
-                    onError={handleImageError(FALLBACK_EXAM_PREP)}
                     style={{
                       width: '100%',
                       height: '100%',

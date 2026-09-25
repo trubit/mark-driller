@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore.js';
-import { handleImageError, FALLBACK_STUDY_HERO } from '../utils/imageFallbacks.js';
 import {
   useAdminOverviewQuery,
   useAdminUsersQuery,
@@ -715,10 +714,9 @@ export const AdminPortal: React.FC = () => {
           </div>
           <div className="premium-portal-hero-media">
             <img
-              src="/assets/images/study-hero.svg"
+              src="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=1200&q=82"
               alt="Education operations team reviewing platform reports and documents"
               loading="eager"
-              onError={handleImageError(FALLBACK_STUDY_HERO)}
             />
             <div className="premium-portal-hero-stat">
               <span>Secure Operations</span>

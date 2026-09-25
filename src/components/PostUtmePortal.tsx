@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { handleImageError, FALLBACK_EXAM_PREP } from '../utils/imageFallbacks.js';
 
 interface InstitutionProfile {
   id: string;
@@ -185,10 +184,9 @@ export const PostUtmePortal: React.FC = () => {
           </div>
           <div className="premium-portal-hero-media">
             <img
-              src="/assets/images/exam-prep.svg"
+              src="https://images.unsplash.com/photo-1523580846011-d3a5bc25702b?auto=format&fit=crop&w=1200&q=82"
               alt="University students walking on campus while preparing for admission screening"
               loading="eager"
-              onError={handleImageError(FALLBACK_EXAM_PREP)}
             />
             <div className="premium-portal-hero-stat">
               <span>Admission Blueprint</span>
