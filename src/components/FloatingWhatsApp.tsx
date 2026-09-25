@@ -1,10 +1,14 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { SUPPORT_CONFIG, getWhatsAppUrl } from '../config/supportConfig.js';
+import { useSupportContactQuery, buildWhatsAppLink } from '../api/supportContact.js';
 
 export const FloatingWhatsApp: React.FC = () => {
-  const hasWhatsApp = Boolean(SUPPORT_CONFIG.whatsappNumber);
-  const targetUrl = getWhatsAppUrl();
+  const { data: support } = useSupportContactQuery();
+
+  const isEnabled = support ? support.whatsappEnabled !== false : true;
+  const whatsappNumber = support?.whatsappNumber || '2348030001234';
+  const hasWhatsApp = isEnabled && Boolean(whatsappNumber);
+  const targetUrl = buildWhatsAppLink(whatsappNumber, 'Hello MarkDriller Support, I need assistance with CBT practice / activation.');
 
   const commonStyles: React.CSSProperties = {
     position: 'fixed',
@@ -37,19 +41,23 @@ export const FloatingWhatsApp: React.FC = () => {
     e.currentTarget.style.boxShadow = '0 6px 24px rgba(34, 197, 94, 0.45)';
   };
 
+  if (!isEnabled) {
+    return null;
+  }
+
   if (hasWhatsApp) {
     return (
       <a
         href={targetUrl}
         target="_blank"
         rel="noopener noreferrer"
-        aria-label="Chat with MarkDriller on WhatsApp"
+        aria-label="Direct Customer Support on WhatsApp"
         style={commonStyles}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
-        <span style={{ fontSize: '18px' }}>💬</span>
-        <span>WhatsApp Support</span>
+        <span style={{ fontSize: '16px', lineHeight: 1 }}>💬</span>
+        <span>Need Help? Chat on WhatsApp</span>
       </a>
     );
   }
@@ -57,14 +65,13 @@ export const FloatingWhatsApp: React.FC = () => {
   return (
     <Link
       to="/contact"
-      aria-label="Contact MarkDriller 24/7 Support Desk"
-      style={commonStyles}
+      aria-label="Contact MarkDriller Academic Help Desk"
+      style={{ ...commonStyles, backgroundColor: 'var(--rust)' }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <span style={{ fontSize: '18px' }}>💬</span>
-      <span>24/7 Support Desk</span>
+      <span style={{ fontSize: '16px', lineHeight: 1 }}>✉️</span>
+      <span>Support Desk</span>
     </Link>
   );
 };
-

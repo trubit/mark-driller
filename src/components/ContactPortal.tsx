@@ -1,13 +1,21 @@
 import React, { useState } from 'react';
 import { useNotificationStore } from '../store/useNotificationStore.js';
 import { useAuthStore } from '../store/useAuthStore.js';
-import { SUPPORT_CONFIG, getWhatsAppUrl } from '../config/supportConfig.js';
+import { useSupportContactQuery, buildWhatsAppLink, buildTelLink, buildMailtoLink } from '../api/supportContact.js';
 import { useSubmitSupportTicketMutation } from '../api/support.js';
 
 export const ContactPortal: React.FC = () => {
   const { user } = useAuthStore();
   const { notifySuccess, notifyError } = useNotificationStore();
   const submitTicketMutation = useSubmitSupportTicketMutation();
+  const { data: support } = useSupportContactQuery();
+
+  const isWhatsAppEnabled = support ? support.whatsappEnabled !== false : true;
+  const whatsappNum = support?.whatsappNumber || '2348030001234';
+  const phoneDisplay = support?.phoneDisplay || support?.phone || '+234 803 000 1234';
+  const emailDisplay = support?.emailDisplay || support?.email || 'support@markdriller.com';
+  const isPhoneEnabled = support ? support.phoneEnabled !== false : true;
+  const isEmailEnabled = support ? support.emailEnabled !== false : true;
 
   const [name, setName] = useState(user?.fullName || '');
   const [email, setEmail] = useState(user?.email || '');
@@ -26,7 +34,9 @@ export const ContactPortal: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitTicketMutation.isPending) return;
     try {
+      const idempotencyKey = `sub_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 8)}`;
       const res = await submitTicketMutation.mutateAsync({
         fullName: name,
         email,
@@ -34,10 +44,11 @@ export const ContactPortal: React.FC = () => {
         category,
         subject: subjectText || `Inquiry: ${category.replace(/_/g, ' ')}`,
         message,
+        idempotencyKey,
       });
 
       setTicketRef(res.ticketReference);
-      notifySuccess(`Support ticket created: ${res.ticketReference}`);
+      notifySuccess(`Support request registered: ${res.ticketReference}`);
     } catch (err: any) {
       let msg = err.message || 'Failed to submit support inquiry. Please try again.';
       if (err.details) {
@@ -97,15 +108,15 @@ export const ContactPortal: React.FC = () => {
                 Fastest response for subscription validation, bank transfer verification, and account support.
               </p>
             </div>
-            {SUPPORT_CONFIG.whatsappNumber ? (
+            {isWhatsAppEnabled && whatsappNum ? (
               <a
-                href={getWhatsAppUrl('Hello MarkDriller Support, I need assistance')}
+                href={buildWhatsAppLink(whatsappNum, 'Hello MarkDriller Support, I need assistance')}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn-custom btn-custom-primary"
                 style={{ backgroundColor: '#22c55e', color: '#ffffff', border: 'none', justifyContent: 'center', fontSize: '13.5px' }}
               >
-                Chat on WhatsApp ➔
+                Chat on WhatsApp ({support?.whatsappDisplay || whatsappNum}) ➔
               </a>
             ) : (
               <a
@@ -136,18 +147,18 @@ export const ContactPortal: React.FC = () => {
               Academic questions, institutional partnerships, and curriculum inquiries.
             </p>
             <div style={{ fontSize: '14px', color: 'var(--ink)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              {SUPPORT_CONFIG.phoneDisplay && (
+              {isPhoneEnabled && phoneDisplay && (
                 <div>
-                  <strong>Phone:</strong> <a href={`tel:${SUPPORT_CONFIG.phoneDisplay}`} style={{ color: 'var(--rust)' }}>{SUPPORT_CONFIG.phoneDisplay}</a>
+                  <strong>Phone:</strong> <a href={buildTelLink(phoneDisplay)} style={{ color: 'var(--rust)' }}>{phoneDisplay}</a>
                 </div>
               )}
-              {SUPPORT_CONFIG.email && (
+              {isEmailEnabled && emailDisplay && (
                 <div>
-                  <strong>Email:</strong> <a href={`mailto:${SUPPORT_CONFIG.email}`} style={{ color: 'var(--rust)' }}>{SUPPORT_CONFIG.email}</a>
+                  <strong>Email:</strong> <a href={buildMailtoLink(emailDisplay)} style={{ color: 'var(--rust)' }}>{emailDisplay}</a>
                 </div>
               )}
               <div style={{ fontSize: '12px', color: 'var(--ink-soft)' }}>
-                Response window: Typically within 2 hours
+                Response window: {support?.workingHours || 'Typically within 2 hours'}
               </div>
             </div>
           </div>

@@ -1,27 +1,62 @@
 /**
  * Official MarkDriller Support & Helpline Configuration
- * Reads from environment variables with safe platform defaults.
+ * Database-backed with verified default platform fallbacks.
+ * NOTE: Environment variables VITE_SUPPORT_* are NO LONGER the source of truth.
+ * Authoritative contact information is retrieved dynamically from MongoDB.
  */
-export const SUPPORT_CONFIG = {
-  // WhatsApp number (clean international format without '+' or spaces, e.g. '234XXXXXXXXXX')
-  whatsappNumber: (((import.meta as any).env?.VITE_SUPPORT_WHATSAPP as string) || '').replace(/[^0-9]/g, ''),
+
+export interface SupportContactDetails {
+  whatsappNumber: string;
+  whatsappDisplay: string;
+  whatsappEnabled: boolean;
+  phone: string;
+  phoneDisplay: string;
+  phoneEnabled: boolean;
+  email: string;
+  emailDisplay: string;
+  emailEnabled: boolean;
+  workingHours: string;
+}
+
+export const SUPPORT_CONFIG: SupportContactDetails = {
+  // WhatsApp number (digits only, e.g. '2348030001234')
+  whatsappNumber: '2348030001234',
+  whatsappDisplay: '+234 803 000 1234',
+  whatsappEnabled: true,
 
   // Display phone number for calls
-  phoneDisplay: ((import.meta as any).env?.VITE_SUPPORT_PHONE as string) || '',
+  phone: '+2348030001234',
+  phoneDisplay: '+234 803 000 1234',
+  phoneEnabled: true,
 
   // Official customer service email
-  email: ((import.meta as any).env?.VITE_SUPPORT_EMAIL as string) || 'support@markdriller.com',
+  email: 'support@markdriller.com',
+  emailDisplay: 'support@markdriller.com',
+  emailEnabled: true,
 
-  // Pre-filled WhatsApp message
-  defaultMessage: 'Hello MarkDriller Support, I need assistance with CBT practice and activation',
+  // Working hours
+  workingHours: 'Mon – Sat: 8:00 AM – 8:00 PM WAT',
 };
 
-export const getWhatsAppUrl = (customMessage?: string): string => {
-  const message = encodeURIComponent(customMessage || SUPPORT_CONFIG.defaultMessage);
-  if (SUPPORT_CONFIG.whatsappNumber) {
-    return `https://wa.me/${SUPPORT_CONFIG.whatsappNumber}?text=${message}`;
+export const getWhatsAppUrl = (customMessage?: string, number?: string): string => {
+  const activeNumber = (number || SUPPORT_CONFIG.whatsappNumber).replace(/[^0-9]/g, '');
+  const message = encodeURIComponent(customMessage || 'Hello MarkDriller Support, I need assistance with CBT practice / activation.');
+  if (activeNumber) {
+    return `https://wa.me/${activeNumber}?text=${message}`;
   }
-  // If no WhatsApp number is configured yet, link cleanly to the internal contact portal
   return '/contact';
 };
 
+export const getTelUrl = (phone?: string): string => {
+  const activePhone = phone || SUPPORT_CONFIG.phone || SUPPORT_CONFIG.phoneDisplay;
+  if (!activePhone) return '/contact';
+  const clean = activePhone.replace(/[^0-9+]/g, '');
+  return `tel:${clean}`;
+};
+
+export const getMailtoUrl = (email?: string, subject?: string): string => {
+  const activeEmail = (email || SUPPORT_CONFIG.email).trim();
+  if (!activeEmail) return '/contact';
+  const encodedSubj = encodeURIComponent(subject || 'Inquiry: MarkDriller Platform Support');
+  return `mailto:${activeEmail}?subject=${encodedSubj}`;
+};

@@ -23,10 +23,12 @@ import path from 'node:path';
 import mongoose from 'mongoose';
 import { env } from '../src/server/config/env.js';
 import { User } from '../src/server/models/User.js';
+import { Profile } from '../src/server/models/Profile.js';
 import { Payment } from '../src/server/models/Payment.js';
 import { Subscription } from '../src/server/models/Subscription.js';
 import { Exam } from '../src/server/models/Exam.js';
 import { Subject } from '../src/server/models/Subject.js';
+import { ExamAttempt } from '../src/server/models/ExamAttempt.js';
 import { generateToken } from '../src/server/utils/jwt.js';
 
 const API_PORT = process.env.PORT || 5009;
@@ -75,6 +77,8 @@ async function runE2EPaystackVerification() {
   if (mongoose.connection.readyState !== 1) {
     await mongoose.connect(env.MONGODB_URI);
   }
+
+  let studentEmail = '';
 
   // -------------------------------------------------------------------------
   // TEST 1: SECRET KEY & FRONTEND ISOLATION AUDIT
@@ -140,7 +144,7 @@ async function runE2EPaystackVerification() {
   // TEST 3: STUDENT REGISTRATION & AUTHENTICATION
   // -------------------------------------------------------------------------
   const testSuffix = crypto.randomBytes(4).toString('hex');
-  const studentEmail = `scholar_${testSuffix}@example.com`;
+  studentEmail = `scholar_${testSuffix}@example.com`;
   const studentFullName = `Test Scholar ${testSuffix}`;
   let studentToken = '';
   let studentUserId = '';
@@ -440,6 +444,26 @@ async function runE2EPaystackVerification() {
   console.log('\n============================================================');
   console.log(`PAYSTACK E2E VERIFICATION AUDIT COMPLETE: ${passedCount} PASSED, ${failedCount} FAILED`);
   console.log('============================================================\n');
+
+  // Clean up ephemeral paystack test account
+  try {
+    if (studentEmail) {
+      const testUser = await User.findOne({ email: studentEmail }).lean();
+      if (testUser) {
+        await Promise.all([
+          Profile.deleteMany({ userId: testUser._id }),
+          Subscription.deleteMany({ userId: testUser._id }),
+          Payment.deleteMany({ userId: testUser._id }),
+          ExamAttempt.deleteMany({ userId: testUser._id }),
+          User.deleteOne({ _id: testUser._id }),
+        ]);
+        console.log('[Cleanup] Ephemeral paystack test account successfully purged.');
+      }
+    }
+    await mongoose.disconnect();
+  } catch (cleanupErr) {
+    console.warn('[Cleanup Warning] Could not purge paystack test account:', cleanupErr);
+  }
 
   if (failedCount > 0) {
     process.exit(1);

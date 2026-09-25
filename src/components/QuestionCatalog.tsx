@@ -11,6 +11,7 @@ import {
   useAcquireCurriculumMutation,
   type QuestionItem,
 } from '../api/questions.js';
+import { SafeImage } from './SafeImage.js';
 
 interface QuestionCardProps {
   question: QuestionItem;
@@ -425,8 +426,8 @@ export const QuestionCatalog: React.FC = () => {
             </p>
           </div>
           <div className="premium-portal-hero-media">
-            <img
-              src="https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1200&q=82"
+            <SafeImage
+              src="/assets/images/cbt-practice.jpg"
               alt="Student working through a computer-based exam practice session"
               loading="eager"
             />

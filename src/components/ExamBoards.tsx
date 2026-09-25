@@ -4,6 +4,7 @@ import { useAppStore } from '../store/useAppStore.js';
 import { useAuthStore } from '../store/useAuthStore.js';
 import { useExamBoards } from '../api/useExamBoards.js';
 import { ExamBoardLogo } from './ExamBoardLogo.js';
+import { SafeImage } from './SafeImage.js';
 
 export interface ExamCardData {
   id: string;
@@ -29,7 +30,7 @@ export const EXAM_CARDS: ExamCardData[] = [
     shortCode: 'JAMB / UTME',
     officialName: 'Joint Admissions and Matriculation Board (UTME)',
     authority: 'JAMB National Headquarters, Bwari, Abuja, Nigeria',
-    heroImage: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=700&q=80',
+    heroImage: '/assets/images/cbt-practice.jpg',
     imageAlt: 'Nigerian students in modern CBT examination terminal practicing for JAMB UTME',
     description: 'Mandatory Computer-Based Test for admission into Nigerian federal, state, and private universities, polytechnics, and colleges. 4 subjects including compulsory Use of English.',
     examType: 'Matriculation CBT',
@@ -46,7 +47,7 @@ export const EXAM_CARDS: ExamCardData[] = [
     shortCode: 'WAEC',
     officialName: 'West African Senior School Certificate Examination (WASSCE)',
     authority: 'WAEC Nigeria National Office, Yaba, Lagos',
-    heroImage: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=700&q=80',
+    heroImage: '/assets/images/classroom-study.jpg',
     imageAlt: 'Nigerian secondary school candidate studying senior secondary syllabus with textbook and laptop',
     description: 'Senior Secondary Certificate Examination conducted across West African member countries. Fundamental for secondary graduation and tertiary admission clearance.',
     examType: 'Senior Secondary Certificate (SSCE)',
@@ -63,7 +64,7 @@ export const EXAM_CARDS: ExamCardData[] = [
     shortCode: 'NECO',
     officialName: 'National Examinations Council (SSCE Internal / External)',
     authority: 'NECO Headquarters, Minna, Niger State, Nigeria',
-    heroImage: 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=700&q=80',
+    heroImage: '/assets/images/exam-hall.jpg',
     imageAlt: 'Nigerian classroom candidates preparing for National Examinations Council test papers',
     description: "Nigeria's indigenous statutory examination body administering the Senior Secondary Certificate Examination across all 36 Nigerian states and the FCT.",
     examType: 'National SSCE',
@@ -80,7 +81,7 @@ export const EXAM_CARDS: ExamCardData[] = [
     shortCode: 'GCE',
     officialName: 'General Certificate of Education (Private Candidate Series)',
     authority: 'WAEC & NECO External Candidate Directorates',
-    heroImage: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?auto=format&fit=crop&w=700&q=80',
+    heroImage: '/assets/images/library-revision.jpg',
     imageAlt: 'Dedicated candidate in study library revising private candidate GCE past question papers',
     description: 'Nov/Dec external series for private and remedial candidates seeking O-Level credit completion or grade enhancement for tertiary institution entry requirements.',
     examType: 'Private Candidate External Series',
@@ -97,7 +98,7 @@ export const EXAM_CARDS: ExamCardData[] = [
     shortCode: 'POST-UTME',
     officialName: 'Nigerian Universities Screening & Post-UTME CBT',
     authority: 'Accredited Federal, State, and Private Nigerian Universities',
-    heroImage: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=700&q=80',
+    heroImage: '/assets/images/university-screening.jpg',
     imageAlt: 'Nigerian university undergraduate students on university campus grounds',
     description: 'High-speed computer-based screening tests conducted by UNILAG, UI, OAU, UNIBEN, ABU, UNN, LASU, and top institutions to determine departmental cutoff admission.',
     examType: 'Institutional Screening CBT',
@@ -114,7 +115,7 @@ export const EXAM_CARDS: ExamCardData[] = [
     shortCode: 'NABTEB',
     officialName: 'National Business and Technical Examinations Board (NABTEB)',
     authority: 'National Business and Technical Examinations Board, Ikpoba Hill, Benin City, Edo State',
-    heroImage: 'https://images.unsplash.com/photo-1581092918056-0c4c3acd3789?auto=format&fit=crop&w=700&q=80',
+    heroImage: '/assets/images/technical-workshop.jpg',
     imageAlt: 'Nigerian technical college students working in electrical and mechanical workshop training',
     description: 'Statutory examination body conducting the National Business Certificate (NBC), National Technical Certificate (NTC), and Modular Trade certifications across Nigeria.',
     examType: 'Technical & Business Certification',
@@ -255,7 +256,7 @@ export const ExamBoards: React.FC = () => {
               >
                 {/* Photo Thumbnail Banner */}
                 <div style={{ position: 'relative', height: '170px', width: '100%', overflow: 'hidden', backgroundColor: 'var(--paper)' }}>
-                  <img
+                  <SafeImage
                     src={card.heroImage}
                     alt={card.imageAlt}
                     style={{

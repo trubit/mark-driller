@@ -33,7 +33,10 @@
     "test:security": "tsx scripts/verify-security-hardening.ts",
     "test:concurrency": "tsx scripts/verify-4000-concurrency.ts",
     "test:platform": "tsx scripts/verify-full-production-platform.ts",
-    "test:responsive": "tsx scripts/verify-whole-project-responsiveness.ts"
+    "test:responsive": "tsx scripts/verify-whole-project-responsiveness.ts",
+    "test:images": "tsx scripts/verify-image-assets-inventory.ts",
+    "test:support": "tsx scripts/verify-dynamic-support-settings.ts",
+    "test:support-email": "tsx scripts/verify-support-email-flow.ts"
   },
   "keywords": [
     "mark-driller",

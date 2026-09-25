@@ -20,14 +20,16 @@ import { BlogPost } from '../models/BlogPost.js';
 import { Testimonial } from '../models/Testimonial.js';
 import { VideoLesson } from '../models/VideoLesson.js';
 import { Flashcard } from '../models/Flashcard.js';
+import { SupportTicket } from '../models/SupportTicket.js';
 import { authenticateToken, requireAdmin, AuthenticatedRequest } from '../middleware/auth.js';
 import { STORAGE_DIR_ABSOLUTE, RECEIPTS_DIR_ABSOLUTE } from '../middleware/upload.js';
 import { QuestionIngestionService } from '../services/questionIngestionService.js';
 import { questionSyncScheduler } from '../services/questionSyncScheduler.js';
 import { CompositeQuestionSourceAdapter } from '../services/questionSourceAdapter.js';
 import { metadataCache } from '../utils/cache.js';
-import { sendSubscriptionEmail } from '../services/emailService.js';
+import { sendSubscriptionEmail, sendSupportComplaintNotificationEmail } from '../services/emailService.js';
 import { SUBSCRIPTION_PLANS, getDynamicBankDetails } from './subscriptions.js';
+import { getDynamicSupportConfig } from '../services/supportConfigService.js';
 
 const router = Router();
 
@@ -978,6 +980,91 @@ router.put('/bank-details', async (req: AuthenticatedRequest, res: Response, nex
 });
 
 // ----------------------------------------------------
+// 7B. CUSTOMER SUPPORT CONFIGURATION MANAGEMENT
+// ----------------------------------------------------
+const supportSettingsUpdateSchema = z.object({
+  whatsappNumber: z
+    .string()
+    .trim()
+    .min(7, 'WhatsApp number must be at least 7 digits')
+    .max(25, 'WhatsApp number is too long')
+    .regex(/^[0-9+() -]{7,25}$/, 'Invalid WhatsApp phone format'),
+  whatsappDisplay: z.string().trim().max(50).optional().default(''),
+  whatsappEnabled: z.boolean().optional().default(true),
+  phone: z
+    .string()
+    .trim()
+    .min(7, 'Phone number must be at least 7 digits')
+    .max(25, 'Phone number is too long')
+    .regex(/^[0-9+() -]{7,25}$/, 'Invalid phone format'),
+  phoneDisplay: z.string().trim().max(50).optional().default(''),
+  phoneEnabled: z.boolean().optional().default(true),
+  email: z.string().trim().email('Invalid support email address').max(100),
+  emailDisplay: z.string().trim().max(100).optional().default(''),
+  emailEnabled: z.boolean().optional().default(true),
+  workingHours: z.string().trim().max(120).optional().default('Mon – Sat: 8:00 AM – 8:00 PM WAT'),
+});
+
+// GET /api/admin/support-settings — Fetch current dynamic customer support settings
+router.get('/support-settings', async (_req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const config = await getDynamicSupportConfig();
+    res.status(200).json({ success: true, data: config });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// PUT /api/admin/support-settings — Administrator updates customer support channels
+router.put('/support-settings', async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const data = supportSettingsUpdateSchema.parse(req.body);
+    const adminUserId = req.user!._id;
+
+    // Normalize WhatsApp number to clean numeric format for wa.me URL generation
+    const normalizedWhatsApp = data.whatsappNumber.replace(/[^0-9]/g, '');
+
+    const sanitizedData = {
+      whatsappNumber: normalizedWhatsApp,
+      whatsappDisplay: data.whatsappDisplay || data.whatsappNumber,
+      whatsappEnabled: data.whatsappEnabled,
+      phone: data.phone.trim(),
+      phoneDisplay: data.phoneDisplay || data.phone.trim(),
+      phoneEnabled: data.phoneEnabled,
+      email: data.email.trim().toLowerCase(),
+      emailDisplay: data.emailDisplay || data.email.trim().toLowerCase(),
+      emailEnabled: data.emailEnabled,
+      workingHours: data.workingHours.trim(),
+    };
+
+    const setting = await SystemSetting.findOneAndUpdate(
+      { key: 'CUSTOMER_SUPPORT_CONFIG' },
+      {
+        value: sanitizedData,
+        description: 'Official MarkDriller customer support channels and contact numbers',
+        updatedBy: adminUserId,
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: 'Customer support channels updated successfully.',
+      data: setting.value,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({
+        success: false,
+        error: { message: 'Validation failed', details: error.flatten().fieldErrors },
+      });
+      return;
+    }
+    next(error);
+  }
+});
+
+// ----------------------------------------------------
 // 8. INSTITUTIONS & COURSES MANAGEMENT
 // ----------------------------------------------------
 const institutionSchema = z.object({
@@ -1671,6 +1758,160 @@ router.get('/media', async (_req: AuthenticatedRequest, res: Response, next: Nex
   }
 });
 
+// ----------------------------------------------------
+// 16. CUSTOMER SUPPORT TICKETS & COMPLAINTS
+// ----------------------------------------------------
+router.get('/support/tickets', async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const pageNum = Math.max(1, parseInt((req.query.page as string) || '1', 10));
+    const limitNum = Math.min(100, Math.max(1, parseInt((req.query.limit as string) || '20', 10)));
+    const status = req.query.status as string;
+    const category = req.query.category as string;
+    const search = req.query.search as string;
+
+    const filter: any = {};
+    if (status && ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'].includes(status)) {
+      filter.status = status;
+    }
+    if (category) {
+      filter.category = category;
+    }
+    if (search && search.trim()) {
+      const q = search.trim();
+      filter.$or = [
+        { ticketReference: { $regex: q, $options: 'i' } },
+        { email: { $regex: q, $options: 'i' } },
+        { fullName: { $regex: q, $options: 'i' } },
+        { subject: { $regex: q, $options: 'i' } },
+      ];
+    }
+
+    const [tickets, total, totalOpen, totalInProgress, totalResolved, totalClosed, totalFailedEmail] =
+      await Promise.all([
+        SupportTicket.find(filter)
+          .sort({ createdAt: -1 })
+          .skip((pageNum - 1) * limitNum)
+          .limit(limitNum)
+          .lean(),
+        SupportTicket.countDocuments(filter),
+        SupportTicket.countDocuments({ status: 'OPEN' }),
+        SupportTicket.countDocuments({ status: 'IN_PROGRESS' }),
+        SupportTicket.countDocuments({ status: 'RESOLVED' }),
+        SupportTicket.countDocuments({ status: 'CLOSED' }),
+        SupportTicket.countDocuments({ emailDeliveryStatus: 'FAILED' }),
+      ]);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        tickets,
+        pagination: {
+          total,
+          page: pageNum,
+          limit: limitNum,
+          totalPages: Math.max(1, Math.ceil(total / limitNum)),
+        },
+        counts: {
+          total,
+          open: totalOpen,
+          inProgress: totalInProgress,
+          resolved: totalResolved,
+          closed: totalClosed,
+          failedEmail: totalFailedEmail,
+        },
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+const updateTicketSchema = z.object({
+  status: z.enum(['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED']).optional(),
+  priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(),
+  adminNotes: z.string().max(2000).optional(),
+});
+
+router.patch('/support/tickets/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const data = updateTicketSchema.parse(req.body);
+    const updatePayload: any = { ...data };
+    if (data.status === 'RESOLVED') {
+      updatePayload.resolvedAt = new Date();
+    }
+
+    const ticket = await SupportTicket.findByIdAndUpdate(req.params.id, { $set: updatePayload }, { new: true }).lean();
+    if (!ticket) {
+      res.status(404).json({ success: false, error: { message: 'Support ticket not found' } });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Support ticket updated successfully',
+      data: ticket,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ success: false, error: { message: 'Validation failed', details: error.flatten().fieldErrors } });
+      return;
+    }
+    next(error);
+  }
+});
+
+router.post('/support/tickets/:id/resend', async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const ticket = await SupportTicket.findById(req.params.id);
+    if (!ticket) {
+      res.status(404).json({ success: false, error: { message: 'Support ticket not found' } });
+      return;
+    }
+
+    const supportConfig = await getDynamicSupportConfig();
+    const adminSupportEmail =
+      supportConfig.email && supportConfig.email.trim()
+        ? supportConfig.email.trim()
+        : process.env.ADMIN_EMAIL || 'support@markdriller.com';
+
+    const dispatchResult = await sendSupportComplaintNotificationEmail({
+      supportRecipientEmail: adminSupportEmail,
+      ticketReference: ticket.ticketReference,
+      fullName: ticket.fullName,
+      email: ticket.email,
+      phone: ticket.phone,
+      category: ticket.category,
+      subject: ticket.subject,
+      message: ticket.message,
+      priority: ticket.priority,
+      userId: ticket.userId?.toString(),
+      createdAt: ticket.createdAt,
+    });
+
+    ticket.emailDeliveryStatus = dispatchResult.success ? 'SENT' : 'FAILED';
+    if (dispatchResult.messageId) ticket.emailMessageId = dispatchResult.messageId;
+    if (dispatchResult.error) ticket.emailError = dispatchResult.error;
+    ticket.emailRecipient = adminSupportEmail;
+    await ticket.save();
+
+    res.status(200).json({
+      success: dispatchResult.success,
+      message: dispatchResult.success
+        ? 'Email delivered successfully to configured support address'
+        : 'Email dispatch failed',
+      data: {
+        emailDeliveryStatus: ticket.emailDeliveryStatus,
+        emailMessageId: ticket.emailMessageId,
+        emailRecipient: ticket.emailRecipient,
+        error: dispatchResult.error,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;
+
 
 

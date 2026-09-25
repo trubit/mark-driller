@@ -57,8 +57,30 @@ import {
 import { useNotificationStore } from '../store/useNotificationStore.js';
 import { BrandLoader } from './BrandLoader.js';
 import { SyllabusSubjectCard } from './SyllabusSubjectCard.js';
+import { SafeImage } from './SafeImage.js';
+import {
+  useAdminSupportSettingsQuery,
+  useUpdateAdminSupportSettingsMutation,
+  type SupportContactInfo,
+} from '../api/supportContact.js';
+import {
+  useAdminSupportTicketsQuery,
+  useUpdateAdminSupportTicketMutation,
+  useResendSupportTicketEmailMutation,
+  type AdminSupportTicketItem,
+} from '../api/support.js';
 
-type AdminTab = 'OVERVIEW' | 'USERS' | 'CURRICULUM' | 'QUESTIONS' | 'MATERIALS' | 'PAYMENTS' | 'CONTENT' | 'SUBSCRIPTIONS';
+type AdminTab =
+  | 'OVERVIEW'
+  | 'USERS'
+  | 'CURRICULUM'
+  | 'QUESTIONS'
+  | 'MATERIALS'
+  | 'PAYMENTS'
+  | 'CONTENT'
+  | 'SUBSCRIPTIONS'
+  | 'TICKETS'
+  | 'SETTINGS';
 
 export const AdminPortal: React.FC = () => {
   const { user } = useAuthStore();
@@ -166,6 +188,55 @@ export const AdminPortal: React.FC = () => {
     }
   }, [currentBankDetails]);
 
+  // Dynamic Customer Support Channels State
+  const { data: currentSupportSettings, isLoading: supportSettingsLoading } = useAdminSupportSettingsQuery();
+  const updateSupportSettingsMutation = useUpdateAdminSupportSettingsMutation();
+  const [supportForm, setSupportForm] = useState<SupportContactInfo>({
+    whatsappNumber: '2348030001234',
+    whatsappDisplay: '+234 803 000 1234',
+    whatsappEnabled: true,
+    phone: '+2348030001234',
+    phoneDisplay: '+234 803 000 1234',
+    phoneEnabled: true,
+    email: 'support@markdriller.com',
+    emailDisplay: 'support@markdriller.com',
+    emailEnabled: true,
+    workingHours: 'Mon – Sat: 8:00 AM – 8:00 PM WAT',
+  });
+
+  React.useEffect(() => {
+    if (currentSupportSettings) {
+      setSupportForm({
+        whatsappNumber: currentSupportSettings.whatsappNumber || '',
+        whatsappDisplay: currentSupportSettings.whatsappDisplay || '',
+        whatsappEnabled: currentSupportSettings.whatsappEnabled !== false,
+        phone: currentSupportSettings.phone || '',
+        phoneDisplay: currentSupportSettings.phoneDisplay || '',
+        phoneEnabled: currentSupportSettings.phoneEnabled !== false,
+        email: currentSupportSettings.email || '',
+        emailDisplay: currentSupportSettings.emailDisplay || '',
+        emailEnabled: currentSupportSettings.emailEnabled !== false,
+        workingHours: currentSupportSettings.workingHours || 'Mon – Sat: 8:00 AM – 8:00 PM WAT',
+      });
+    }
+  }, [currentSupportSettings]);
+
+  const handleSaveSupportSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await updateSupportSettingsMutation.mutateAsync(supportForm);
+      setActionNotice({
+        type: 'success',
+        text: 'Customer support channels updated in MongoDB and deployed live across the platform.',
+      });
+    } catch (err: any) {
+      setActionNotice({
+        type: 'error',
+        text: err?.message || 'Failed to update customer support settings.',
+      });
+    }
+  };
+
   // Queries
   const { data: overview, isLoading: overviewLoading } = useAdminOverviewQuery();
   const { data: usersData, isLoading: usersLoading } = useAdminUsersQuery({
@@ -196,6 +267,71 @@ export const AdminPortal: React.FC = () => {
     page: paymentPage,
     limit: 10,
   });
+
+  // Support Tickets Admin State
+  const [ticketPage, setTicketPage] = useState(1);
+  const [ticketStatusFilter, setTicketStatusFilter] = useState('');
+  const [ticketCategoryFilter, setTicketCategoryFilter] = useState('');
+  const [ticketSearch, setTicketSearch] = useState('');
+  const [selectedTicketModal, setSelectedTicketModal] = useState<AdminSupportTicketItem | null>(null);
+  const [ticketNotesInput, setTicketNotesInput] = useState('');
+  const [ticketStatusInput, setTicketStatusInput] = useState<'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED'>('OPEN');
+  const [ticketPriorityInput, setTicketPriorityInput] = useState<'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'>('MEDIUM');
+
+  const { data: ticketsData, isLoading: ticketsLoading } = useAdminSupportTicketsQuery({
+    page: ticketPage,
+    limit: 10,
+    status: ticketStatusFilter || undefined,
+    category: ticketCategoryFilter || undefined,
+    search: ticketSearch || undefined,
+  });
+  const updateTicketMutation = useUpdateAdminSupportTicketMutation();
+  const resendTicketEmailMutation = useResendSupportTicketEmailMutation();
+
+  const handleOpenTicketModal = (t: AdminSupportTicketItem) => {
+    setSelectedTicketModal(t);
+    setTicketNotesInput(t.adminNotes || '');
+    setTicketStatusInput(t.status);
+    setTicketPriorityInput(t.priority);
+  };
+
+  const handleSaveTicketUpdate = async () => {
+    if (!selectedTicketModal) return;
+    try {
+      await updateTicketMutation.mutateAsync({
+        ticketId: selectedTicketModal._id,
+        status: ticketStatusInput,
+        priority: ticketPriorityInput,
+        adminNotes: ticketNotesInput,
+      });
+      showNotice('success', `Ticket ${selectedTicketModal.ticketReference} updated successfully.`);
+      setSelectedTicketModal((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: ticketStatusInput,
+              priority: ticketPriorityInput,
+              adminNotes: ticketNotesInput,
+            }
+          : null
+      );
+    } catch (err: any) {
+      showNotice('error', err?.message || 'Failed to update ticket.');
+    }
+  };
+
+  const handleResendTicketEmail = async (ticketId: string, ref: string) => {
+    try {
+      const res = await resendTicketEmailMutation.mutateAsync(ticketId);
+      if (res.success) {
+        showNotice('success', `Notification email for ${ref} resent successfully!`);
+      } else {
+        showNotice('error', `Failed to resend: ${res.message || 'Check email service'}`);
+      }
+    } catch (err: any) {
+      showNotice('error', err?.message || 'Failed to resend email.');
+    }
+  };
 
   // Mutations
   const toggleRoleMutation = useToggleUserRoleMutation();
@@ -713,8 +849,8 @@ export const AdminPortal: React.FC = () => {
             </p>
           </div>
           <div className="premium-portal-hero-media">
-            <img
-              src="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=1200&q=82"
+            <SafeImage
+              src="/assets/images/admin-desk.jpg"
               alt="Education operations team reviewing platform reports and documents"
               loading="eager"
             />
@@ -748,7 +884,7 @@ export const AdminPortal: React.FC = () => {
 
         {/* Admin Navigation Tabs */}
         <div className="admin-tab-bar" style={{ display: 'flex', gap: '8px', borderBottom: '2px solid var(--ink)', marginBottom: '32px', overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: '4px' }}>
-          {(['OVERVIEW', 'USERS', 'CURRICULUM', 'QUESTIONS', 'MATERIALS', 'PAYMENTS', 'CONTENT', 'SUBSCRIPTIONS'] as AdminTab[]).map((tab) => (
+          {(['OVERVIEW', 'USERS', 'CURRICULUM', 'QUESTIONS', 'MATERIALS', 'PAYMENTS', 'CONTENT', 'SUBSCRIPTIONS', 'TICKETS', 'SETTINGS'] as AdminTab[]).map((tab) => (
             <button
               key={tab}
               className={`admin-tab-btn ${activeTab === tab ? 'active' : ''}`}
@@ -782,10 +918,14 @@ export const AdminPortal: React.FC = () => {
                   : tab === 'MATERIALS'
                   ? 'Study Materials'
                   : tab === 'PAYMENTS'
-                  ? 'Finance & Bank Accounts'
+                  ? 'Finance & Transfers'
                   : tab === 'CONTENT'
                   ? 'Institutions & Editorial'
-                  : 'Subscriptions & Audit'}
+                  : tab === 'SUBSCRIPTIONS'
+                  ? 'Subscriptions & Audit'
+                  : tab === 'TICKETS'
+                  ? 'Support Tickets'
+                  : 'Customer Support & Channels'}
               </span>
               {tab === 'PAYMENTS' && pendingPaymentsCount > 0 && (
                 <span
@@ -799,6 +939,20 @@ export const AdminPortal: React.FC = () => {
                   }}
                 >
                   {pendingPaymentsCount}
+                </span>
+              )}
+              {tab === 'TICKETS' && (ticketsData?.counts?.open ?? 0) > 0 && (
+                <span
+                  style={{
+                    background: 'var(--rust)',
+                    color: '#fff',
+                    padding: '1px 6px',
+                    borderRadius: '10px',
+                    fontSize: '10px',
+                    fontWeight: 700,
+                  }}
+                >
+                  {ticketsData?.counts?.open}
                 </span>
               )}
             </button>
@@ -3037,6 +3191,773 @@ export const AdminPortal: React.FC = () => {
                   </tbody>
                 </table>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ======================================================== */}
+        {/* TAB: CUSTOMER SUPPORT TICKETS & COMPLAINTS               */}
+        {/* ======================================================== */}
+        {activeTab === 'TICKETS' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            {/* Header & Metrics */}
+            <div style={{ background: 'var(--white)', border: '1px solid var(--ink)', padding: '24px', boxShadow: '3px 3px 0 var(--ink)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', marginBottom: '20px', borderBottom: '1.5px solid var(--ink)', paddingBottom: '16px' }}>
+                <div>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                    <span style={{ fontSize: '22px' }}>🎫</span>
+                    <h2 style={{ fontFamily: "var(--font-sans)", fontSize: '22px', margin: 0, color: 'var(--ink)' }}>
+                      Customer Support Tickets &amp; Complaints
+                    </h2>
+                  </div>
+                  <p style={{ color: 'var(--slate)', fontSize: '13.5px', margin: 0, maxWidth: '800px', lineHeight: 1.5 }}>
+                    Real-time student inquiry log and technical problem reports. Every submission is recorded in MongoDB and dispatched to the configured support inbox via Brevo with <code>Reply-To</code> set directly to the student.
+                  </p>
+                </div>
+              </div>
+
+              {/* Stat Counters Grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '14px', marginBottom: '20px' }}>
+                <div style={{ background: 'var(--paper)', border: '1px solid var(--ink)', padding: '12px 16px', borderRadius: '4px' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--slate)', textTransform: 'uppercase', fontWeight: 700 }}>Total Inquiries</div>
+                  <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--ink)', marginTop: '4px' }}>
+                    {ticketsData?.counts?.total ?? 0}
+                  </div>
+                </div>
+                <div style={{ background: 'var(--paper)', border: '1px solid var(--ink)', padding: '12px 16px', borderRadius: '4px' }}>
+                  <div style={{ fontSize: '11px', color: '#b45309', textTransform: 'uppercase', fontWeight: 700 }}>Open / Needs Action</div>
+                  <div style={{ fontSize: '24px', fontWeight: 800, color: '#d97706', marginTop: '4px' }}>
+                    {ticketsData?.counts?.open ?? 0}
+                  </div>
+                </div>
+                <div style={{ background: 'var(--paper)', border: '1px solid var(--ink)', padding: '12px 16px', borderRadius: '4px' }}>
+                  <div style={{ fontSize: '11px', color: '#1d4ed8', textTransform: 'uppercase', fontWeight: 700 }}>In Progress</div>
+                  <div style={{ fontSize: '24px', fontWeight: 800, color: '#2563eb', marginTop: '4px' }}>
+                    {ticketsData?.counts?.inProgress ?? 0}
+                  </div>
+                </div>
+                <div style={{ background: 'var(--paper)', border: '1px solid var(--ink)', padding: '12px 16px', borderRadius: '4px' }}>
+                  <div style={{ fontSize: '11px', color: '#15803d', textTransform: 'uppercase', fontWeight: 700 }}>Resolved</div>
+                  <div style={{ fontSize: '24px', fontWeight: 800, color: '#16a34a', marginTop: '4px' }}>
+                    {ticketsData?.counts?.resolved ?? 0}
+                  </div>
+                </div>
+                <div style={{ background: 'var(--paper)', border: '1px solid var(--ink)', padding: '12px 16px', borderRadius: '4px' }}>
+                  <div style={{ fontSize: '11px', color: (ticketsData?.counts?.failedEmail ?? 0) > 0 ? '#b91c1c' : 'var(--slate)', textTransform: 'uppercase', fontWeight: 700 }}>Email Delivery Alerts</div>
+                  <div style={{ fontSize: '24px', fontWeight: 800, color: (ticketsData?.counts?.failedEmail ?? 0) > 0 ? '#dc2626' : 'var(--ink)', marginTop: '4px' }}>
+                    {ticketsData?.counts?.failedEmail ?? 0}
+                  </div>
+                </div>
+              </div>
+
+              {/* Filters & Search */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center' }}>
+                <input
+                  type="text"
+                  placeholder="Search Reference, Student Name, Email..."
+                  value={ticketSearch}
+                  onChange={(e) => {
+                    setTicketSearch(e.target.value);
+                    setTicketPage(1);
+                  }}
+                  style={{ flex: '1 1 240px', padding: '9px 12px', border: '1.5px solid var(--ink)', borderRadius: '3px', fontSize: '13px' }}
+                />
+                <select
+                  value={ticketStatusFilter}
+                  onChange={(e) => {
+                    setTicketStatusFilter(e.target.value);
+                    setTicketPage(1);
+                  }}
+                  style={{ padding: '9px 12px', border: '1.5px solid var(--ink)', borderRadius: '3px', fontSize: '13px', background: 'var(--white)' }}
+                >
+                  <option value="">All Statuses</option>
+                  <option value="OPEN">Open Only</option>
+                  <option value="IN_PROGRESS">In Progress</option>
+                  <option value="RESOLVED">Resolved</option>
+                  <option value="CLOSED">Closed</option>
+                </select>
+                <select
+                  value={ticketCategoryFilter}
+                  onChange={(e) => {
+                    setTicketCategoryFilter(e.target.value);
+                    setTicketPage(1);
+                  }}
+                  style={{ padding: '9px 12px', border: '1.5px solid var(--ink)', borderRadius: '3px', fontSize: '13px', background: 'var(--white)' }}
+                >
+                  <option value="">All Categories</option>
+                  <option value="PAYMENT_PROBLEM">Payment / Bank Transfer</option>
+                  <option value="LOGIN_PROBLEM">Login / Account Problem</option>
+                  <option value="QUESTION_ERROR">Incorrect Question Report</option>
+                  <option value="TECHNICAL_PROBLEM">Technical CBT Issue</option>
+                  <option value="SUBSCRIPTION_PROBLEM">Subscription / Tier Activation</option>
+                  <option value="OTHER">General Inquiry</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Tickets Table */}
+            <div style={{ background: 'var(--white)', border: '1px solid var(--ink)', boxShadow: '3px 3px 0 var(--ink)', overflowX: 'auto' }}>
+              {ticketsLoading ? (
+                <div style={{ padding: '48px', textAlign: 'center' }}>
+                  <BrandLoader mode="inline" size="md" message="Loading support inquiries from MongoDB..." />
+                </div>
+              ) : !ticketsData?.tickets || ticketsData.tickets.length === 0 ? (
+                <div style={{ padding: '48px', textAlign: 'center', color: 'var(--slate)', fontSize: '14px' }}>
+                  No customer support tickets found matching current criteria.
+                </div>
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
+                  <thead>
+                    <tr style={{ background: 'var(--paper)', borderBottom: '1.5px solid var(--ink)' }}>
+                      <th style={{ padding: '12px 14px', fontWeight: 700, color: 'var(--ink)' }}>Ref ID</th>
+                      <th style={{ padding: '12px 14px', fontWeight: 700, color: 'var(--ink)' }}>Student</th>
+                      <th style={{ padding: '12px 14px', fontWeight: 700, color: 'var(--ink)' }}>Category</th>
+                      <th style={{ padding: '12px 14px', fontWeight: 700, color: 'var(--ink)' }}>Subject</th>
+                      <th style={{ padding: '12px 14px', fontWeight: 700, color: 'var(--ink)' }}>Status</th>
+                      <th style={{ padding: '12px 14px', fontWeight: 700, color: 'var(--ink)' }}>Email Delivery</th>
+                      <th style={{ padding: '12px 14px', fontWeight: 700, color: 'var(--ink)' }}>Submitted</th>
+                      <th style={{ padding: '12px 14px', fontWeight: 700, color: 'var(--ink)', textAlign: 'right' }}>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ticketsData.tickets.map((t) => (
+                      <tr key={t._id} style={{ borderBottom: '1px solid var(--paper-line)', transition: 'background 0.1s' }}>
+                        <td style={{ padding: '12px 14px', fontFamily: 'monospace', fontWeight: 700, color: 'var(--rust)' }}>
+                          {t.ticketReference}
+                        </td>
+                        <td style={{ padding: '12px 14px' }}>
+                          <div style={{ fontWeight: 600, color: 'var(--ink)' }}>{t.fullName}</div>
+                          <div style={{ fontSize: '11.5px', color: 'var(--slate)' }}>{t.email}</div>
+                          {t.phone && <div style={{ fontSize: '11px', color: 'var(--slate)' }}>{t.phone}</div>}
+                        </td>
+                        <td style={{ padding: '12px 14px' }}>
+                          <span style={{ fontSize: '12px', padding: '2px 8px', borderRadius: '3px', background: 'var(--paper)', border: '1px solid var(--paper-line)', fontWeight: 600 }}>
+                            {t.category.replace(/_/g, ' ')}
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px 14px', maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {t.subject}
+                        </td>
+                        <td style={{ padding: '12px 14px' }}>
+                          <span
+                            style={{
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              padding: '3px 8px',
+                              borderRadius: '3px',
+                              background:
+                                t.status === 'OPEN'
+                                  ? '#fff3cd'
+                                  : t.status === 'IN_PROGRESS'
+                                  ? '#cce5ff'
+                                  : t.status === 'RESOLVED'
+                                  ? '#d4edda'
+                                  : '#e2e3e5',
+                              color:
+                                t.status === 'OPEN'
+                                  ? '#856404'
+                                  : t.status === 'IN_PROGRESS'
+                                  ? '#004085'
+                                  : t.status === 'RESOLVED'
+                                  ? '#155724'
+                                  : '#383d41',
+                              border: `1px solid ${
+                                t.status === 'OPEN'
+                                  ? '#ffeeba'
+                                  : t.status === 'IN_PROGRESS'
+                                  ? '#b8daff'
+                                  : t.status === 'RESOLVED'
+                                  ? '#c3e6cb'
+                                  : '#d6d8db'
+                              }`,
+                            }}
+                          >
+                            {t.status}
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px 14px' }}>
+                          {t.emailDeliveryStatus === 'SENT' ? (
+                            <span style={{ fontSize: '11px', color: '#16a34a', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                              ✓ Dispatched
+                            </span>
+                          ) : t.emailDeliveryStatus === 'FAILED' ? (
+                            <span style={{ fontSize: '11px', color: '#dc2626', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                              ⚠ Failed
+                              <button
+                                type="button"
+                                onClick={() => handleResendTicketEmail(t._id, t.ticketReference)}
+                                style={{ marginLeft: '4px', fontSize: '10px', padding: '1px 5px', border: '1px solid #dc2626', background: '#fff', color: '#dc2626', borderRadius: '3px', cursor: 'pointer' }}
+                              >
+                                Retry
+                              </button>
+                            </span>
+                          ) : (
+                            <span style={{ fontSize: '11px', color: 'var(--slate)' }}>Pending</span>
+                          )}
+                        </td>
+                        <td style={{ padding: '12px 14px', fontSize: '12px', color: 'var(--slate)', whiteSpace: 'nowrap' }}>
+                          {new Date(t.createdAt).toLocaleDateString('en-GB')}
+                        </td>
+                        <td style={{ padding: '12px 14px', textAlign: 'right' }}>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenTicketModal(t)}
+                            style={{
+                              padding: '5px 12px',
+                              background: 'var(--ink)',
+                              color: '#fff',
+                              border: '1px solid var(--ink)',
+                              borderRadius: '3px',
+                              fontSize: '11.5px',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Inspect &amp; Reply
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+
+              {/* Pagination */}
+              {ticketsData?.pagination && ticketsData.pagination.totalPages > 1 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'var(--paper)', borderTop: '1px solid var(--paper-line)', fontSize: '12px' }}>
+                  <span>Page {ticketsData.pagination.page} of {ticketsData.pagination.totalPages} ({ticketsData.pagination.total} total tickets)</span>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <button
+                      disabled={ticketPage <= 1}
+                      onClick={() => setTicketPage((p) => Math.max(1, p - 1))}
+                      style={{ padding: '4px 10px', border: '1px solid var(--ink)', background: ticketPage <= 1 ? '#e5e7eb' : 'var(--white)', cursor: ticketPage <= 1 ? 'not-allowed' : 'pointer' }}
+                    >
+                      Previous
+                    </button>
+                    <button
+                      disabled={ticketPage >= ticketsData.pagination.totalPages}
+                      onClick={() => setTicketPage((p) => p + 1)}
+                      style={{ padding: '4px 10px', border: '1px solid var(--ink)', background: ticketPage >= ticketsData.pagination.totalPages ? '#e5e7eb' : 'var(--white)', cursor: ticketPage >= ticketsData.pagination.totalPages ? 'not-allowed' : 'pointer' }}
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Ticket Inspection / Reply Modal */}
+            {selectedTicketModal && (
+              <div
+                style={{
+                  position: 'fixed',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  backgroundColor: 'rgba(0,0,0,0.6)',
+                  zIndex: 9999,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '16px',
+                }}
+              >
+                <div
+                  style={{
+                    background: 'var(--white)',
+                    border: '2px solid var(--ink)',
+                    boxShadow: '6px 6px 0 var(--ink)',
+                    maxWidth: '680px',
+                    width: '100%',
+                    maxHeight: '90vh',
+                    overflowY: 'auto',
+                    padding: '28px',
+                    borderRadius: '4px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '18px',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1.5px solid var(--ink)', paddingBottom: '12px' }}>
+                    <div>
+                      <div style={{ fontFamily: 'monospace', fontSize: '18px', fontWeight: 800, color: 'var(--rust)' }}>
+                        {selectedTicketModal.ticketReference}
+                      </div>
+                      <div style={{ fontSize: '13px', color: 'var(--slate)', marginTop: '2px' }}>
+                        Category: <strong>{selectedTicketModal.category.replace(/_/g, ' ')}</strong> · Submitted on {new Date(selectedTicketModal.createdAt).toLocaleString()}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setSelectedTicketModal(null)}
+                      style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', fontWeight: 700 }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  {/* Customer Information Strip */}
+                  <div style={{ background: 'var(--paper)', border: '1px solid var(--paper-line)', padding: '14px', borderRadius: '4px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px', fontSize: '12.5px' }}>
+                    <div>
+                      <span style={{ color: 'var(--slate)', display: 'block' }}>Student Name:</span>
+                      <strong>{selectedTicketModal.fullName}</strong>
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--slate)', display: 'block' }}>Student Email:</span>
+                      <a href={`mailto:${selectedTicketModal.email}`} style={{ color: 'var(--rust)', fontWeight: 600 }}>{selectedTicketModal.email}</a>
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--slate)', display: 'block' }}>Phone Number:</span>
+                      <span>{selectedTicketModal.phone || 'Not provided'}</span>
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--slate)', display: 'block' }}>Account Type:</span>
+                      <span>{selectedTicketModal.userId ? 'Registered User' : 'Guest / External'}</span>
+                    </div>
+                  </div>
+
+                  {/* Email Delivery Diagnostics */}
+                  <div style={{ padding: '10px 14px', background: selectedTicketModal.emailDeliveryStatus === 'SENT' ? '#f0fdf4' : '#fef2f2', border: `1px solid ${selectedTicketModal.emailDeliveryStatus === 'SENT' ? '#bbf7d0' : '#fecaca'}`, borderRadius: '4px', fontSize: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <strong>Email Delivery to Support Inbox: </strong>
+                      <span style={{ color: selectedTicketModal.emailDeliveryStatus === 'SENT' ? '#16a34a' : '#dc2626', fontWeight: 700 }}>
+                        {selectedTicketModal.emailDeliveryStatus}
+                      </span>
+                      {selectedTicketModal.emailRecipient && (
+                        <span style={{ color: 'var(--slate)', marginLeft: '6px' }}>({selectedTicketModal.emailRecipient})</span>
+                      )}
+                      {selectedTicketModal.emailMessageId && (
+                        <div style={{ fontSize: '11px', color: 'var(--slate)', marginTop: '2px', fontFamily: 'monospace' }}>
+                          MsgId: {selectedTicketModal.emailMessageId}
+                        </div>
+                      )}
+                      {selectedTicketModal.emailError && (
+                        <div style={{ fontSize: '11px', color: '#dc2626', marginTop: '2px' }}>
+                          Reason: {selectedTicketModal.emailError}
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      disabled={resendTicketEmailMutation.isPending}
+                      onClick={() => handleResendTicketEmail(selectedTicketModal._id, selectedTicketModal.ticketReference)}
+                      style={{ padding: '5px 10px', fontSize: '11px', border: '1px solid var(--ink)', background: 'var(--white)', cursor: 'pointer', borderRadius: '3px' }}
+                    >
+                      {resendTicketEmailMutation.isPending ? 'Sending...' : 'Dispatch Email Again'}
+                    </button>
+                  </div>
+
+                  {/* Inquiry Subject & Message */}
+                  <div>
+                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--slate)', marginBottom: '4px' }}>
+                      Subject
+                    </label>
+                    <div style={{ fontWeight: 700, fontSize: '14px', color: 'var(--ink)', marginBottom: '12px' }}>
+                      {selectedTicketModal.subject}
+                    </div>
+                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--slate)', marginBottom: '4px' }}>
+                      Customer Complaint / Details
+                    </label>
+                    <div style={{ background: 'var(--paper)', border: '1.5px solid var(--ink)', padding: '14px', borderRadius: '4px', fontSize: '13.5px', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: '180px', overflowY: 'auto' }}>
+                      {selectedTicketModal.message}
+                    </div>
+                  </div>
+
+                  {/* Status & Priority Management */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px' }}>Update Status</label>
+                      <select
+                        value={ticketStatusInput}
+                        onChange={(e) => setTicketStatusInput(e.target.value as any)}
+                        style={{ width: '100%', padding: '8px 10px', border: '1.5px solid var(--ink)', borderRadius: '3px', fontSize: '13px' }}
+                      >
+                        <option value="OPEN">OPEN (Requires attention)</option>
+                        <option value="IN_PROGRESS">IN_PROGRESS (Being handled)</option>
+                        <option value="RESOLVED">RESOLVED (Customer resolved)</option>
+                        <option value="CLOSED">CLOSED (Archived)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px' }}>Priority</label>
+                      <select
+                        value={ticketPriorityInput}
+                        onChange={(e) => setTicketPriorityInput(e.target.value as any)}
+                        style={{ width: '100%', padding: '8px 10px', border: '1.5px solid var(--ink)', borderRadius: '3px', fontSize: '13px' }}
+                      >
+                        <option value="LOW">LOW</option>
+                        <option value="MEDIUM">MEDIUM</option>
+                        <option value="HIGH">HIGH</option>
+                        <option value="URGENT">URGENT</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Admin Notes */}
+                  <div>
+                    <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, marginBottom: '4px' }}>Internal Admin Operations Notes</label>
+                    <textarea
+                      rows={2}
+                      placeholder="Add internal resolution remarks, verification details, or notes..."
+                      value={ticketNotesInput}
+                      onChange={(e) => setTicketNotesInput(e.target.value)}
+                      style={{ width: '100%', padding: '8px 10px', border: '1.5px solid var(--ink)', borderRadius: '3px', fontSize: '12.5px', boxSizing: 'border-box' }}
+                    />
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', borderTop: '1px solid var(--paper-line)', paddingTop: '16px' }}>
+                    <a
+                      href={`mailto:${selectedTicketModal.email}?subject=${encodeURIComponent(`Re: [${selectedTicketModal.ticketReference}] ${selectedTicketModal.subject}`)}`}
+                      className="btn-custom btn-custom-primary"
+                      style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', backgroundColor: 'var(--forest)', border: 'none' }}
+                    >
+                      ✉️ Reply Directly to Student
+                    </a>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedTicketModal(null)}
+                        className="btn-custom btn-custom-ghost"
+                        style={{ fontSize: '12px' }}
+                      >
+                        Close
+                      </button>
+                      <button
+                        type="button"
+                        disabled={updateTicketMutation.isPending}
+                        onClick={handleSaveTicketUpdate}
+                        className="btn-custom btn-custom-primary"
+                        style={{ fontSize: '12px' }}
+                      >
+                        {updateTicketMutation.isPending ? 'Saving...' : 'Save Ticket Status'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ======================================================== */}
+        {/* TAB 10: CUSTOMER SUPPORT & CHANNELS CONFIGURATION        */}
+        {/* MongoDB-backed dynamic source of truth for all support   */}
+        {/* ======================================================== */}
+        {activeTab === 'SETTINGS' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+            <div style={{ background: 'var(--white)', border: '1px solid var(--ink)', padding: '28px', boxShadow: '3px 3px 0 var(--ink)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', marginBottom: '24px', borderBottom: '1.5px solid var(--ink)', paddingBottom: '16px' }}>
+
+                <div>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                    <span style={{ fontSize: '20px' }}>💬</span>
+                    <h2 style={{ fontFamily: "var(--font-sans)", fontSize: '22px', margin: 0, color: 'var(--ink)' }}>
+                      Customer Support &amp; Communication Channels
+                    </h2>
+                  </div>
+                  <p style={{ color: 'var(--slate)', fontSize: '13.5px', margin: 0, maxWidth: '800px', lineHeight: 1.5 }}>
+                    Authoritative customer support contact configuration stored directly in MongoDB. Changes save instantly and propagate dynamically to the public website, floating WhatsApp button, support desk, and student portals without requiring frontend redeployment.
+                  </p>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span
+                    style={{
+                      fontSize: '11px',
+                      padding: '4px 10px',
+                      borderRadius: '3px',
+                      fontWeight: 700,
+                      background: 'var(--forest-soft)',
+                      color: 'var(--forest)',
+                      border: '1px solid var(--forest)',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                    }}
+                  >
+                    ● Database Synchronized
+                  </span>
+                </div>
+              </div>
+
+              {supportSettingsLoading ? (
+                <div style={{ padding: '60px', textAlign: 'center' }}>
+                  <BrandLoader mode="inline" size="md" message="Loading database support configuration..." />
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '32px' }}>
+                  {/* Left Column: Configuration Form */}
+                  <form onSubmit={handleSaveSupportSettings} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    {/* WhatsApp Channel Card */}
+                    <div style={{ border: '1px solid var(--cream-deep)', padding: '18px', borderRadius: '4px', background: 'var(--paper)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '18px' }}>💬</span>
+                          <strong style={{ fontSize: '14px', color: 'var(--ink)', fontFamily: "var(--font-sans)" }}>WhatsApp Channel</strong>
+                        </div>
+                        <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
+                          <input
+                            type="checkbox"
+                            checked={supportForm.whatsappEnabled}
+                            onChange={(e) => setSupportForm({ ...supportForm, whatsappEnabled: e.target.checked })}
+                          />
+                          Channel Active
+                        </label>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, fontFamily: "var(--font-sans)", marginBottom: '4px' }}>
+                            WHATSAPP NUMBER (CLEAN DIGITS) *
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            placeholder="e.g. 2348030001234"
+                            value={supportForm.whatsappNumber}
+                            onChange={(e) => setSupportForm({ ...supportForm, whatsappNumber: e.target.value })}
+                            style={{ width: '100%', padding: '9px 12px', border: '1.5px solid var(--ink)', borderRadius: '3px', fontSize: '13px', boxSizing: 'border-box' }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, fontFamily: "var(--font-sans)", marginBottom: '4px' }}>
+                            DISPLAY LABEL (PUBLIC)
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="e.g. +234 803 000 1234"
+                            value={supportForm.whatsappDisplay}
+                            onChange={(e) => setSupportForm({ ...supportForm, whatsappDisplay: e.target.value })}
+                            style={{ width: '100%', padding: '9px 12px', border: '1.5px solid var(--ink)', borderRadius: '3px', fontSize: '13px', boxSizing: 'border-box' }}
+                          />
+                        </div>
+                      </div>
+                      <div style={{ fontSize: '11px', color: 'var(--slate)', marginTop: '6px' }}>
+                        Generates secure link: <code>https://wa.me/{supportForm.whatsappNumber.replace(/[^0-9]/g, '') || '...' }</code>
+                      </div>
+                    </div>
+
+                    {/* Phone Helpline Card */}
+                    <div style={{ border: '1px solid var(--cream-deep)', padding: '18px', borderRadius: '4px', background: 'var(--paper)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '18px' }}>📞</span>
+                          <strong style={{ fontSize: '14px', color: 'var(--ink)', fontFamily: "var(--font-sans)" }}>Telephone Helplines</strong>
+                        </div>
+                        <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
+                          <input
+                            type="checkbox"
+                            checked={supportForm.phoneEnabled}
+                            onChange={(e) => setSupportForm({ ...supportForm, phoneEnabled: e.target.checked })}
+                          />
+                          Channel Active
+                        </label>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, fontFamily: "var(--font-sans)", marginBottom: '4px' }}>
+                            PHONE NUMBER (DIALABLE) *
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            placeholder="e.g. +2348030001234"
+                            value={supportForm.phone}
+                            onChange={(e) => setSupportForm({ ...supportForm, phone: e.target.value })}
+                            style={{ width: '100%', padding: '9px 12px', border: '1.5px solid var(--ink)', borderRadius: '3px', fontSize: '13px', boxSizing: 'border-box' }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, fontFamily: "var(--font-sans)", marginBottom: '4px' }}>
+                            DISPLAY LABEL (PUBLIC)
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="e.g. +234 803 000 1234"
+                            value={supportForm.phoneDisplay}
+                            onChange={(e) => setSupportForm({ ...supportForm, phoneDisplay: e.target.value })}
+                            style={{ width: '100%', padding: '9px 12px', border: '1.5px solid var(--ink)', borderRadius: '3px', fontSize: '13px', boxSizing: 'border-box' }}
+                          />
+                        </div>
+                      </div>
+                      <div style={{ fontSize: '11px', color: 'var(--slate)', marginTop: '6px' }}>
+                        Generates action: <code>tel:{supportForm.phone || '...'}</code>
+                      </div>
+                    </div>
+
+                    {/* Email Support Card */}
+                    <div style={{ border: '1px solid var(--cream-deep)', padding: '18px', borderRadius: '4px', background: 'var(--paper)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '18px' }}>✉️</span>
+                          <strong style={{ fontSize: '14px', color: 'var(--ink)', fontFamily: "var(--font-sans)" }}>Email Support Desk</strong>
+                        </div>
+                        <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
+                          <input
+                            type="checkbox"
+                            checked={supportForm.emailEnabled}
+                            onChange={(e) => setSupportForm({ ...supportForm, emailEnabled: e.target.checked })}
+                          />
+                          Channel Active
+                        </label>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, fontFamily: "var(--font-sans)", marginBottom: '4px' }}>
+                            SUPPORT EMAIL ADDRESS *
+                          </label>
+                          <input
+                            type="email"
+                            required
+                            placeholder="e.g. support@markdriller.com"
+                            value={supportForm.email}
+                            onChange={(e) => setSupportForm({ ...supportForm, email: e.target.value })}
+                            style={{ width: '100%', padding: '9px 12px', border: '1.5px solid var(--ink)', borderRadius: '3px', fontSize: '13px', boxSizing: 'border-box' }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, fontFamily: "var(--font-sans)", marginBottom: '4px' }}>
+                            DISPLAY EMAIL (PUBLIC)
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="e.g. support@markdriller.com"
+                            value={supportForm.emailDisplay}
+                            onChange={(e) => setSupportForm({ ...supportForm, emailDisplay: e.target.value })}
+                            style={{ width: '100%', padding: '9px 12px', border: '1.5px solid var(--ink)', borderRadius: '3px', fontSize: '13px', boxSizing: 'border-box' }}
+                          />
+                        </div>
+                      </div>
+                      <div style={{ fontSize: '11px', color: 'var(--slate)', marginTop: '6px' }}>
+                        Generates action: <code>mailto:{supportForm.email || '...'}</code>
+                      </div>
+                    </div>
+
+                    {/* Operational Hours */}
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, fontFamily: "var(--font-sans)", marginBottom: '5px' }}>
+                        OPERATING HOURS / RESPONSE COMMITMENT NOTE
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Monday – Saturday: 8:00 AM – 8:00 PM WAT"
+                        value={supportForm.workingHours}
+                        onChange={(e) => setSupportForm({ ...supportForm, workingHours: e.target.value })}
+                        style={{ width: '100%', padding: '10px 12px', border: '1.5px solid var(--ink)', borderRadius: '3px', fontSize: '13px', boxSizing: 'border-box' }}
+                      />
+                    </div>
+
+                    {/* Save Button */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '8px' }}>
+                      <button
+                        type="submit"
+                        disabled={updateSupportSettingsMutation.isPending}
+                        className="btn-custom btn-custom-primary"
+                        style={{ padding: '12px 28px', fontSize: '13px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+                      >
+                        {updateSupportSettingsMutation.isPending ? 'Saving & Updating MongoDB...' : '💾 Save Support Settings'}
+                      </button>
+                    </div>
+                  </form>
+
+                  {/* Right Column: Live Student Experience Preview */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    <div style={{ background: 'var(--paper)', border: '1.5px solid var(--cream-deep)', borderRadius: '4px', padding: '20px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', borderBottom: '1px solid var(--cream-deep)', paddingBottom: '10px' }}>
+                        <span style={{ fontFamily: "var(--font-sans)", fontSize: '11px', color: 'var(--rust)', fontWeight: 700, textTransform: 'uppercase' }}>
+                          Live Candidate Experience Preview
+                        </span>
+                        <span style={{ fontSize: '10px', background: 'var(--forest-soft)', color: 'var(--forest)', border: '1px solid var(--forest)', padding: '2px 6px', fontWeight: 700, borderRadius: '2px' }}>
+                          LIVE IN-APP PREVIEW
+                        </span>
+                      </div>
+
+                      {/* Preview: Floating Button Widget */}
+                      <div style={{ marginBottom: '16px' }}>
+                        <div style={{ fontSize: '11px', color: 'var(--slate)', marginBottom: '6px', fontWeight: 600 }}>
+                          FLOATING CONTACT BUTTON:
+                        </div>
+                        {supportForm.whatsappEnabled && supportForm.whatsappNumber ? (
+                          <div
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              backgroundColor: '#22c55e',
+                              color: '#fff',
+                              borderRadius: '50px',
+                              padding: '8px 16px',
+                              fontSize: '12px',
+                              fontWeight: 700,
+                              fontFamily: "var(--font-sans)",
+                            }}
+                          >
+                            <span>💬</span>
+                            <span>Need Help? Chat on WhatsApp</span>
+                          </div>
+                        ) : (
+                          <div
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              backgroundColor: 'var(--rust)',
+                              color: '#fff',
+                              borderRadius: '50px',
+                              padding: '8px 16px',
+                              fontSize: '12px',
+                              fontWeight: 700,
+                              fontFamily: "var(--font-sans)",
+                            }}
+                          >
+                            <span>✉️</span>
+                            <span>Support Desk</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Preview: Support Channels Card */}
+                      <div style={{ background: 'var(--white)', border: '1.5px solid var(--ink)', padding: '16px', borderRadius: '4px', boxShadow: '2px 2px 0 var(--ink)' }}>
+                        <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', color: 'var(--ink)' }}>Official Contact Channels</h4>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px' }}>
+                          {supportForm.whatsappEnabled && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span>💬</span>
+                              <strong>WhatsApp:</strong>
+                              <span style={{ color: '#16a34a', fontWeight: 600 }}>{supportForm.whatsappDisplay || supportForm.whatsappNumber}</span>
+                            </div>
+                          )}
+                          {supportForm.phoneEnabled && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span>📞</span>
+                              <strong>Phone:</strong>
+                              <span style={{ color: 'var(--rust)', fontWeight: 600 }}>{supportForm.phoneDisplay || supportForm.phone}</span>
+                            </div>
+                          )}
+                          {supportForm.emailEnabled && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span>✉️</span>
+                              <strong>Email:</strong>
+                              <span style={{ color: 'var(--steel)', fontWeight: 600 }}>{supportForm.emailDisplay || supportForm.email}</span>
+                            </div>
+                          )}
+                          <div style={{ borderTop: '1px solid var(--paper-line)', paddingTop: '8px', marginTop: '4px', fontSize: '11.5px', color: 'var(--slate)' }}>
+                            Hours: {supportForm.workingHours}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div style={{ marginTop: '16px', padding: '12px', background: 'var(--white)', border: '1px solid var(--cream-deep)', borderRadius: '3px', fontSize: '11px', color: 'var(--slate)', lineHeight: 1.5 }}>
+                        <strong>🔒 Verification &amp; Security:</strong>
+                        <br />
+                        Changes are saved to the <code>SystemSetting</code> collection (key: <code>CUSTOMER_SUPPORT_CONFIG</code>) with admin audit tracking. The public endpoint <code>GET /api/support/contact-info</code> exposes ONLY safe contact channels without any internal system secrets.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

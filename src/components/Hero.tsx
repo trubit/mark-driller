@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
 import { useTelemetryQuery } from '../api/exams';
+import { SafeImage } from './SafeImage';
 
 export const Hero: React.FC = () => {
   const { openAuthModal } = useAppStore();
@@ -109,9 +110,9 @@ export const Hero: React.FC = () => {
               background: 'var(--white)',
             }}
           >
-            {/* Licensed Unsplash photography used as a real student-study context visual. */}
-            <img
-              src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=1200&q=82"
+            {/* Authentic student-study context visual stored locally in public/assets/images */}
+            <SafeImage
+              src="/assets/images/students-study.jpg"
               alt="Students studying together with a laptop and notebooks"
               style={{
                 width: '100%',

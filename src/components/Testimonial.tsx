@@ -1,6 +1,7 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '../api/client.js';
+import { SafeImage } from './SafeImage.js';
 
 interface TestimonialItem {
   studentName?: string;
@@ -95,7 +96,7 @@ export const Testimonial: React.FC = () => {
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '14px', borderTop: '1px solid rgba(255, 255, 255, 0.1)', paddingTop: '16px' }}>
                 {item.image && (
-                  <img
+                  <SafeImage
                     src={item.image}
                     alt={item.name}
                     style={{

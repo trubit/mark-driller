@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTelemetryQuery } from '../api/exams';
 import { useAuthStore } from '../store/useAuthStore';
 import { useAppStore } from '../store/useAppStore';
+import { SafeImage } from './SafeImage';
 
 export const Features: React.FC = () => {
   const navigate = useNavigate();
@@ -35,7 +36,7 @@ export const Features: React.FC = () => {
       description: 'Accurate exam-room simulator mirroring official JAMB 8-key keyboard navigation, countdown timer, built-in calculator, and 4-subject UTME mock format.',
       tag: 'Offline & Online CBT',
       link: '/questions',
-      image: 'https://images.unsplash.com/photo-1581092795360-fd1ca04f0952?auto=format&fit=crop&w=900&q=80',
+      image: '/assets/images/digital-cbt.jpg',
       imageAlt: 'Student using a computer for focused digital learning',
     },
     {
@@ -50,7 +51,7 @@ export const Features: React.FC = () => {
       description: 'Comprehensive step-by-step problem solver delivering clear, curriculum-aligned explanations for difficult math, physics, chemistry, and English questions.',
       tag: 'Step-by-Step Logic',
       link: '/questions',
-      image: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=900&q=80',
+      image: '/assets/images/admin-desk.jpg',
       imageAlt: 'Student reviewing handwritten notes and study calculations',
     },
     {
@@ -64,7 +65,7 @@ export const Features: React.FC = () => {
       description: 'Complete year-by-year past questions (1978–2026) for JAMB, WAEC, NECO, BECE, and Post-UTME. Drill by specific topic, year, or syllabus difficulty level.',
       tag: qCount,
       link: '/questions',
-      image: 'https://images.unsplash.com/photo-1513258496099-48168024aec0?auto=format&fit=crop&w=900&q=80',
+      image: '/assets/images/study-space.jpg',
       imageAlt: 'Students preparing with books in a study space',
     },
     {
@@ -80,7 +81,7 @@ export const Features: React.FC = () => {
       description: 'Chapter-by-chapter breakdowns, character profiles, thematic analysis, and high-probability CBT questions for official prescribed JAMB English novels.',
       tag: 'The Life Changer & Sweet Sixteen',
       link: '/novels',
-      image: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=900&q=80',
+      image: '/assets/images/books-study.jpg',
       imageAlt: 'Open books arranged for literature study',
     },
     {
@@ -95,7 +96,7 @@ export const Features: React.FC = () => {
       description: 'Comprehensive digital handbook containing essential formulas, unit conversions, physics laws, and chemical equations with worked exam examples.',
       tag: 'Interactive Reference',
       link: '/formulas',
-      image: 'https://images.unsplash.com/photo-1532094349884-543bc11b234d?auto=format&fit=crop&w=900&q=80',
+      image: '/assets/images/science-lab.jpg',
       imageAlt: 'Science study materials and laboratory learning equipment',
     },
     {
@@ -110,7 +111,7 @@ export const Features: React.FC = () => {
       description: 'Official JAMB Brochure & IBASS checker. Explore approved courses, verify required O-Level subjects, and check tertiary institutions across Nigeria.',
       tag: 'Admissions Guidance',
       link: '/schools',
-      image: 'https://images.unsplash.com/photo-1523580846011-d3a5bc25702b?auto=format&fit=crop&w=900&q=80',
+      image: '/assets/images/university-screening.jpg',
       imageAlt: 'Students walking on a university campus',
     },
   ];
@@ -139,7 +140,7 @@ export const Features: React.FC = () => {
             >
               <div>
                 <div className="feature-card-media">
-                  <img src={item.image} alt={item.imageAlt} loading="lazy" />
+                  <SafeImage src={item.image} alt={item.imageAlt} loading="lazy" />
                 </div>
                 <div className="f-icon">{item.icon}</div>
                 <h3>{item.title}</h3>

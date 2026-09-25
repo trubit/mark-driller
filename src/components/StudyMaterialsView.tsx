@@ -12,6 +12,7 @@ import { useAppStore } from '../store/useAppStore.js';
 import { useNotificationStore } from '../store/useNotificationStore.js';
 import { BrandLoader } from './BrandLoader.js';
 import { UploadMaterialModal } from './UploadMaterialModal.js';
+import { SafeImage } from './SafeImage.js';
 
 type MaterialSort = 'newest' | 'oldest' | 'title' | 'downloads';
 type AccessFilter = '' | 'false' | 'true';
@@ -411,7 +412,7 @@ export const StudyMaterialsView: React.FC = () => {
                               <span>{visual.label}</span>
                               <strong>{material.examId?.shortCode || 'STUDY'}</strong>
                             </div>
-                            <img src={visual.image} alt={`${visual.label} visual identity`} loading="lazy" />
+                            <SafeImage src={visual.image} alt={`${visual.label} visual identity`} loading="lazy" />
                           </div>
                         );
                       })()}
@@ -550,7 +551,7 @@ export const StudyMaterialsView: React.FC = () => {
                             Visual identity is based on the selected examination board. Official document contents are only served through the secure download endpoint.
                           </p>
                         </div>
-                        <img src={visual.image} alt={`${visual.label} preview mark`} loading="lazy" />
+                        <SafeImage src={visual.image} alt={`${visual.label} preview mark`} loading="lazy" />
                       </div>
                     );
                   })()}

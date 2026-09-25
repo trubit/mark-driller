@@ -26,7 +26,8 @@ async function ensureServerRunning() {
       const res = await fetch(`${BASE_URL}/api/health`);
       if (res.ok) {
         const body = (await res.json()) as any;
-        if (body.database === 'connected' || body.db === 'connected') {
+        const dbStatus = body.data?.database || body.database || body.db;
+        if (dbStatus === 'connected' || body.data?.status === 'healthy') {
           return;
         }
       }
@@ -71,6 +72,7 @@ async function runEndToEndStudentJourney() {
 
   const testSuffix = crypto.randomBytes(4).toString('hex');
   const studentEmail = `student_${testSuffix}@example.com`;
+  let freeEmail = '';
   const studentPassword = 'SecurePassword123!';
   const studentFullName = `Test Scholar ${testSuffix}`;
 
@@ -451,7 +453,7 @@ async function runEndToEndStudentJourney() {
   try {
     // Create a new free student to test quota exhaustion
     const freeSuffix = crypto.randomBytes(4).toString('hex');
-    const freeEmail = `free_${freeSuffix}@example.com`;
+    freeEmail = `free_${freeSuffix}@example.com`;
     const freePassword = 'FreePassword123!';
 
     const regFreeRes = await fetch(`${BASE_URL}/api/auth/register`, {
@@ -543,6 +545,33 @@ async function runEndToEndStudentJourney() {
   console.log('\n------------------------------------------------------------');
   console.log(`TOTAL CHECKS: ${passedCount + failedCount} | PASSED: ${passedCount} | FAILED: ${failedCount}`);
   console.log('------------------------------------------------------------\n');
+
+  // Clean up ephemeral test accounts created by this test run
+  try {
+    const { User } = await import('../src/server/models/User.js');
+    const { Profile } = await import('../src/server/models/Profile.js');
+    const { Subscription } = await import('../src/server/models/Subscription.js');
+    const { Payment } = await import('../src/server/models/Payment.js');
+    const { ExamAttempt } = await import('../src/server/models/ExamAttempt.js');
+    const { Result } = await import('../src/server/models/Result.js');
+
+    const emailsToPurge = [studentEmail, freeEmail].filter(Boolean);
+    const testUsers = await User.find({ email: { $in: emailsToPurge } }).lean();
+    const testIds = testUsers.map((u) => u._id);
+    if (testIds.length > 0) {
+      await Promise.all([
+        Profile.deleteMany({ userId: { $in: testIds } }),
+        Subscription.deleteMany({ userId: { $in: testIds } }),
+        Payment.deleteMany({ userId: { $in: testIds } }),
+        ExamAttempt.deleteMany({ userId: { $in: testIds } }),
+        Result.deleteMany({ userId: { $in: testIds } }),
+        User.deleteMany({ _id: { $in: testIds } }),
+      ]);
+      console.log('[Cleanup] Ephemeral test accounts successfully purged.');
+    }
+  } catch (cleanupErr) {
+    console.warn('[Cleanup Warning] Could not purge ephemeral test accounts:', cleanupErr);
+  }
 
   try {
     await mongoose.disconnect();

@@ -1,9 +1,19 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
-import { SUPPORT_CONFIG, getWhatsAppUrl } from '../config/supportConfig';
+import { useSupportContactQuery, buildWhatsAppLink, buildTelLink, buildMailtoLink } from '../api/supportContact.js';
 
 export const SupportSection: React.FC = () => {
-  const whatsappUrl = getWhatsAppUrl('Hello MarkDriller Support, I need assistance with CBT practice / activation.');
+  const { data: support } = useSupportContactQuery();
+
+  const isWhatsAppEnabled = support ? support.whatsappEnabled !== false : true;
+  const whatsappNum = support?.whatsappNumber || '2348030001234';
+  const whatsappDisplay = support?.whatsappDisplay || '+234 803 000 1234';
+  const phoneDisplay = support?.phoneDisplay || support?.phone || '+234 803 000 1234';
+  const emailDisplay = support?.emailDisplay || support?.email || 'support@markdriller.com';
+  const isPhoneEnabled = support ? support.phoneEnabled !== false : true;
+  const isEmailEnabled = support ? support.emailEnabled !== false : true;
+  const workingHours = support?.workingHours || 'Monday – Saturday, 8:00 AM to 8:00 PM WAT';
+
+  const whatsappUrl = buildWhatsAppLink(whatsappNum, 'Hello MarkDriller Support, I need assistance with CBT practice / activation.');
 
   return (
     <section className="section" id="support" aria-label="Customer and Institutional Support">
@@ -41,159 +51,165 @@ export const SupportSection: React.FC = () => {
           }}
         >
           {/* Card 1: Official Help Line */}
-          <div
-            style={{
-              background: 'var(--white)',
-              border: '1.5px solid var(--paper-line)',
-              borderRadius: '8px',
-              padding: '24px',
-              boxShadow: 'var(--card-shadow)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '10px',
-            }}
-          >
+          {isPhoneEnabled && (
             <div
               style={{
-                width: '40px',
-                height: '40px',
+                background: 'var(--white)',
+                border: '1.5px solid var(--paper-line)',
                 borderRadius: '8px',
-                backgroundColor: 'rgba(168, 86, 47, 0.1)',
-                color: 'var(--rust)',
+                padding: '24px',
+                boxShadow: 'var(--card-shadow)',
                 display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '20px',
+                flexDirection: 'column',
+                gap: '10px',
               }}
             >
-              📞
-            </div>
-            <h3 style={{ fontSize: '16px', margin: 0, color: 'var(--ink)' }}>
-              Phone &amp; SMS Helplines
-            </h3>
-            <p style={{ fontSize: '13px', color: 'var(--ink-soft)', margin: 0, lineHeight: 1.5 }}>
-              Available Monday – Saturday, 8:00 AM to 6:00 PM WAT for urgent activation or download guidance.
-            </p>
-            <div style={{ marginTop: 'auto', paddingTop: '8px' }}>
-              <a
-                href={`tel:${SUPPORT_CONFIG.phoneDisplay}`}
+              <div
                 style={{
-                  fontFamily: "var(--font-sans)",
-                  fontSize: '13px',
-                  fontWeight: 700,
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '8px',
+                  backgroundColor: 'rgba(168, 86, 47, 0.1)',
                   color: 'var(--rust)',
-                  textDecoration: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '20px',
                 }}
               >
-                {SUPPORT_CONFIG.phoneDisplay}
-              </a>
+                📞
+              </div>
+              <h3 style={{ fontSize: '16px', margin: 0, color: 'var(--ink)' }}>
+                Phone &amp; SMS Helplines
+              </h3>
+              <p style={{ fontSize: '13px', color: 'var(--ink-soft)', margin: 0, lineHeight: 1.5 }}>
+                Available {workingHours} for urgent activation or download guidance.
+              </p>
+              <div style={{ marginTop: 'auto', paddingTop: '8px' }}>
+                <a
+                  href={buildTelLink(phoneDisplay)}
+                  style={{
+                    fontFamily: "var(--font-sans)",
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    color: 'var(--rust)',
+                    textDecoration: 'none',
+                  }}
+                >
+                  {phoneDisplay}
+                </a>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Card 2: Email & Support Ticket */}
-          <div
-            style={{
-              background: 'var(--white)',
-              border: '1.5px solid var(--paper-line)',
-              borderRadius: '8px',
-              padding: '24px',
-              boxShadow: 'var(--card-shadow)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '10px',
-            }}
-          >
+          {isEmailEnabled && (
             <div
               style={{
-                width: '40px',
-                height: '40px',
+                background: 'var(--white)',
+                border: '1.5px solid var(--paper-line)',
                 borderRadius: '8px',
-                backgroundColor: 'rgba(62, 110, 142, 0.1)',
-                color: 'var(--steel)',
+                padding: '24px',
+                boxShadow: 'var(--card-shadow)',
                 display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '20px',
+                flexDirection: 'column',
+                gap: '10px',
               }}
             >
-              ✉️
-            </div>
-            <h3 style={{ fontSize: '16px', margin: 0, color: 'var(--ink)' }}>
-              Email &amp; Help Desk
-            </h3>
-            <p style={{ fontSize: '13px', color: 'var(--ink-soft)', margin: 0, lineHeight: 1.5 }}>
-              Submit technical queries, billing receipts, or institutional partnership inquiries for fast turnaround.
-            </p>
-            <div style={{ marginTop: 'auto', paddingTop: '8px' }}>
-              <a
-                href={`mailto:${SUPPORT_CONFIG.email}`}
+              <div
                 style={{
-                  fontFamily: "var(--font-sans)",
-                  fontSize: '12.5px',
-                  fontWeight: 700,
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '8px',
+                  backgroundColor: 'rgba(62, 110, 142, 0.1)',
                   color: 'var(--steel)',
-                  textDecoration: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '20px',
                 }}
               >
-                {SUPPORT_CONFIG.email}
-              </a>
+                ✉️
+              </div>
+              <h3 style={{ fontSize: '16px', margin: 0, color: 'var(--ink)' }}>
+                Email &amp; Help Desk
+              </h3>
+              <p style={{ fontSize: '13px', color: 'var(--ink-soft)', margin: 0, lineHeight: 1.5 }}>
+                Submit technical queries, billing receipts, or institutional partnership inquiries for fast turnaround.
+              </p>
+              <div style={{ marginTop: 'auto', paddingTop: '8px' }}>
+                <a
+                  href={buildMailtoLink(emailDisplay)}
+                  style={{
+                    fontFamily: "var(--font-sans)",
+                    fontSize: '12.5px',
+                    fontWeight: 700,
+                    color: 'var(--steel)',
+                    textDecoration: 'none',
+                  }}
+                >
+                  {emailDisplay}
+                </a>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Card 3: WhatsApp Instant Support */}
-          <div
-            style={{
-              background: 'var(--white)',
-              border: '1.5px solid var(--paper-line)',
-              borderRadius: '8px',
-              padding: '24px',
-              boxShadow: 'var(--card-shadow)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '10px',
-            }}
-          >
+          {isWhatsAppEnabled && (
             <div
               style={{
-                width: '40px',
-                height: '40px',
+                background: 'var(--white)',
+                border: '1.5px solid var(--paper-line)',
                 borderRadius: '8px',
-                backgroundColor: 'rgba(34, 197, 94, 0.1)',
-                color: '#16a34a',
+                padding: '24px',
+                boxShadow: 'var(--card-shadow)',
                 display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '20px',
+                flexDirection: 'column',
+                gap: '10px',
               }}
             >
-              💬
-            </div>
-            <h3 style={{ fontSize: '16px', margin: 0, color: 'var(--ink)' }}>
-              WhatsApp Instant Support
-            </h3>
-            <p style={{ fontSize: '13px', color: 'var(--ink-soft)', margin: 0, lineHeight: 1.5 }}>
-              Chat directly with our student onboarding reps for immediate scratch card resolution and links.
-            </p>
-            <div style={{ marginTop: 'auto', paddingTop: '8px' }}>
-              <a
-                href={whatsappUrl}
-                target="_blank"
-                rel="noopener noreferrer"
+              <div
                 style={{
-                  fontFamily: "var(--font-sans)",
-                  fontSize: '13px',
-                  fontWeight: 700,
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '8px',
+                  backgroundColor: 'rgba(34, 197, 94, 0.1)',
                   color: '#16a34a',
-                  textDecoration: 'none',
-                  display: 'inline-flex',
+                  display: 'flex',
                   alignItems: 'center',
-                  gap: '4px',
+                  justifyContent: 'center',
+                  fontSize: '20px',
                 }}
               >
-                Start WhatsApp Chat →
-              </a>
+                💬
+              </div>
+              <h3 style={{ fontSize: '16px', margin: 0, color: 'var(--ink)' }}>
+                WhatsApp Instant Support
+              </h3>
+              <p style={{ fontSize: '13px', color: 'var(--ink-soft)', margin: 0, lineHeight: 1.5 }}>
+                Chat directly with our student onboarding reps for immediate scratch card resolution and links ({whatsappDisplay}).
+              </p>
+              <div style={{ marginTop: 'auto', paddingTop: '8px' }}>
+                <a
+                  href={whatsappUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    fontFamily: "var(--font-sans)",
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    color: '#16a34a',
+                    textDecoration: 'none',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}
+                >
+                  Start WhatsApp Chat →
+                </a>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Corporate Office Strip */}
@@ -220,17 +236,11 @@ export const SupportSection: React.FC = () => {
               Lagos Office: 42 Commercial Avenue, Yaba, Lagos State · Abuja Support Desk: Plot 18 Ahmadu Bello Way, Central Business District, Abuja.
             </span>
           </div>
-
-          <Link
-            to="/contact"
-            className="btn-custom btn-custom-ghost"
-            style={{ fontSize: '12.5px', padding: '6px 14px', whiteSpace: 'nowrap' }}
-          >
-            Visit Full Contact Portal →
-          </Link>
+          <div style={{ fontSize: '12px', color: 'var(--ink-soft)', fontFamily: "var(--font-sans)" }}>
+            Standard Working Hours: <strong>{workingHours}</strong>
+          </div>
         </div>
       </div>
     </section>
   );
 };
-

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { SafeImage } from './SafeImage.js';
 
 interface InstitutionProfile {
   id: string;
@@ -183,8 +184,8 @@ export const PostUtmePortal: React.FC = () => {
             </p>
           </div>
           <div className="premium-portal-hero-media">
-            <img
-              src="https://images.unsplash.com/photo-1523580846011-d3a5bc25702b?auto=format&fit=crop&w=1200&q=82"
+            <SafeImage
+              src="/assets/images/university-screening.jpg"
               alt="University students walking on campus while preparing for admission screening"
               loading="eager"
             />
