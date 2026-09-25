@@ -42,6 +42,14 @@ export interface QuestionsFilterParams {
   limit?: number;
 }
 
+export interface TrialUsageInfo {
+  isPro: boolean;
+  used: number;
+  limit: number;
+  remaining: number;
+  isLimitReached: boolean;
+}
+
 export interface QuestionsResponse {
   questions: QuestionItem[];
   pagination: {
@@ -52,8 +60,10 @@ export interface QuestionsResponse {
     hasNextPage: boolean;
     hasPrevPage: boolean;
   };
+  trialUsage?: TrialUsageInfo;
   acquiredOnDemand?: boolean;
 }
+
 
 export interface BookmarkItem {
   bookmarkId: string;
@@ -148,5 +158,14 @@ export function useAcquireCurriculumMutation() {
     },
   });
 }
+
+export function useTrialUsageQuery() {
+  return useQuery<TrialUsageInfo>({
+    queryKey: ['trial-usage'],
+    queryFn: () => apiClient<TrialUsageInfo>('/api/questions/trial-usage'),
+    staleTime: 1000 * 30,
+  });
+}
+
 
 

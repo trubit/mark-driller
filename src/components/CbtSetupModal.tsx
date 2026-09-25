@@ -137,15 +137,11 @@ export const CbtSetupModal: React.FC<CbtSetupModalProps> = ({
     e.preventDefault();
     setErrorMessage(null);
 
-    if (!authUser?.isVerified && !isPro) {
-      setErrorMessage('Please verify your email address to launch practice and mock examinations.');
+    if (!isPro) {
+      setErrorMessage('Exam Mode, Practice Mode, and Study Mode require an active MarkDriller Pro subscription. Upgrade to Pro to launch CBT sessions.');
       return;
     }
 
-    if (!isPro && (allYears || selectedYears.length > 1)) {
-      setErrorMessage('Multi-year question pooling and All-Years archive access are exclusive to Pro subscribers. Select a single year or upgrade to Pro.');
-      return;
-    }
 
     if (!selectedExamId) {
       setErrorMessage('Please select an active examination board.');
@@ -302,12 +298,56 @@ export const CbtSetupModal: React.FC<CbtSetupModalProps> = ({
           </div>
         )}
 
+        {!isPro && (
+          <div
+            style={{
+              padding: '12px 16px',
+              backgroundColor: 'rgba(168, 86, 47, 0.08)',
+              border: '1.5px solid var(--rust)',
+              borderRadius: '4px',
+              marginBottom: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '10px',
+            }}
+          >
+            <div>
+              <strong style={{ color: 'var(--rust)', display: 'block', fontSize: '13px' }}>
+                🔒 Pro Subscription Required
+              </strong>
+              <span style={{ fontSize: '12px', color: 'var(--ink)' }}>
+                Exam Mode, Practice Mode, and Study Mode are locked for Free Trial users.
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                navigate('/portal/pricing');
+              }}
+              className="btn-custom btn-custom-primary"
+              style={{ backgroundColor: 'var(--rust)', color: '#fff', fontSize: '12px', padding: '6px 14px' }}
+            >
+              Upgrade to Pro →
+            </button>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {/* 1. Mode Selection: Practice, Study, Exam */}
           <div>
-            <span style={{ display: 'block', fontSize: '11px', fontFamily: 'var(--font-sans)', color: 'var(--ink)', fontWeight: 700, marginBottom: '6px' }}>
-              LEARNING &amp; EXAMINATION MODE *
-            </span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+              <span style={{ fontSize: '11px', fontFamily: 'var(--font-sans)', color: 'var(--ink)', fontWeight: 700 }}>
+                LEARNING &amp; EXAMINATION MODE *
+              </span>
+              {!isPro && (
+                <span style={{ fontSize: '11px', color: 'var(--rust)', fontWeight: 700 }}>
+                  🔒 Pro Required
+                </span>
+              )}
+            </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
               <button
                 type="button"
@@ -325,7 +365,10 @@ export const CbtSetupModal: React.FC<CbtSetupModalProps> = ({
                   textAlign: 'left',
                 }}
               >
-                <div>🎯 Practice Mode</div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span>🎯 Practice</span>
+                  {!isPro && <span style={{ fontSize: '9.5px', color: 'var(--rust)', fontWeight: 700 }}>🔒 Pro</span>}
+                </div>
                 <div style={{ fontSize: '10.5px', color: 'var(--ink-soft)', fontWeight: 400, marginTop: '2px' }}>
                   Self-paced questions
                 </div>
@@ -347,7 +390,10 @@ export const CbtSetupModal: React.FC<CbtSetupModalProps> = ({
                   textAlign: 'left',
                 }}
               >
-                <div>💡 Study Mode</div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span>💡 Study</span>
+                  {!isPro && <span style={{ fontSize: '9.5px', color: 'var(--rust)', fontWeight: 700 }}>🔒 Pro</span>}
+                </div>
                 <div style={{ fontSize: '10.5px', color: 'var(--ink-soft)', fontWeight: 400, marginTop: '2px' }}>
                   Immediate solutions
                 </div>
@@ -369,13 +415,17 @@ export const CbtSetupModal: React.FC<CbtSetupModalProps> = ({
                   textAlign: 'left',
                 }}
               >
-                <div>⏱️ Exam Mode</div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span>⏱️ Exam</span>
+                  {!isPro && <span style={{ fontSize: '9.5px', color: 'var(--rust)', fontWeight: 700 }}>🔒 Pro</span>}
+                </div>
                 <div style={{ fontSize: '10.5px', color: 'var(--ink-soft)', fontWeight: 400, marginTop: '2px' }}>
                   Official timer &amp; test
                 </div>
               </button>
             </div>
           </div>
+
 
           {/* 2. Scope Tabs: Single Subject vs Multi-Subject vs Bookmarks */}
           <div>
@@ -861,14 +911,29 @@ export const CbtSetupModal: React.FC<CbtSetupModalProps> = ({
             <button type="button" onClick={onClose} className="btn-custom btn-custom-ghost">
               Cancel
             </button>
-            <button
-              type="submit"
-              disabled={startCbt.isPending || subjectsLoading}
-              className="btn-custom btn-custom-primary"
-              style={{ padding: '10px 24px', fontSize: '13.5px' }}
-            >
-              {startCbt.isPending ? 'Preparing Session...' : 'Start Session →'}
-            </button>
+            {!isPro ? (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  navigate('/portal/pricing');
+                }}
+                className="btn-custom btn-custom-primary"
+                style={{ padding: '10px 24px', fontSize: '13.5px', backgroundColor: 'var(--rust)', color: '#fff' }}
+              >
+                🔒 Upgrade to Pro to Start
+              </button>
+            ) : (
+              <button
+                type="submit"
+                disabled={startCbt.isPending || subjectsLoading}
+                className="btn-custom btn-custom-primary"
+                style={{ padding: '10px 24px', fontSize: '13.5px' }}
+              >
+                {startCbt.isPending ? 'Preparing Session...' : 'Start Session →'}
+              </button>
+            )}
+
           </div>
         </form>
       </div>

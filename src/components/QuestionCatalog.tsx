@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore.js';
 import { useAppStore } from '../store/useAppStore.js';
 import { useNotificationStore } from '../store/useNotificationStore.js';
@@ -9,9 +9,11 @@ import {
   useToggleBookmarkMutation,
   useMyBookmarksQuery,
   useAcquireCurriculumMutation,
+  useTrialUsageQuery,
   type QuestionItem,
 } from '../api/questions.js';
 import { SafeImage } from './SafeImage.js';
+
 
 interface QuestionCardProps {
   question: QuestionItem;
@@ -320,6 +322,7 @@ export const QuestionCatalog: React.FC = () => {
     setSearchInput(searchQuery);
   }, [searchQuery]);
 
+  const navigate = useNavigate();
   const { openAuthModal } = useAppStore();
   const { notifySuccess, notifyError, notifyInfo } = useNotificationStore();
 
@@ -327,6 +330,7 @@ export const QuestionCatalog: React.FC = () => {
   const { data: subjects } = useExamSubjectsQuery(selectedExamId || undefined);
   const { data: topics } = useSubjectTopicsQuery(selectedSubjectId || undefined);
   const { data: bookmarksData } = useMyBookmarksQuery();
+  const { data: trialUsageData } = useTrialUsageQuery();
   const toggleBookmark = useToggleBookmarkMutation();
   const acquireCurriculum = useAcquireCurriculumMutation();
   const [syncSuccessMsg, setSyncSuccessMsg] = useState<string | null>(null);
@@ -336,6 +340,7 @@ export const QuestionCatalog: React.FC = () => {
   const bookmarkedQuestionIds = new Set(
     bookmarksData?.map((b) => b.question?._id) || []
   );
+
 
   const {
     data: questionsData,
@@ -784,6 +789,78 @@ export const QuestionCatalog: React.FC = () => {
           </div>
         )}
 
+        {/* Free Trial Past Questions Usage Tracker */}
+        {(() => {
+          const effectiveUsage = questionsData?.trialUsage || trialUsageData;
+          if (!effectiveUsage || effectiveUsage.isPro) return null;
+          return (
+            <div
+              style={{
+                padding: '14px 18px',
+                backgroundColor: 'var(--white)',
+                border: `1.5px solid ${effectiveUsage.isLimitReached ? 'var(--rust)' : 'rgba(20,24,28,0.14)'}`,
+                borderRadius: '6px',
+                marginBottom: '20px',
+                boxShadow: 'var(--shadow)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '14px',
+              }}
+            >
+              <div style={{ flex: 1, minWidth: '220px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '13.5px', fontFamily: 'var(--font-sans)', fontWeight: 700, color: 'var(--ink)' }}>
+                    Past Questions Free Trial: {effectiveUsage.used} / {effectiveUsage.limit} used
+                  </span>
+                  {effectiveUsage.isLimitReached ? (
+                    <span style={{ fontSize: '11px', backgroundColor: 'var(--rust)', color: '#fff', padding: '2px 8px', borderRadius: '3px', fontWeight: 700 }}>
+                      Limit Reached
+                    </span>
+                  ) : (
+                    <span style={{ fontSize: '11px', backgroundColor: 'var(--paper)', color: 'var(--ink-soft)', padding: '2px 8px', borderRadius: '3px', fontWeight: 600 }}>
+                      {effectiveUsage.remaining} remaining
+                    </span>
+                  )}
+                </div>
+                <div style={{ width: '100%', maxWidth: '360px', height: '7px', backgroundColor: 'rgba(20,24,28,0.08)', borderRadius: '4px', overflow: 'hidden' }}>
+                  <div
+                    style={{
+                      width: `${Math.min(100, (effectiveUsage.used / effectiveUsage.limit) * 100)}%`,
+                      height: '100%',
+                      backgroundColor: effectiveUsage.isLimitReached ? 'var(--rust)' : '#0284c7',
+                      transition: 'width 0.3s ease',
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div>
+                {effectiveUsage.isLimitReached ? (
+                  <button
+                    type="button"
+                    onClick={() => navigate('/portal/pricing')}
+                    className="btn-custom btn-custom-primary"
+                    style={{ backgroundColor: 'var(--rust)', color: '#fff', fontSize: '12.5px', padding: '8px 16px', fontWeight: 700 }}
+                  >
+                    Limit Reached — Upgrade to Pro →
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => navigate('/portal/pricing')}
+                    className="btn-custom btn-custom-ghost"
+                    style={{ fontSize: '12px', padding: '6px 12px' }}
+                  >
+                    Upgrade to Pro for Unlimited Questions →
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Questions List */}
         {showBookmarksOnly ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -825,31 +902,63 @@ export const QuestionCatalog: React.FC = () => {
             Loading questions catalog from database...
           </div>
         ) : questionsError ? (
-          <div
-            style={{
-              padding: '40px 24px',
-              textAlign: 'center',
-              backgroundColor: '#fff5f5',
-              borderRadius: '4px',
-              border: '1.5px solid #feb2b2',
-            }}
-          >
-            <h3 style={{ fontFamily: "var(--font-sans)", color: '#c53030', marginBottom: '8px' }}>
-              Error Loading Questions
-            </h3>
-            <p style={{ color: 'var(--ink)', fontSize: '14px', maxWidth: '50ch', margin: '0 auto 16px' }}>
-              {(questionsErrorObj as any)?.message || 'A network error occurred while contacting the MarkDriller server.'}
-            </p>
-            <button
-              type="button"
-              onClick={() => refetchQuestions()}
-              className="btn-custom btn-custom-primary"
-              style={{ padding: '8px 20px', fontSize: '13px' }}
+          (questionsErrorObj as any)?.statusCode === 403 ||
+          (questionsErrorObj as any)?.message?.includes('Free Trial Past Questions limit has been reached') ||
+          (questionsErrorObj as any)?.message?.includes('limit has been reached') ? (
+            <div
+              style={{
+                padding: '48px 24px',
+                textAlign: 'center',
+                backgroundColor: 'var(--white)',
+                borderRadius: '8px',
+                border: '1.5px solid var(--rust)',
+                boxShadow: 'var(--shadow)',
+              }}
             >
-              Retry Loading Questions ↻
-            </button>
-          </div>
+              <div style={{ fontSize: '42px', marginBottom: '12px' }}>🔒</div>
+              <h3 style={{ fontFamily: "var(--font-serif)", fontSize: '22px', color: 'var(--ink)', marginBottom: '10px' }}>
+                Free Trial Past Questions Limit Reached
+              </h3>
+              <p style={{ color: 'var(--ink-soft)', fontSize: '14.5px', maxWidth: '52ch', margin: '0 auto 20px', lineHeight: 1.5 }}>
+                Your Free Trial Past Questions limit has been reached (<strong>200 / 200 used</strong>). Upgrade to MarkDriller Pro to continue accessing our complete question archive across all examination boards.
+              </p>
+              <button
+                type="button"
+                onClick={() => navigate('/portal/pricing')}
+                className="btn-custom btn-custom-primary"
+                style={{ backgroundColor: 'var(--rust)', color: '#fff', padding: '12px 28px', fontSize: '14px', fontWeight: 700 }}
+              >
+                Upgrade to Pro Now →
+              </button>
+            </div>
+          ) : (
+            <div
+              style={{
+                padding: '40px 24px',
+                textAlign: 'center',
+                backgroundColor: '#fff5f5',
+                borderRadius: '4px',
+                border: '1.5px solid #feb2b2',
+              }}
+            >
+              <h3 style={{ fontFamily: "var(--font-sans)", color: '#c53030', marginBottom: '8px' }}>
+                Error Loading Questions
+              </h3>
+              <p style={{ color: 'var(--ink)', fontSize: '14px', maxWidth: '50ch', margin: '0 auto 16px' }}>
+                {(questionsErrorObj as any)?.message || 'A network error occurred while contacting the MarkDriller server.'}
+              </p>
+              <button
+                type="button"
+                onClick={() => refetchQuestions()}
+                className="btn-custom btn-custom-primary"
+                style={{ padding: '8px 20px', fontSize: '13px' }}
+              >
+                Retry Loading Questions ↻
+              </button>
+            </div>
+          )
         ) : questionsData && questionsData.questions.length > 0 ? (
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', fontFamily: "var(--font-sans)", color: 'var(--ink-soft)' }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

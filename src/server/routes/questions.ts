@@ -1,4 +1,4 @@
-import { Router, Request, Response, NextFunction } from 'express';
+import { Router, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import mongoose from 'mongoose';
 import { Question } from '../models/Question.js';
@@ -6,8 +6,9 @@ import { Bookmark } from '../models/Bookmark.js';
 import { Exam } from '../models/Exam.js';
 import { Subject } from '../models/Subject.js';
 import { Topic } from '../models/Topic.js';
-import { authenticateToken, requireRole, requireVerified, AuthenticatedRequest } from '../middleware/auth.js';
+import { authenticateToken, requireRole, requireVerified, checkStudentSubscription, AuthenticatedRequest } from '../middleware/auth.js';
 import { QuestionIngestionService } from '../services/questionIngestionService.js';
+import { FreeTrialService } from '../services/freeTrialService.js';
 
 const router = Router();
 
@@ -154,150 +155,311 @@ router.post(
   }
 );
 
-// GET /api/questions — List questions with filters, search, pagination, and on-demand acquisition
-router.get('/', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  try {
-    const parseResult = questionQuerySchema.safeParse(req.query);
-    if (!parseResult.success) {
-      res.status(400).json({
-        success: false,
-        error: {
-          message: 'Invalid query parameters',
-          details: parseResult.error.flatten().fieldErrors,
+// GET /api/questions/trial-usage — Get current user's Free Trial question usage statistics
+router.get(
+  '/trial-usage',
+  authenticateToken,
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const userId = req.user!._id;
+      if (req.user!.role === 'ADMIN') {
+        res.status(200).json({
+          success: true,
+          data: {
+            isPro: true,
+            used: 0,
+            limit: 200,
+            remaining: 200,
+            isLimitReached: false,
+          },
+        });
+        return;
+      }
+
+      const { isPro } = await checkStudentSubscription(userId);
+      if (isPro) {
+        res.status(200).json({
+          success: true,
+          data: {
+            isPro: true,
+            used: 0,
+            limit: 200,
+            remaining: 200,
+            isLimitReached: false,
+          },
+        });
+        return;
+      }
+
+      const usage = await FreeTrialService.getUsage(userId);
+      res.status(200).json({
+        success: true,
+        data: {
+          isPro: false,
+          ...usage,
         },
       });
-      return;
+    } catch (error) {
+      next(error);
     }
-
-    const {
-      examId,
-      subjectId,
-      topicId,
-      year,
-      difficulty,
-      drillType,
-      questionType,
-      search,
-      page: pageNum,
-      limit: limitNum,
-    } = parseResult.data;
-
-    const skip = (pageNum - 1) * limitNum;
-
-    const filter: Record<string, any> = { published: true, reviewStatus: 'PUBLISHED' };
-
-    if (examId) filter.examId = new mongoose.Types.ObjectId(examId);
-    if (subjectId) filter.subjectId = new mongoose.Types.ObjectId(subjectId);
-    if (topicId) filter.topicId = new mongoose.Types.ObjectId(topicId);
-    if (year) filter.year = year;
-    if (difficulty) filter.difficulty = difficulty;
-    if (drillType) filter.drillType = { $in: [drillType, 'BOTH'] };
-    if (questionType) filter.questionType = questionType;
-
-    if (search && search.trim().length > 0) {
-      const escaped = escapeRegex(search);
-      if (escaped) {
-        filter.$or = [
-          { questionText: { $regex: escaped, $options: 'i' } },
-          { explanation: { $regex: escaped, $options: 'i' } },
-        ];
-      }
-    }
-
-    let [questions, total] = await Promise.all([
-      Question.find(filter)
-        .populate('examId', 'name shortCode')
-        .populate('subjectId', 'name code')
-        .populate('topicId', 'name')
-        .sort({ year: -1, questionNumber: 1 })
-        .skip(skip)
-        .limit(limitNum)
-        .lean(),
-      Question.countDocuments(filter),
-    ]);
-
-    let acquiredOnDemand = false;
-
-    // If no questions exist locally for this exam and subject, trigger on-demand dynamic acquisition from accredited curriculum repository
-    if (total === 0 && examId && subjectId) {
-      try {
-        const [examDoc, subjectDoc] = await Promise.all([
-          Exam.findById(examId).lean(),
-          Subject.findById(subjectId).lean(),
-        ]);
-
-        if (examDoc && subjectDoc) {
-          const syncResult = await QuestionIngestionService.acquireOnDemandForCurriculum({
-            examShortCode: examDoc.shortCode,
-            subjectCode: subjectDoc.code,
-            year: year,
-          });
-
-          if (syncResult.totalInserted > 0) {
-            acquiredOnDemand = true;
-            const [refetchedQuestions, refetchedTotal] = await Promise.all([
-              Question.find(filter)
-                .populate('examId', 'name shortCode')
-                .populate('subjectId', 'name code')
-                .populate('topicId', 'name')
-                .sort({ year: -1, questionNumber: 1 })
-                .skip(skip)
-                .limit(limitNum)
-                .lean(),
-              Question.countDocuments(filter),
-            ]);
-            questions = refetchedQuestions;
-            total = refetchedTotal;
-          }
-        }
-      } catch (ingestErr) {
-        console.error('[Questions Route] Dynamic acquisition error:', ingestErr);
-      }
-    }
-
-    const totalPages = Math.max(1, Math.ceil(total / limitNum));
-
-    res.status(200).json({
-      success: true,
-      data: {
-        questions,
-        pagination: {
-          total,
-          page: pageNum,
-          limit: limitNum,
-          totalPages,
-          hasNextPage: pageNum < totalPages,
-          hasPrevPage: pageNum > 1,
-        },
-        acquiredOnDemand,
-      },
-    });
-  } catch (error) {
-    next(error);
   }
-});
+);
+
+// GET /api/questions — List questions with filters, search, pagination, and on-demand acquisition
+router.get(
+  '/',
+  authenticateToken,
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const parseResult = questionQuerySchema.safeParse(req.query);
+      if (!parseResult.success) {
+        res.status(400).json({
+          success: false,
+          error: {
+            message: 'Invalid query parameters',
+            details: parseResult.error.flatten().fieldErrors,
+          },
+        });
+        return;
+      }
+
+      const {
+        examId,
+        subjectId,
+        topicId,
+        year,
+        difficulty,
+        drillType,
+        questionType,
+        search,
+        page: pageNum,
+        limit: limitNum,
+      } = parseResult.data;
+
+      const skip = (pageNum - 1) * limitNum;
+
+      const filter: Record<string, any> = { published: true, reviewStatus: 'PUBLISHED' };
+
+      if (examId) filter.examId = new mongoose.Types.ObjectId(examId);
+      if (subjectId) filter.subjectId = new mongoose.Types.ObjectId(subjectId);
+      if (topicId) filter.topicId = new mongoose.Types.ObjectId(topicId);
+      if (year) filter.year = year;
+      if (difficulty) filter.difficulty = difficulty;
+      if (drillType) filter.drillType = { $in: [drillType, 'BOTH'] };
+      if (questionType) filter.questionType = questionType;
+
+      if (search && search.trim().length > 0) {
+        const escaped = escapeRegex(search);
+        if (escaped) {
+          filter.$or = [
+            { questionText: { $regex: escaped, $options: 'i' } },
+            { explanation: { $regex: escaped, $options: 'i' } },
+          ];
+        }
+      }
+
+      let [questions, total] = await Promise.all([
+        Question.find(filter)
+          .populate('examId', 'name shortCode')
+          .populate('subjectId', 'name code')
+          .populate('topicId', 'name')
+          .sort({ year: -1, questionNumber: 1 })
+          .skip(skip)
+          .limit(limitNum)
+          .lean(),
+        Question.countDocuments(filter),
+      ]);
+
+      let acquiredOnDemand = false;
+
+      // If no questions exist locally for this exam and subject, trigger on-demand dynamic acquisition from accredited curriculum repository
+      if (total === 0 && examId && subjectId) {
+        try {
+          const [examDoc, subjectDoc] = await Promise.all([
+            Exam.findById(examId).lean(),
+            Subject.findById(subjectId).lean(),
+          ]);
+
+          if (examDoc && subjectDoc) {
+            const syncResult = await QuestionIngestionService.acquireOnDemandForCurriculum({
+              examShortCode: examDoc.shortCode,
+              subjectCode: subjectDoc.code,
+              year: year,
+            });
+
+            if (syncResult.totalInserted > 0) {
+              acquiredOnDemand = true;
+              const [refetchedQuestions, refetchedTotal] = await Promise.all([
+                Question.find(filter)
+                  .populate('examId', 'name shortCode')
+                  .populate('subjectId', 'name code')
+                  .populate('topicId', 'name')
+                  .sort({ year: -1, questionNumber: 1 })
+                  .skip(skip)
+                  .limit(limitNum)
+                  .lean(),
+                Question.countDocuments(filter),
+              ]);
+              questions = refetchedQuestions;
+              total = refetchedTotal;
+            }
+          }
+        } catch (ingestErr) {
+          console.error('[Questions Route] Dynamic acquisition error:', ingestErr);
+        }
+      }
+
+      const userId = req.user!._id;
+      const isAdmin = req.user!.role === 'ADMIN';
+      const { isPro } = isAdmin ? { isPro: true } : await checkStudentSubscription(userId);
+
+      // Handle Free Trial 200 past questions entitlement restriction
+      if (!isPro) {
+        const { allowedQuestions, usage, hasReachedLimit } = await FreeTrialService.recordAndFilterQuestions(
+          userId,
+          questions
+        );
+
+        // If candidate questions were found but none are allowed because the user reached 200/200, return 403
+        if (allowedQuestions.length === 0 && questions.length > 0) {
+          res.status(403).json({
+            success: false,
+            error: {
+              code: 'FREE_TRIAL_LIMIT_EXCEEDED',
+              message: 'Your Free Trial Past Questions limit has been reached (200 / 200 used). Upgrade to MarkDriller Pro to continue accessing Past Questions.',
+              usage,
+            },
+          });
+          return;
+        }
+
+        const totalPages = Math.max(1, Math.ceil(total / limitNum));
+
+        res.status(200).json({
+          success: true,
+          data: {
+            questions: allowedQuestions,
+            pagination: {
+              total,
+              page: pageNum,
+              limit: limitNum,
+              totalPages,
+              hasNextPage: pageNum < totalPages && !hasReachedLimit,
+              hasPrevPage: pageNum > 1,
+            },
+            trialUsage: {
+              isPro: false,
+              ...usage,
+            },
+            acquiredOnDemand,
+          },
+        });
+        return;
+      }
+
+      // Pro / Admin users receive full unrestricted access
+      const totalPages = Math.max(1, Math.ceil(total / limitNum));
+
+      res.status(200).json({
+        success: true,
+        data: {
+          questions,
+          pagination: {
+            total,
+            page: pageNum,
+            limit: limitNum,
+            totalPages,
+            hasNextPage: pageNum < totalPages,
+            hasPrevPage: pageNum > 1,
+          },
+          trialUsage: {
+            isPro: true,
+            used: 0,
+            limit: 200,
+            remaining: 200,
+            isLimitReached: false,
+          },
+          acquiredOnDemand,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 // GET /api/questions/:id — Get single question details with explanation
-router.get('/:id', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  try {
-    const rawId = req.params.id;
-    const questionId = Array.isArray(rawId) ? rawId[0] : rawId;
+router.get(
+  '/:id',
+  authenticateToken,
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const rawId = req.params.id;
+      const questionId = Array.isArray(rawId) ? rawId[0] : rawId;
 
-    const question = await Question.findById(questionId)
-      .populate('examId', 'name shortCode region')
-      .populate('subjectId', 'name code')
-      .populate('topicId', 'name description');
+      if (!mongoose.Types.ObjectId.isValid(questionId)) {
+        res.status(400).json({ success: false, error: { message: 'Invalid question ID format.' } });
+        return;
+      }
 
-    if (!question) {
-      res.status(404).json({ success: false, error: { message: 'Question not found' } });
-      return;
+      const question = await Question.findById(questionId)
+        .populate('examId', 'name shortCode region')
+        .populate('subjectId', 'name code')
+        .populate('topicId', 'name description');
+
+      if (!question) {
+        res.status(404).json({ success: false, error: { message: 'Question not found' } });
+        return;
+      }
+
+      const userId = req.user!._id;
+      const isAdmin = req.user!.role === 'ADMIN';
+      const { isPro } = isAdmin ? { isPro: true } : await checkStudentSubscription(userId);
+
+      // Handle Free Trial single question access
+      if (!isPro) {
+        const { allowed, usage } = await FreeTrialService.checkAndRecordSingleAccess(userId, question._id);
+        if (!allowed) {
+          res.status(403).json({
+            success: false,
+            error: {
+              code: 'FREE_TRIAL_LIMIT_EXCEEDED',
+              message: 'Your Free Trial Past Questions limit has been reached (200 / 200 used). Upgrade to MarkDriller Pro to continue accessing Past Questions.',
+              usage,
+            },
+          });
+          return;
+        }
+
+        res.status(200).json({
+          success: true,
+          data: question,
+          trialUsage: {
+            isPro: false,
+            ...usage,
+          },
+        });
+        return;
+      }
+
+      // Pro / Admin access
+      res.status(200).json({
+        success: true,
+        data: question,
+        trialUsage: {
+          isPro: true,
+          used: 0,
+          limit: 200,
+          remaining: 200,
+          isLimitReached: false,
+        },
+      });
+    } catch (error) {
+      next(error);
     }
-
-    res.status(200).json({ success: true, data: question });
-  } catch (error) {
-    next(error);
   }
-});
+);
+
 
 // POST /api/questions/:id/bookmark — Toggle bookmark for logged in student
 router.post(

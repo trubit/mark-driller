@@ -13,6 +13,7 @@ import { PaystackService } from '../services/paystackService.js';
 import { receiptUpload, validateReceiptFileSignature, RECEIPTS_DIR_ABSOLUTE } from '../middleware/upload.js';
 import { CloudinaryService } from '../services/cloudinaryService.js';
 import { env } from '../config/env.js';
+import { FreeTrialService } from '../services/freeTrialService.js';
 
 const router = Router();
 
@@ -25,9 +26,10 @@ export const SUBSCRIPTION_PLANS = [
     billingPeriod: 'Forever Free',
     description: 'Essential revision tools for secondary students beginning exam prep.',
     features: [
-      'Access to 200+ past questions',
-      '3 Timed CBT mock examinations per month',
-      'Standard answer keys',
+      'Maximum 200 Past Questions free trial allowance',
+      'Exam Mode (🔒 Pro Required)',
+      'Practice Mode (🔒 Pro Required)',
+      'Study Mode (🔒 Pro Required)',
       'Basic student dashboard & score history',
     ],
     isPopular: false,
@@ -306,6 +308,7 @@ router.get('/my-subscription', async (req: AuthenticatedRequest, res: Response, 
     }).sort({ createdAt: -1 });
 
     if (!sub) {
+      const trialUsage = await FreeTrialService.getUsage(userId);
       res.status(200).json({
         success: true,
         data: {
@@ -314,6 +317,10 @@ router.get('/my-subscription', async (req: AuthenticatedRequest, res: Response, 
           startDate: req.user!.createdAt,
           endDate: null,
           isPro: false,
+          trialUsage: {
+            isPro: false,
+            ...trialUsage,
+          },
         },
       });
       return;
@@ -323,28 +330,40 @@ router.get('/my-subscription', async (req: AuthenticatedRequest, res: Response, 
     if (sub.endDate && new Date(sub.endDate) < new Date()) {
       sub.status = 'EXPIRED';
       await sub.save();
+      const trialUsage = await FreeTrialService.getUsage(userId);
       res.status(200).json({
         success: true,
         data: {
           plan: 'FREE',
           status: 'EXPIRED',
           isPro: false,
+          trialUsage: {
+            isPro: false,
+            ...trialUsage,
+          },
         },
       });
       return;
     }
 
+    const isPro = sub.plan !== 'FREE';
+    const trialUsage = isPro
+      ? { isPro: true, used: 0, limit: 200, remaining: 200, isLimitReached: false }
+      : { isPro: false, ...(await FreeTrialService.getUsage(userId)) };
+
     res.status(200).json({
       success: true,
       data: {
         ...sub.toJSON(),
-        isPro: sub.plan !== 'FREE',
+        isPro,
+        trialUsage,
       },
     });
   } catch (error) {
     next(error);
   }
 });
+
 
 const initializeSchema = z.object({
   plan: z.enum(['PRO_MONTHLY', 'PRO_BIMONTHLY', 'PRO_QUARTERLY', 'PRO_ANNUAL']),

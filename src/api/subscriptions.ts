@@ -18,7 +18,15 @@ export interface UserSubscription {
   startDate: string;
   endDate?: string | null;
   isPro: boolean;
+  trialUsage?: {
+    isPro: boolean;
+    used: number;
+    limit: number;
+    remaining: number;
+    isLimitReached: boolean;
+  };
 }
+
 
 export function useSubscriptionPlansQuery() {
   return useQuery<PlanTier[]>({

@@ -218,7 +218,7 @@ export const CbtPracticePortal: React.FC = () => {
                     transition: 'all 0.15s ease',
                   }}
                 >
-                  <span>⚡ Launch Quick Mock Exam</span>
+                  <span>⚡ Launch Quick Mock Exam {!isPro && '🔒 (Pro)'}</span>
                 </button>
 
                 <button
@@ -246,8 +246,9 @@ export const CbtPracticePortal: React.FC = () => {
                     e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
                   }}
                 >
-                  <span>⚙️ Configure Custom Drill</span>
+                  <span>🎯 Practice Drill {!isPro && '🔒 (Pro)'}</span>
                 </button>
+
 
                 {isAuthenticated && (
                   <Link
@@ -689,7 +690,7 @@ export const CbtPracticePortal: React.FC = () => {
                           gap: '6px',
                         }}
                       >
-                        Start Mock
+                        {isPro ? 'Start Mock' : '🔒 Start Mock (Pro)'}
                       </button>
 
                       <button
@@ -710,8 +711,9 @@ export const CbtPracticePortal: React.FC = () => {
                           alignItems: 'center',
                         }}
                       >
-                        Custom Setup
+                        {isPro ? 'Custom Setup' : '🔒 Practice (Pro)'}
                       </button>
+
                     </div>
                   </div>
                 );

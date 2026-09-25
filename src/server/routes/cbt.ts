@@ -12,8 +12,8 @@ import { QuestionIngestionService } from '../services/questionIngestionService.j
 
 const router = Router();
 
-// All CBT routes require student authentication and verified email
-router.use(authenticateToken, requireVerified);
+// All CBT routes require student authentication, verified email, and Pro entitlement
+router.use(authenticateToken, requireVerified, requireCbtEntitlement());
 
 const startCbtSchema = z.object({
   examId: z.string().min(1, 'Exam ID is required'),

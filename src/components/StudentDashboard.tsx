@@ -112,10 +112,12 @@ export const StudentDashboard: React.FC = () => {
     },
     {
       label: 'Subscription Tier',
-      value: currentSub?.isPro ? 'Unlimited Mocks' : 'Pro Pass Required',
+      value: currentSub?.isPro ? 'Pro Scholar Pass' : 'Free Trial',
       detail: currentSub?.isPro && currentSub.endDate
         ? `Active until ${new Date(currentSub.endDate).toLocaleDateString()}`
-        : 'Subscribe to unlock CBT simulations',
+        : currentSub?.trialUsage
+        ? `${currentSub.trialUsage.used} / ${currentSub.trialUsage.limit} Past Questions used`
+        : '200 Past Questions free trial limit',
       tone: currentSub?.isPro ? 'forest' : 'rust',
       badge: subscriptionLabel,
       href: '/portal/pricing',
@@ -127,14 +129,21 @@ export const StudentDashboard: React.FC = () => {
     {
       eyebrow: 'CBT Simulator',
       title: 'Practice Mock Exam',
-      body: 'Launch a focused, timed exam room with auto-submission, official pacing, and instant scoring.',
-      action: (
+      body: currentSub?.isPro
+        ? 'Launch a focused, timed exam room with auto-submission, official pacing, and instant scoring.'
+        : 'Exam Mode, Practice Mode, and Study Mode require an active Pro subscription.',
+      action: currentSub?.isPro ? (
         <button type="button" className="btn-custom btn-custom-primary" onClick={() => setIsCbtModalOpen(true)}>
           Start timed CBT mock
+        </button>
+      ) : (
+        <button type="button" className="btn-custom btn-custom-ghost" onClick={() => setIsCbtModalOpen(true)}>
+          🔒 Locked (Pro Required)
         </button>
       ),
       featured: true,
     },
+
     {
       eyebrow: 'Question Bank',
       title: 'Past Questions Drill',
