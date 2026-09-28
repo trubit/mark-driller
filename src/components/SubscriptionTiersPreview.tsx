@@ -194,7 +194,6 @@ export const SubscriptionTiersPreview: React.FC = () => {
               <li><strong>Step-by-step worked solutions &amp; examiner notes</strong></li>
               <li><strong>100% Offline Windows PC App + Android APK</strong></li>
               <li><strong>The Life Changer novel summary &amp; likely questions</strong></li>
-              <li><strong>Science &amp; Math formula handbook</strong></li>
               <li><strong>Weakness analytics &amp; score trajectory</strong></li>
             </ul>
 

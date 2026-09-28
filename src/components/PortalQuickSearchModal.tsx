@@ -19,16 +19,12 @@ const SEARCH_DATABASE: SearchEntry[] = [
   { id: 'analytics', title: 'Exam Readiness & Psychometric Analytics', category: 'Workspaces', path: '/analytics', icon: '📈', keywords: ['readiness', 'score', 'accuracy', 'performance', 'stats'] },
 
   // Study Tools
-  { id: 'flashcards', title: 'Interactive Syllabus Flashcards', category: 'Study Tools', path: '/flashcards', icon: '🎴', keywords: ['leitner', 'spaced repetition', 'cards', 'memory'] },
-  { id: 'formulas', title: 'Science Formula Handbook (Physics, Chemistry, Maths)', category: 'Study Tools', path: '/portal/formulas', icon: '📐', keywords: ['equations', 'constants', 'units', 'calculations'] },
-  { id: 'dictionary', title: 'Comprehensive Academic Dictionary', category: 'Study Tools', path: '/portal/dictionary', icon: '📖', keywords: ['terms', 'definitions', 'glossary', 'vocabulary'] },
   { id: 'novels', title: 'Prescribed JAMB Literature Novels (The Life Changer)', category: 'Study Tools', path: '/portal/novels', icon: '📕', keywords: ['english', 'novel', 'khadija', 'life changer'] },
   { id: 'games', title: 'Educational Revision Games & Quizzes', category: 'Study Tools', path: '/games', icon: '🎮', keywords: ['quiz', 'interactive', 'drill', 'challenge'] },
   { id: 'challenge', title: 'Weekly National Academic Challenge', category: 'Study Tools', path: '/challenge', icon: '🏆', keywords: ['leaderboard', 'competition', 'weekly', 'prizes'] },
   { id: 'lessons', title: 'Curriculum-Aligned Video Lessons', category: 'Study Tools', path: '/lessons', icon: '📹', keywords: ['video', 'lectures', 'tutorials', 'youtube'] },
   { id: 'blog', title: 'Academic Blog & Chief Examiners’ Reports', category: 'Study Tools', path: '/portal/blog', icon: '📰', keywords: ['guides', 'editorial', 'marking scheme', 'tips', 'strategy'] },
   { id: 'schools', title: 'Nigerian Tertiary Institutions & Cut-Offs', category: 'Study Tools', path: '/portal/schools', icon: '🏫', keywords: ['universities', 'polytechnics', 'cut-off', 'fees', 'courses'] },
-  { id: 'careers', title: 'Career Paths & Faculty Prerequisite Guide', category: 'Study Tools', path: '/portal/careers', icon: '🎯', keywords: ['careers', 'courses', 'advising', 'professions'] },
 
   // Curricula & Subjects
   { id: 'maths', title: 'General Mathematics Past Questions', category: 'Curricula & Subjects', path: '/portal/questions?search=Mathematics', icon: '🔢', keywords: ['maths', 'algebra', 'calculus', 'geometry', 'statistics'] },
@@ -161,7 +157,7 @@ export const PortalQuickSearchModal: React.FC<PortalQuickSearchModalProps> = ({ 
           <input
             ref={inputRef}
             type="text"
-            placeholder="Search questions, study materials, formulas, dictionary, topics..."
+            placeholder="Search questions, study materials, topics..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -279,7 +275,7 @@ export const PortalQuickSearchModal: React.FC<PortalQuickSearchModalProps> = ({ 
                 No matches found for "{query}"
               </p>
               <p style={{ margin: '4px 0 0 0', fontSize: '12.5px' }}>
-                Try searching for "Maths", "JAMB", "Formulas", "Dictionary", or "Post-UTME".
+                Try searching for "Maths", "JAMB", "Post-UTME", or "Biology".
               </p>
             </div>
           )}

@@ -306,8 +306,8 @@ const DEFAULT_ARTICLES: BlogPostItem[] = [
     ],
     content: [
       'Passive rereading can feel productive while leaving students unable to retrieve answers under pressure.',
-      '1. Retrieval Over Recognition: Convert syllabus objectives directly into self-quiz flashcards. When you force your brain to generate an answer from scratch, synaptic pathways solidify far faster than simply reading over highlighted paragraphs.',
-      '2. The Leitner Interval Matrix: Revisit difficult formulas and terminology at 1-day, 3-day, and 7-day intervals. Mastered cards should only be tested once every 2 to 3 weeks, maximizing daily study efficiency.',
+      '1. Retrieval Over Recognition: Convert syllabus objectives directly into self-quiz revision prompts. When you force your brain to generate an answer from scratch, synaptic pathways solidify far faster than simply reading over highlighted paragraphs.',
+      '2. Spaced Interval Practice: Revisit difficult syllabus topics and terminology at 1-day, 3-day, and 7-day intervals. Mastered topics should be reviewed periodically, maximizing weekly study retention.',
       '3. Timed Stress-Testing: The human brain retrieves knowledge differently under clock pressure. Always integrate timed question sets into weekly schedules to eliminate exam room anxiety.',
     ],
   },

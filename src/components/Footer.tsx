@@ -43,10 +43,10 @@ export const Footer: React.FC = () => {
             <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px' }}>
               <li><Link to="/cbt">CBT Exam Simulator</Link></li>
               <li><Link to="/materials">Curriculum Notes &amp; PDFs</Link></li>
-              <li><Link to="/dictionary">Academic Term Dictionary</Link></li>
-              <li><Link to="/flashcards">Interactive Flashcards</Link></li>
-              <li><Link to="/formulas">Science &amp; Math Notebook</Link></li>
+              <li><Link to="/novels">JAMB Literature Novels</Link></li>
+              <li><Link to="/games">Educational Revision Games</Link></li>
               <li><Link to="/challenge">Weekly UTME Sprint</Link></li>
+              <li><Link to="/lessons">Curriculum Video Lessons</Link></li>
             </ul>
           </div>
 
@@ -59,7 +59,6 @@ export const Footer: React.FC = () => {
               <li><Link to="/contact">Institutional Partnerships</Link></li>
               <li><Link to="/blog">Academic Blog &amp; Guides</Link></li>
               <li><Link to="/schools">Nigerian School Finder</Link></li>
-              <li><Link to="/careers">JAMB Subject Combinations</Link></li>
               <li><Link to="/contact">24/7 Helpline &amp; WhatsApp</Link></li>
               <li><Link to="/pricing">Pro Subscription Plans</Link></li>
             </ul>

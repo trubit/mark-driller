@@ -25,14 +25,10 @@ const badgeColorMap = {
 
 const LEARNING_TOOLS = [
   { label: 'JAMB Literature Novels', path: '/portal/novels', icon: '📖', desc: 'Chapter summaries & likely exam questions' },
-  { label: 'Interactive Flashcards', path: '/flashcards', icon: '🎴', desc: 'Active recall & spaced repetition' },
-  { label: 'Science Formula Handbook', path: '/portal/formulas', icon: '📐', desc: 'Physics, Chemistry & Maths equations' },
-  { label: 'Academic Dictionary', path: '/portal/dictionary', icon: '📚', desc: 'Comprehensive terminology & glossary' },
   { label: 'Educational Games', path: '/games', icon: '🎮', desc: 'Gamified syllabus revision drills' },
   { label: 'Weekly National Challenge', path: '/challenge', icon: '🏆', desc: 'Compete for national scholarship ranks' },
   { label: 'Video Lessons', path: '/lessons', icon: '📹', desc: 'Curriculum-aligned masterclasses' },
   { label: 'Nigerian School Finder', path: '/portal/schools', icon: '🏫', desc: 'Universities, Polytechnics & cut-offs' },
-  { label: 'Career Mentorship Guide', path: '/portal/careers', icon: '🧭', desc: 'Course matching & career pathways' },
   { label: 'Psychometric Analytics', path: '/analytics', icon: '📈', desc: 'Performance readiness & breakdown' },
 ];
 
@@ -55,11 +51,7 @@ const ROUTE_BADGE_MAP: Record<string, { badge: string; color: 'rust' | 'forest' 
   '/bookmarks': { badge: '🔖 BOOKMARKS', color: 'rust' },
   '/history': { badge: '📜 EXAM HISTORY', color: 'rust' },
   '/analytics': { badge: '📈 ANALYTICS', color: 'rust' },
-  '/flashcards': { badge: '🎴 FLASHCARDS', color: 'rust' },
-  '/formulas': { badge: '📐 FORMULAS', color: 'forest' },
-  '/dictionary': { badge: '📖 DICTIONARY', color: 'forest' },
   '/schools': { badge: '🏫 SCHOOL FINDER', color: 'forest' },
-  '/careers': { badge: '🧭 CAREER GUIDE', color: 'forest' },
   '/games': { badge: '🎮 EDUCATIONAL GAMES', color: 'forest' },
   '/challenge': { badge: '🏆 WEEKLY CHALLENGE', color: 'amber' },
   '/lessons': { badge: '📹 VIDEO LESSONS', color: 'forest' },
@@ -896,7 +888,7 @@ export const PortalHeader: React.FC<PortalHeaderProps> = ({
               }}
             >
               <span>🔍</span>
-              <span>Search questions, tools, formulas...</span>
+              <span>Search questions, study tools, topics...</span>
             </button>
 
             {/* Section 1: Core Workspaces */}

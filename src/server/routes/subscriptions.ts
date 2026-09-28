@@ -46,7 +46,7 @@ export const SUBSCRIPTION_PLANS = [
       'Full question bank access (30,000+ past questions)',
       'Detailed step-by-step worked mathematical solutions',
       'In-depth syllabus topic mastery & weakness analytics',
-      'Downloadable formula sheets and revision summaries',
+      'Downloadable curriculum notes and revision summaries',
     ],
     isPopular: false,
   },

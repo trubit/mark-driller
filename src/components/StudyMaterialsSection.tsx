@@ -25,15 +25,7 @@ export const StudyMaterialsSection: React.FC = () => {
       link: '/novels',
       linkText: 'Read Novel Analysis →',
     },
-    {
-      title: 'Science & Math Formula Handbook',
-      tag: 'STEM Reference',
-      tagColor: 'var(--steel)',
-      description: 'All essential formulas, physical constants, SI unit conversions, and algebraic identities for Mathematics, Physics, and Chemistry in one searchable digital handbook.',
-      highlights: ['Kinematics & thermodynamics laws', 'Organic chemistry reactions', 'Trigonometry & calculus identities', 'Worked calculation examples'],
-      link: '/formulas',
-      linkText: 'Open Formula Handbook →',
-    },
+
     {
       title: 'Official JAMB & WAEC Syllabi',
       tag: 'Curriculum Outlines',
@@ -76,7 +68,7 @@ export const StudyMaterialsSection: React.FC = () => {
           </div>
           <h2>Curated Study Materials &amp; Reference Tools</h2>
           <p style={{ maxWidth: '680px', margin: '0 auto', color: 'var(--ink-soft)', fontSize: '15px' }}>
-            More than just questions. Master foundational concepts with syllabus-aligned summaries, novel analyses, science formulas, and university admission brochures.
+            More than just questions. Master foundational concepts with syllabus-aligned summaries, novel analyses, past questions, and university admission brochures.
           </p>
         </div>
 

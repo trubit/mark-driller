@@ -6,7 +6,6 @@ import {
   BlogPost,
   Testimonial,
   VideoLesson,
-  Flashcard,
 } from '../models/index.js';
 
 const router = Router();
@@ -214,37 +213,6 @@ router.get('/videos', async (req: Request, res: Response, next: NextFunction): P
       .lean();
 
     res.status(200).json({ success: true, data: videos });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// ----------------------------------------------------
-// 5. FLASHCARDS
-// ----------------------------------------------------
-router.get('/flashcards', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  try {
-    const { examId, subjectId, difficulty } = req.query;
-    const filter: Record<string, any> = { isPublished: true };
-
-    if (examId && mongoose.Types.ObjectId.isValid(examId as string)) {
-      filter.examId = new mongoose.Types.ObjectId(examId as string);
-    }
-    if (subjectId && mongoose.Types.ObjectId.isValid(subjectId as string)) {
-      filter.subjectId = new mongoose.Types.ObjectId(subjectId as string);
-    }
-    if (difficulty && ['EASY', 'MEDIUM', 'HARD'].includes((difficulty as string).toUpperCase())) {
-      filter.difficulty = (difficulty as string).toUpperCase();
-    }
-
-    const flashcards = await Flashcard.find(filter)
-      .populate('examId', 'name shortCode')
-      .populate('subjectId', 'name code')
-      .populate('topicId', 'name')
-      .limit(100)
-      .lean();
-
-    res.status(200).json({ success: true, data: flashcards });
   } catch (error) {
     next(error);
   }

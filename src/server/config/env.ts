@@ -45,8 +45,8 @@ export const envSchema = z.object({
   EMAIL_FROM: z.string().default('oliversmith2140@gmail.com'),
   BREVO_API_KEY: z.string().default(''),
 
-  // OTP Configuration
-  OTP_EXPIRATION_MINUTES: z.string().default('15').transform((val) => parseInt(val, 10)),
+  // OTP Configuration (30-minute expiration prevents greylisting/mail-server deferral timeout)
+  OTP_EXPIRATION_MINUTES: z.string().default('30').transform((val) => parseInt(val, 10)),
   OTP_MAX_ATTEMPTS: z.string().default('5').transform((val) => parseInt(val, 10)),
   OTP_RESEND_COOLDOWN_SECONDS: z.string().default('60').transform((val) => parseInt(val, 10)),
 

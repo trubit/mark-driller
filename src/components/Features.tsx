@@ -84,21 +84,7 @@ export const Features: React.FC = () => {
       image: '/assets/images/books-study.jpg',
       imageAlt: 'Open books arranged for literature study',
     },
-    {
-      icon: (
-        <svg width="32" height="32" viewBox="0 0 34 34" fill="none">
-          <path d="M7 26 L14 8 L21 26 Z" stroke="var(--steel)" strokeWidth="2" fill="none" />
-          <line x1="10" y1="20" x2="18" y2="20" stroke="var(--amber)" strokeWidth="2" />
-          <circle cx="26" cy="12" r="4" stroke="var(--rust)" strokeWidth="1.5" />
-        </svg>
-      ),
-      title: 'Science & Math Formula Notebook',
-      description: 'Comprehensive digital handbook containing essential formulas, unit conversions, physics laws, and chemical equations with worked exam examples.',
-      tag: 'Interactive Reference',
-      link: '/formulas',
-      image: '/assets/images/science-lab.jpg',
-      imageAlt: 'Science study materials and laboratory learning equipment',
-    },
+
     {
       icon: (
         <svg width="32" height="32" viewBox="0 0 34 34" fill="none">

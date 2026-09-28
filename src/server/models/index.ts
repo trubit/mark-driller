@@ -17,7 +17,6 @@ export * from './Course.js';
 export * from './BlogPost.js';
 export * from './Testimonial.js';
 export * from './VideoLesson.js';
-export * from './Flashcard.js';
 export * from './SupportTicket.js';
 export * from './FreeTrialUsage.js';
 

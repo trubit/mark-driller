@@ -19,7 +19,6 @@ import { Course } from '../models/Course.js';
 import { BlogPost } from '../models/BlogPost.js';
 import { Testimonial } from '../models/Testimonial.js';
 import { VideoLesson } from '../models/VideoLesson.js';
-import { Flashcard } from '../models/Flashcard.js';
 import { SupportTicket } from '../models/SupportTicket.js';
 import { authenticateToken, requireAdmin, AuthenticatedRequest } from '../middleware/auth.js';
 import { STORAGE_DIR_ABSOLUTE, RECEIPTS_DIR_ABSOLUTE } from '../middleware/upload.js';
@@ -1521,76 +1520,6 @@ router.delete('/videos/:id', async (req: AuthenticatedRequest, res: Response, ne
   }
 });
 
-// ----------------------------------------------------
-// 12. FLASHCARDS MANAGEMENT
-// ----------------------------------------------------
-const flashcardSchema = z.object({
-  examId: z.string().min(1, 'Exam ID is required'),
-  subjectId: z.string().min(1, 'Subject ID is required'),
-  topicId: z.string().optional(),
-  front: z.string().min(2, 'Front prompt is required'),
-  back: z.string().min(2, 'Back answer is required'),
-  difficulty: z.enum(['EASY', 'MEDIUM', 'HARD']).default('MEDIUM'),
-  isPublished: z.boolean().default(true),
-});
-
-router.get('/flashcards', async (_req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
-  try {
-    const flashcards = await Flashcard.find()
-      .populate('examId', 'name shortCode')
-      .populate('subjectId', 'name code')
-      .populate('topicId', 'name')
-      .sort({ createdAt: -1 })
-      .lean();
-    res.status(200).json({ success: true, data: flashcards });
-  } catch (error) {
-    next(error);
-  }
-});
-
-router.post('/flashcards', async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
-  try {
-    const data = flashcardSchema.parse(req.body);
-    const created = await Flashcard.create(data);
-    res.status(201).json({ success: true, data: created });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      res.status(400).json({ success: false, error: { message: 'Validation failed', details: error.flatten().fieldErrors } });
-      return;
-    }
-    next(error);
-  }
-});
-
-router.put('/flashcards/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
-  try {
-    const rawId = req.params.id;
-    const id = Array.isArray(rawId) ? rawId[0] : rawId;
-    const updated = await Flashcard.findByIdAndUpdate(id, req.body, { new: true });
-    if (!updated) {
-      res.status(404).json({ success: false, error: { message: 'Flashcard not found.' } });
-      return;
-    }
-    res.status(200).json({ success: true, data: updated });
-  } catch (error) {
-    next(error);
-  }
-});
-
-router.delete('/flashcards/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
-  try {
-    const rawId = req.params.id;
-    const id = Array.isArray(rawId) ? rawId[0] : rawId;
-    const deleted = await Flashcard.findByIdAndDelete(id);
-    if (!deleted) {
-      res.status(404).json({ success: false, error: { message: 'Flashcard not found.' } });
-      return;
-    }
-    res.status(200).json({ success: true, message: 'Flashcard deleted successfully.' });
-  } catch (error) {
-    next(error);
-  }
-});
 
 // ----------------------------------------------------
 // 13. SUBSCRIPTIONS DIRECTORY & MANAGEMENT

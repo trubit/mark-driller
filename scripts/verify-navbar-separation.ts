@@ -156,10 +156,7 @@ async function runNavbarAudit() {
       'path="/questions"',
       'path="/materials"',
       'path="/post-utme"',
-      'path="/formulas"',
-      'path="/dictionary"',
       'path="/schools"',
-      'path="/careers"',
     ];
     for (const route of publicRoutes) {
       check(`Public Route Present: ${route}`, appContent.includes(route), `Public route ${route} is registered`);
@@ -173,6 +170,13 @@ async function runNavbarAudit() {
       'path="/portal/activate"',
       'path="/portal/products"',
       'path="/portal/reseller"',
+      'path="/flashcards"',
+      'path="/formulas"',
+      'path="/dictionary"',
+      'path="/careers"',
+      'path="/portal/formulas"',
+      'path="/portal/dictionary"',
+      'path="/portal/careers"',
     ];
     for (const route of decommissionedRoutes) {
       check(
@@ -195,7 +199,6 @@ async function runNavbarAudit() {
       'path="/bookmarks"',
       'path="/history"',
       'path="/analytics"',
-      'path="/flashcards"',
       'path="/games"',
       'path="/challenge"',
       'path="/lessons"',

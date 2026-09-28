@@ -17,10 +17,16 @@ export interface IUser extends Document {
   verificationOtpExpires?: Date;
   verificationOtpAttempts: number;
   verificationOtpLastSent?: Date;
+  verificationOtpMessageId?: string;
+  previousVerificationOtp?: string;
+  previousVerificationOtpExpires?: Date;
   resetPasswordOtp?: string;
   resetPasswordOtpExpires?: Date;
   resetPasswordOtpAttempts: number;
   resetPasswordOtpLastSent?: Date;
+  resetPasswordOtpMessageId?: string;
+  previousResetPasswordOtp?: string;
+  previousResetPasswordOtpExpires?: Date;
   accountStatus: AccountStatus;
   createdAt: Date;
   updatedAt: Date;
@@ -87,6 +93,18 @@ const UserSchema = new Schema<IUser>(
       type: Date,
       select: false,
     },
+    verificationOtpMessageId: {
+      type: String,
+      select: false,
+    },
+    previousVerificationOtp: {
+      type: String,
+      select: false,
+    },
+    previousVerificationOtpExpires: {
+      type: Date,
+      select: false,
+    },
     resetPasswordOtp: {
       type: String,
       select: false,
@@ -101,6 +119,18 @@ const UserSchema = new Schema<IUser>(
       select: false,
     },
     resetPasswordOtpLastSent: {
+      type: Date,
+      select: false,
+    },
+    resetPasswordOtpMessageId: {
+      type: String,
+      select: false,
+    },
+    previousResetPasswordOtp: {
+      type: String,
+      select: false,
+    },
+    previousResetPasswordOtpExpires: {
       type: Date,
       select: false,
     },
@@ -120,10 +150,16 @@ const UserSchema = new Schema<IUser>(
         delete ret.verificationOtpExpires;
         delete ret.verificationOtpAttempts;
         delete ret.verificationOtpLastSent;
+        delete ret.verificationOtpMessageId;
+        delete ret.previousVerificationOtp;
+        delete ret.previousVerificationOtpExpires;
         delete ret.resetPasswordOtp;
         delete ret.resetPasswordOtpExpires;
         delete ret.resetPasswordOtpAttempts;
         delete ret.resetPasswordOtpLastSent;
+        delete ret.resetPasswordOtpMessageId;
+        delete ret.previousResetPasswordOtp;
+        delete ret.previousResetPasswordOtpExpires;
         delete ret.__v;
         return ret;
       },

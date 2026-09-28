@@ -157,7 +157,7 @@ export const StudentDashboard: React.FC = () => {
     {
       eyebrow: 'Curriculum',
       title: 'Study Materials',
-      body: 'Open aligned revision notes, formula guides, downloadable materials, and exam board resources.',
+      body: 'Open aligned revision notes, downloadable study materials, and exam board resources.',
       action: (
         <Link to={activeExamId ? `/portal/materials?examId=${activeExamId}` : '/portal/materials'} className="btn-custom btn-custom-ghost">
           Open materials
@@ -179,14 +179,10 @@ export const StudentDashboard: React.FC = () => {
 
   const tools = [
     ['Tertiary Screening', 'Post-UTME Portal', 'Institution-specific screening formats and CBT tests.', '/portal/post-utme'],
-    ['Active Recall', 'Interactive Flashcards', 'High-yield definitions, rules, and facts for fast revision.', '/flashcards'],
-    ['Formula Reference', 'Science and Math Handbook', 'WAEC and UTME equations, units, and worked calculations.', '/portal/formulas'],
     ['Weekly Benchmark', 'Weekly UTME Challenge', 'Timed national-style speed trials across core subjects.', '/challenge'],
     ['Speed Drills', 'Educational Speed Games', 'Vocabulary and arithmetic drills under a focused clock.', '/games'],
     ['Video Walkthroughs', 'Curriculum Video Lessons', 'Topic masterclasses built for Nigerian exam preparation.', '/lessons'],
     ['Admissions Guide', 'Nigerian School Finder', 'Cut-off marks, faculties, and admission guidelines.', '/portal/schools'],
-    ['JAMB Brochure', 'Career and Subject Combinations', 'UTME subject requirements and O Level prerequisites.', '/portal/careers'],
-    ['Curriculum Lexis', 'Academic Dictionary and Lexis', 'Vetted examination vocabulary and scientific definitions.', '/portal/dictionary'],
     ['Academic Intelligence', 'Examination Blog and Guides', 'Scoring blueprints, syllabus breakdowns, and cut-off tips.', '/portal/blog'],
     ['Subscription Pass', 'Subscription and Activation', 'Manage your student pass, scratch card PINs, and transfers.', '/portal/pricing'],
   ];

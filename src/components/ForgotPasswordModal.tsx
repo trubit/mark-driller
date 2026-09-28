@@ -36,6 +36,17 @@ export const ForgotPasswordModal: React.FC = () => {
     }
   };
 
+  const handleResendOtp = async () => {
+    setErrorMsg(null);
+    setSuccessMsg(null);
+    try {
+      await forgotMutation.mutateAsync({ email: email.trim() });
+      setSuccessMsg('A fresh 6-digit recovery code has been dispatched to your email.');
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Failed to resend recovery code. Please wait before retrying.');
+    }
+  };
+
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
@@ -255,6 +266,45 @@ export const ForgotPasswordModal: React.FC = () => {
             >
               {resetMutation.isPending ? 'Updating Password...' : 'Save New Password & Log In →'}
             </button>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px' }}>
+              <button
+                type="button"
+                onClick={handleResendOtp}
+                disabled={forgotMutation.isPending}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--rust)',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: forgotMutation.isPending ? 'not-allowed' : 'pointer',
+                  textDecoration: 'underline',
+                  padding: 0,
+                }}
+              >
+                {forgotMutation.isPending ? 'Sending...' : "Didn't get code? Resend Code"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setErrorMsg(null);
+                  setSuccessMsg(null);
+                  setStep('REQUEST');
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--slate)',
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                  padding: 0,
+                }}
+              >
+                Change Email
+              </button>
+            </div>
           </form>
         )}
 

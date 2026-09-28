@@ -70,12 +70,12 @@ async function runOtpEmailVerification() {
   console.log(`Target Recipient: ${targetEmail}`);
 
   const testOtp = '849201';
-  const verifyResult = await sendVerificationEmail(targetEmail, 'Test Candidate', testOtp, 15);
-  assert('sendVerificationEmail dispatches successfully via Brevo REST API', verifyResult === true);
+  const verifyResult = await sendVerificationEmail(targetEmail, 'Test Candidate', testOtp, 30);
+  assert('sendVerificationEmail dispatches successfully via Brevo REST API', verifyResult.success === true);
 
   const resetOtp = '391024';
-  const resetResult = await sendPasswordResetEmail(targetEmail, 'Test Candidate', resetOtp, 15);
-  assert('sendPasswordResetEmail dispatches successfully via Brevo REST API', resetResult === true);
+  const resetResult = await sendPasswordResetEmail(targetEmail, 'Test Candidate', resetOtp, 30);
+  assert('sendPasswordResetEmail dispatches successfully via Brevo REST API', resetResult.success === true);
 
   console.log('\n======================================================');
   console.log(`VERIFICATION SUMMARY: ${passed}/${total} TESTS PASSED`);

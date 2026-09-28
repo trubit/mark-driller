@@ -66,11 +66,11 @@ async function verifyBrevo() {
   const targetEmail = parseSenderAddress(env.EMAIL_FROM).email;
   console.log(`   Target: ${targetEmail}`);
   try {
-    const success = await sendVerificationEmail(targetEmail, 'Oliver Smith', '593812', 15);
-    if (success) {
-      console.log('   ✅ Live Verification Email Dispatched Successfully!');
+    const res = await sendVerificationEmail(targetEmail, 'Oliver Smith', '593812', 30);
+    if (res.success) {
+      console.log('   ✅ Live Verification Email Dispatched Successfully! (msgId:', res.messageId, ')');
     } else {
-      console.error('   ❌ Live dispatch returned false');
+      console.error('   ❌ Live dispatch returned error:', res.error);
     }
   } catch (err: any) {
     console.error('   ❌ Live dispatch error:', err.message);

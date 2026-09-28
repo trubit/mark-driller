@@ -102,6 +102,14 @@ export function escapeHtml(text: string): string {
 }
 
 /**
+ * Safe email address masking for structured audit logs without exposing PII
+ */
+export function maskEmail(email: string): string {
+  if (!email || !email.includes('@')) return 'unknown';
+  return email.replace(/^(.)(.*)(@.*)$/, (_, f, m, d) => `${f}${'*'.repeat(Math.min(m.length, 5))}${d}`);
+}
+
+/**
  * Send email via Brevo REST API v3 (HTTPS port 443, reliable on all cloud hosts)
  */
 export async function sendViaBrevoApi(options: EmailDispatchOptions): Promise<EmailDispatchResult> {
@@ -120,7 +128,7 @@ export async function sendViaBrevoApi(options: EmailDispatchOptions): Promise<Em
   const buildPayload = (s: { name: string; email: string }) => {
     const p: any = {
       sender: s,
-      replyTo: options.replyTo || { email: 'support@markdriller.com', name: 'MarkDriller Academic Support' },
+      replyTo: options.replyTo || { email: 'support@markdriller.ng', name: 'MarkDriller Academic Support' },
       to: [{ email: options.to, name: options.toName || options.to.split('@')[0] }],
       subject: options.subject,
       htmlContent: options.html,
@@ -133,6 +141,9 @@ export async function sendViaBrevoApi(options: EmailDispatchOptions): Promise<Em
     }
     return p;
   };
+
+  const maskedTo = maskEmail(options.to);
+  console.log(`[OTP_EMAIL_PROVIDER_REQUEST_STARTED] provider=brevo recipient=${maskedTo} subject="${options.subject}"`);
 
   let lastError = '';
   // Bounded retry logic: 2 attempts max with backoff and automatic verified-sender recovery
@@ -151,13 +162,13 @@ export async function sendViaBrevoApi(options: EmailDispatchOptions): Promise<Em
       if (response.ok) {
         const data = await response.json().catch(() => ({}));
         const messageId = (data as any).messageId || `brevo-${Date.now()}`;
-        console.log(`📧 [EMAIL DELIVERY via BREVO REST API] Delivered "${options.subject}" to ${options.to} (msgId: ${messageId})`);
+        console.log(`[OTP_EMAIL_PROVIDER_ACCEPTED] provider=brevo messageId=${messageId} recipient=${maskedTo}`);
         return { success: true, messageId };
       }
 
       const errBody = await response.text().catch(() => '');
       lastError = `Brevo HTTP ${response.status}: ${errBody.slice(0, 300)}`;
-      console.error(`❌ [BREVO API ERROR ${response.status}] Attempt ${attempt}: Failed to deliver "${options.subject}" to ${options.to}:`, errBody);
+      console.error(`❌ [BREVO API ERROR ${response.status}] Attempt ${attempt}: Failed to deliver "${options.subject}" to ${maskedTo}:`, errBody);
 
       // If Brevo rejected due to unverified sender email (400 Bad Request) and sender wasn't already VERIFIED_BREVO_SENDER,
       // immediately switch to VERIFIED_BREVO_SENDER to ensure the user receives their critical OTP email!
@@ -181,6 +192,7 @@ export async function sendViaBrevoApi(options: EmailDispatchOptions): Promise<Em
     }
   }
 
+  console.error(`[OTP_EMAIL_PROVIDER_FAILED] provider=brevo recipient=${maskedTo} error="${lastError}"`);
   return { success: false, error: lastError };
 }
 
@@ -297,13 +309,13 @@ export async function sendVerificationEmail(
   to: string,
   fullName: string,
   otp: string,
-  expiresMinutes: number = 15
-): Promise<boolean> {
-  const subject = `Verify Your MarkDriller Account — OTP: ${otp}`;
+  expiresMinutes: number = 30
+): Promise<EmailDispatchResult> {
+  const subject = 'Your MarkDriller verification code';
   const content = `
     <h2 style="font-size: 20px; margin: 0 0 12px; color: #14181c;">Confirm Your Email Address</h2>
     <p style="font-size: 14px; line-height: 1.6; color: #444d56;">
-      Hello <strong>${fullName}</strong>,<br>
+      Hello <strong>${escapeHtml(fullName)}</strong>,<br>
       Thank you for registering on MarkDriller. To activate your student account and access accredited past questions and CBT practice rooms, please verify your email address using the One-Time Passcode (OTP) below:
     </p>
     <div class="otp-box">
@@ -317,22 +329,20 @@ export async function sendVerificationEmail(
   `;
 
   const html = wrapBrandedTemplate(subject, content);
+  const text = `Verify Your MarkDriller Account\n\nHello ${fullName},\n\nYour 6-digit verification code is: ${otp}\nThis code expires in ${expiresMinutes} minutes.\n\nSecurity Reminder: MarkDriller staff will never ask for your password or verification code. If you did not create this account, please disregard this email.\n\n© ${new Date().getFullYear()} MarkDriller Academic Technologies. All rights reserved.`;
 
-  const isProd = env.NODE_ENV === 'production';
-  if (!isProd) {
-    console.log('\n============================================================');
-    console.log(`🔑 [MARKDRILLER OTP VERIFICATION PASSCODE]`);
-    console.log(`Recipient: ${to}`);
-    console.log(`Passcode:  ${otp}`);
-    console.log(`Expires:   ${expiresMinutes} minutes`);
-    console.log('============================================================\n');
-  } else {
-    const maskedTo = to.replace(/^(.)(.*)(@.*)$/, (_, f, m, d) => `${f}${'*'.repeat(Math.min(m.length, 5))}${d}`);
-    console.log(`🔑 [MARKDRILLER OTP] Verification code dispatched to ${maskedTo} (valid ${expiresMinutes}m)`);
-  }
+  const maskedTo = maskEmail(to);
+  console.log(`[OTP_EMAIL_REQUESTED] type=verification recipient=${maskedTo} validity=${expiresMinutes}m`);
 
-  const res = await dispatchEmail({ to, toName: fullName, subject, html });
-  return res.success;
+  return await dispatchEmail({
+    to,
+    toName: fullName,
+    subject,
+    html,
+    text,
+    replyTo: { email: 'support@markdriller.ng', name: 'MarkDriller Academic Support' },
+    tags: ['auth', 'otp', 'verification'],
+  });
 }
 
 /**
@@ -342,13 +352,13 @@ export async function sendPasswordResetEmail(
   to: string,
   fullName: string,
   otp: string,
-  expiresMinutes: number = 15
-): Promise<boolean> {
-  const subject = `Reset Your MarkDriller Password — OTP: ${otp}`;
+  expiresMinutes: number = 30
+): Promise<EmailDispatchResult> {
+  const subject = 'Your MarkDriller password reset code';
   const content = `
     <h2 style="font-size: 20px; margin: 0 0 12px; color: #14181c;">Password Reset Request</h2>
     <p style="font-size: 14px; line-height: 1.6; color: #444d56;">
-      Hello <strong>${fullName}</strong>,<br>
+      Hello <strong>${escapeHtml(fullName)}</strong>,<br>
       We received a request to reset your MarkDriller account password. Enter the 6-digit recovery code below on the password reset screen:
     </p>
     <div class="otp-box">
@@ -357,27 +367,25 @@ export async function sendPasswordResetEmail(
       <div style="font-size: 12px; color: #d4622b; margin-top: 8px;">Valid for ${expiresMinutes} minutes</div>
     </div>
     <div class="security-notice">
-      <strong>Security Alert:</strong> If you did not request a password reset, please change your password immediately or contact support@markdriller.com.
+      <strong>Security Alert:</strong> If you did not request a password reset, please change your password immediately or contact support@markdriller.ng.
     </div>
   `;
 
   const html = wrapBrandedTemplate(subject, content);
+  const text = `Reset Your MarkDriller Password\n\nHello ${fullName},\n\nWe received a request to reset your MarkDriller account password.\nYour 6-digit recovery code is: ${otp}\nThis code expires in ${expiresMinutes} minutes.\n\nSecurity Alert: If you did not request a password reset, please change your password immediately or contact support@markdriller.ng.\n\n© ${new Date().getFullYear()} MarkDriller Academic Technologies. All rights reserved.`;
 
-  const isProd = env.NODE_ENV === 'production';
-  if (!isProd) {
-    console.log('\n============================================================');
-    console.log(`🔑 [MARKDRILLER PASSWORD RESET PASSCODE]`);
-    console.log(`Recipient: ${to}`);
-    console.log(`Passcode:  ${otp}`);
-    console.log(`Expires:   ${expiresMinutes} minutes`);
-    console.log('============================================================\n');
-  } else {
-    const maskedTo = to.replace(/^(.)(.*)(@.*)$/, (_, f, m, d) => `${f}${'*'.repeat(Math.min(m.length, 5))}${d}`);
-    console.log(`🔑 [MARKDRILLER OTP] Password reset code dispatched to ${maskedTo} (valid ${expiresMinutes}m)`);
-  }
+  const maskedTo = maskEmail(to);
+  console.log(`[OTP_EMAIL_REQUESTED] type=password-reset recipient=${maskedTo} validity=${expiresMinutes}m`);
 
-  const res = await dispatchEmail({ to, toName: fullName, subject, html });
-  return res.success;
+  return await dispatchEmail({
+    to,
+    toName: fullName,
+    subject,
+    html,
+    text,
+    replyTo: { email: 'support@markdriller.ng', name: 'MarkDriller Academic Support' },
+    tags: ['auth', 'otp', 'password-reset'],
+  });
 }
 
 /**

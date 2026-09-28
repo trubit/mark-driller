@@ -114,10 +114,17 @@ router.post(
       });
 
       // Dispatch verification email
+      let emailDispatched = false;
       try {
-        const sent = await sendVerificationEmail(user.email, user.fullName, plainOtp, env.OTP_EXPIRATION_MINUTES);
-        if (!sent) {
-          console.error(`⚠️ [AUTH REGISTRATION] sendVerificationEmail returned false for ${user.email}`);
+        const dispatchResult = await sendVerificationEmail(user.email, user.fullName, plainOtp, env.OTP_EXPIRATION_MINUTES);
+        if (dispatchResult.success) {
+          emailDispatched = true;
+          if (dispatchResult.messageId) {
+            user.verificationOtpMessageId = dispatchResult.messageId;
+            await user.save();
+          }
+        } else {
+          console.error(`⚠️ [AUTH REGISTRATION] sendVerificationEmail failed for ${user.email}:`, dispatchResult.error);
         }
       } catch (emailErr: any) {
         console.error('⚠️ [AUTH REGISTRATION] Failed to dispatch verification email:', emailErr?.message || emailErr);
@@ -131,11 +138,14 @@ router.post(
 
       res.status(201).json({
         success: true,
-        message: 'Account created successfully. A 6-digit verification code has been sent to your email.',
+        message: emailDispatched
+          ? 'Account created successfully. A 6-digit verification code has been sent to your email.'
+          : 'Account created. We had trouble sending the verification email right away; please click Resend Code to receive your passcode.',
         data: {
           token,
           user: user.toJSON(),
           needsVerification: true,
+          emailDispatched,
         },
       });
     } catch (error) {
@@ -240,7 +250,7 @@ router.post(
       const { email, otp } = verifyEmailSchema.parse(req.body);
 
       const user = await User.findOne({ email: email.toLowerCase() })
-        .select('+verificationOtp +verificationOtpExpires +verificationOtpAttempts');
+        .select('+verificationOtp +verificationOtpExpires +verificationOtpAttempts +previousVerificationOtp +previousVerificationOtpExpires');
 
       if (!user) {
         res.status(404).json({ success: false, error: { message: 'User account not found.' } });
@@ -256,10 +266,13 @@ router.post(
         return;
       }
 
-      if (!user.verificationOtp || !user.verificationOtpExpires) {
+      const hasActiveCurrent = user.verificationOtp && user.verificationOtpExpires && new Date() <= user.verificationOtpExpires;
+      const hasActivePrevious = user.previousVerificationOtp && user.previousVerificationOtpExpires && new Date() <= user.previousVerificationOtpExpires;
+
+      if (!hasActiveCurrent && !hasActivePrevious) {
         res.status(400).json({
           success: false,
-          error: { message: 'No pending verification code found. Please request a new code.' },
+          error: { message: 'Verification code has expired or was not requested. Please request a new code.' },
         });
         return;
       }
@@ -273,17 +286,15 @@ router.post(
         return;
       }
 
-      // Check expiration
-      if (new Date() > user.verificationOtpExpires) {
-        res.status(400).json({
-          success: false,
-          error: { message: 'Verification code has expired. Please request a new code.' },
-        });
-        return;
+      // Verify OTP hash against current or recent previous OTP
+      let isValid = false;
+      if (hasActiveCurrent && user.verificationOtp) {
+        isValid = verifyOtpHash(otp, user.verificationOtp);
+      }
+      if (!isValid && hasActivePrevious && user.previousVerificationOtp) {
+        isValid = verifyOtpHash(otp, user.previousVerificationOtp);
       }
 
-      // Verify OTP hash
-      const isValid = verifyOtpHash(otp, user.verificationOtp);
       if (!isValid) {
         user.verificationOtpAttempts += 1;
         await user.save();
@@ -297,11 +308,14 @@ router.post(
         return;
       }
 
-      // Success: mark verified and invalidate OTP
+      // Success: mark verified and invalidate ALL OTP fields
       user.isVerified = true;
       user.verificationOtp = undefined;
       user.verificationOtpExpires = undefined;
       user.verificationOtpAttempts = 0;
+      user.verificationOtpMessageId = undefined;
+      user.previousVerificationOtp = undefined;
+      user.previousVerificationOtpExpires = undefined;
       await user.save();
 
       res.status(200).json({
@@ -331,7 +345,7 @@ router.post(
       const { email } = resendVerificationSchema.parse(req.body);
 
       const user = await User.findOne({ email: email.toLowerCase() })
-        .select('+verificationOtpLastSent');
+        .select('+verificationOtp +verificationOtpExpires +verificationOtpLastSent');
 
       if (!user) {
         // Safe response to prevent enumeration
@@ -364,6 +378,12 @@ router.post(
         }
       }
 
+      // Save previous OTP as grace fallback if still valid
+      if (user.verificationOtp && user.verificationOtpExpires && user.verificationOtpExpires > new Date()) {
+        user.previousVerificationOtp = user.verificationOtp;
+        user.previousVerificationOtpExpires = user.verificationOtpExpires;
+      }
+
       const plainOtp = generateNumericOtp();
       user.verificationOtp = hashOtp(plainOtp);
       user.verificationOtpExpires = new Date(Date.now() + env.OTP_EXPIRATION_MINUTES * 60 * 1000);
@@ -372,13 +392,24 @@ router.post(
       await user.save();
 
       // Dispatch fresh verification email
+      let dispatchResult: any;
       try {
-        const sent = await sendVerificationEmail(user.email, user.fullName, plainOtp, env.OTP_EXPIRATION_MINUTES);
-        if (!sent) {
-          console.error(`⚠️ [AUTH RESEND OTP] sendVerificationEmail returned false for ${user.email}`);
+        dispatchResult = await sendVerificationEmail(user.email, user.fullName, plainOtp, env.OTP_EXPIRATION_MINUTES);
+        if (dispatchResult.success && dispatchResult.messageId) {
+          user.verificationOtpMessageId = dispatchResult.messageId;
+          await user.save();
         }
       } catch (emailErr: any) {
         console.error('⚠️ [AUTH RESEND OTP] Failed to dispatch verification email:', emailErr?.message || emailErr);
+        dispatchResult = { success: false, error: emailErr?.message };
+      }
+
+      if (!dispatchResult?.success) {
+        res.status(503).json({
+          success: false,
+          error: { message: "We couldn't deliver the verification code to your email right now. Please try again shortly." },
+        });
+        return;
       }
 
       res.status(200).json({
@@ -407,13 +438,13 @@ router.post(
       const { email } = forgotPasswordSchema.parse(req.body);
 
       const user = await User.findOne({ email: email.toLowerCase() })
-        .select('+resetPasswordOtpLastSent');
+        .select('+resetPasswordOtp +resetPasswordOtpExpires +resetPasswordOtpLastSent');
 
       if (!user) {
-        // Constant-time-like generic response to prevent account enumeration
+        // Safe response to prevent account enumeration
         res.status(200).json({
           success: true,
-          message: 'If an account exists with this email address, a password recovery code has been sent.',
+          message: 'If an account exists with this email address, a password recovery code has been sent. Please also check your spam or junk folder.',
         });
         return;
       }
@@ -431,6 +462,12 @@ router.post(
         }
       }
 
+      // Save previous reset OTP as grace fallback if still valid
+      if (user.resetPasswordOtp && user.resetPasswordOtpExpires && user.resetPasswordOtpExpires > new Date()) {
+        user.previousResetPasswordOtp = user.resetPasswordOtp;
+        user.previousResetPasswordOtpExpires = user.resetPasswordOtpExpires;
+      }
+
       const plainOtp = generateNumericOtp();
       user.resetPasswordOtp = hashOtp(plainOtp);
       user.resetPasswordOtpExpires = new Date(Date.now() + env.OTP_EXPIRATION_MINUTES * 60 * 1000);
@@ -439,18 +476,29 @@ router.post(
       await user.save();
 
       // Dispatch password reset email
+      let dispatchResult: any;
       try {
-        const sent = await sendPasswordResetEmail(user.email, user.fullName, plainOtp, env.OTP_EXPIRATION_MINUTES);
-        if (!sent) {
-          console.error(`⚠️ [AUTH FORGOT PASSWORD] sendPasswordResetEmail returned false for ${user.email}`);
+        dispatchResult = await sendPasswordResetEmail(user.email, user.fullName, plainOtp, env.OTP_EXPIRATION_MINUTES);
+        if (dispatchResult.success && dispatchResult.messageId) {
+          user.resetPasswordOtpMessageId = dispatchResult.messageId;
+          await user.save();
         }
       } catch (emailErr: any) {
         console.error('⚠️ [AUTH FORGOT PASSWORD] Failed to dispatch password reset email:', emailErr?.message || emailErr);
+        dispatchResult = { success: false, error: emailErr?.message };
+      }
+
+      if (!dispatchResult?.success) {
+        res.status(503).json({
+          success: false,
+          error: { message: "We couldn't deliver the password recovery code right now. Please try again shortly." },
+        });
+        return;
       }
 
       res.status(200).json({
         success: true,
-        message: 'If an account exists with this email address, a password recovery code has been sent.',
+        message: 'A password recovery code has been sent to your email address.',
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -474,12 +522,23 @@ router.post(
       const { email, otp } = verifyResetOtpSchema.parse(req.body);
 
       const user = await User.findOne({ email: email.toLowerCase() })
-        .select('+resetPasswordOtp +resetPasswordOtpExpires +resetPasswordOtpAttempts');
+        .select('+resetPasswordOtp +resetPasswordOtpExpires +resetPasswordOtpAttempts +previousResetPasswordOtp +previousResetPasswordOtpExpires');
 
-      if (!user || !user.resetPasswordOtp || !user.resetPasswordOtpExpires) {
+      if (!user) {
         res.status(400).json({
           success: false,
           error: { message: 'Invalid or expired password reset request.' },
+        });
+        return;
+      }
+
+      const hasActiveCurrent = user.resetPasswordOtp && user.resetPasswordOtpExpires && new Date() <= user.resetPasswordOtpExpires;
+      const hasActivePrevious = user.previousResetPasswordOtp && user.previousResetPasswordOtpExpires && new Date() <= user.previousResetPasswordOtpExpires;
+
+      if (!hasActiveCurrent && !hasActivePrevious) {
+        res.status(400).json({
+          success: false,
+          error: { message: 'Password recovery code has expired. Please request a new code.' },
         });
         return;
       }
@@ -492,15 +551,14 @@ router.post(
         return;
       }
 
-      if (new Date() > user.resetPasswordOtpExpires) {
-        res.status(400).json({
-          success: false,
-          error: { message: 'Password recovery code has expired. Please request a new code.' },
-        });
-        return;
+      let isValid = false;
+      if (hasActiveCurrent && user.resetPasswordOtp) {
+        isValid = verifyOtpHash(otp, user.resetPasswordOtp);
+      }
+      if (!isValid && hasActivePrevious && user.previousResetPasswordOtp) {
+        isValid = verifyOtpHash(otp, user.previousResetPasswordOtp);
       }
 
-      const isValid = verifyOtpHash(otp, user.resetPasswordOtp);
       if (!isValid) {
         user.resetPasswordOtpAttempts += 1;
         await user.save();
@@ -541,12 +599,23 @@ router.post(
       const { email, otp, newPassword } = resetPasswordSchema.parse(req.body);
 
       const user = await User.findOne({ email: email.toLowerCase() })
-        .select('+resetPasswordOtp +resetPasswordOtpExpires +resetPasswordOtpAttempts +passwordHash');
+        .select('+resetPasswordOtp +resetPasswordOtpExpires +resetPasswordOtpAttempts +previousResetPasswordOtp +previousResetPasswordOtpExpires +passwordHash');
 
-      if (!user || !user.resetPasswordOtp || !user.resetPasswordOtpExpires) {
+      if (!user) {
         res.status(400).json({
           success: false,
           error: { message: 'Invalid or expired password reset request.' },
+        });
+        return;
+      }
+
+      const hasActiveCurrent = user.resetPasswordOtp && user.resetPasswordOtpExpires && new Date() <= user.resetPasswordOtpExpires;
+      const hasActivePrevious = user.previousResetPasswordOtp && user.previousResetPasswordOtpExpires && new Date() <= user.previousResetPasswordOtpExpires;
+
+      if (!hasActiveCurrent && !hasActivePrevious) {
+        res.status(400).json({
+          success: false,
+          error: { message: 'Password recovery code has expired. Please request a new code.' },
         });
         return;
       }
@@ -559,15 +628,14 @@ router.post(
         return;
       }
 
-      if (new Date() > user.resetPasswordOtpExpires) {
-        res.status(400).json({
-          success: false,
-          error: { message: 'Password recovery code has expired.' },
-        });
-        return;
+      let isValid = false;
+      if (hasActiveCurrent && user.resetPasswordOtp) {
+        isValid = verifyOtpHash(otp, user.resetPasswordOtp);
+      }
+      if (!isValid && hasActivePrevious && user.previousResetPasswordOtp) {
+        isValid = verifyOtpHash(otp, user.previousResetPasswordOtp);
       }
 
-      const isValid = verifyOtpHash(otp, user.resetPasswordOtp);
       if (!isValid) {
         user.resetPasswordOtpAttempts += 1;
         await user.save();
@@ -582,10 +650,13 @@ router.post(
       const salt = await bcrypt.genSalt(12);
       user.passwordHash = await bcrypt.hash(newPassword, salt);
 
-      // Invalidate reset OTP
+      // Invalidate ALL reset OTP fields
       user.resetPasswordOtp = undefined;
       user.resetPasswordOtpExpires = undefined;
       user.resetPasswordOtpAttempts = 0;
+      user.resetPasswordOtpMessageId = undefined;
+      user.previousResetPasswordOtp = undefined;
+      user.previousResetPasswordOtpExpires = undefined;
       await user.save();
 
       res.status(200).json({

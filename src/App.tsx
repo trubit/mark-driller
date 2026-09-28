@@ -17,11 +17,7 @@ import { AdminPortal } from './components/AdminPortal.js';
 import { StudyMaterialsView } from './components/StudyMaterialsView.js';
 import { SubscriptionPlans } from './components/SubscriptionPlans.js';
 import { PostUtmePortal } from './components/PostUtmePortal.js';
-import { ScienceFormulaHandbook } from './components/ScienceFormulaHandbook.js';
-import { DictionaryPortal } from './components/DictionaryPortal.js';
-import { FlashcardsView } from './components/FlashcardsView.js';
 import { SchoolFinder } from './components/SchoolFinder.js';
-import { CareerGuide } from './components/CareerGuide.js';
 import { EducationalGames } from './components/EducationalGames.js';
 import { WeeklyChallenge } from './components/WeeklyChallenge.js';
 import { VideoLessonsView } from './components/VideoLessonsView.js';
@@ -76,10 +72,7 @@ export const App: React.FC = () => {
             <Route path="/questions" element={<QuestionCatalog />} />
             <Route path="/materials" element={<StudyMaterialsView />} />
             <Route path="/post-utme" element={<PostUtmePortal />} />
-            <Route path="/formulas" element={<ScienceFormulaHandbook />} />
-            <Route path="/dictionary" element={<DictionaryPortal />} />
             <Route path="/schools" element={<SchoolFinder />} />
-            <Route path="/careers" element={<CareerGuide />} />
           </Route>
 
           {/* ======================================================== */}
@@ -136,14 +129,7 @@ export const App: React.FC = () => {
                 </ProtectedRoute>
               }
             />
-            <Route
-              path="/flashcards"
-              element={
-                <ProtectedRoute allowedRoles={['STUDENT', 'ADMIN']}>
-                  <FlashcardsView />
-                </ProtectedRoute>
-              }
-            />
+
             <Route
               path="/games"
               element={
@@ -212,34 +198,10 @@ export const App: React.FC = () => {
               }
             />
             <Route
-              path="/portal/formulas"
-              element={
-                <ProtectedRoute allowedRoles={['STUDENT', 'ADMIN']}>
-                  <ScienceFormulaHandbook />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/portal/dictionary"
-              element={
-                <ProtectedRoute allowedRoles={['STUDENT', 'ADMIN']}>
-                  <DictionaryPortal />
-                </ProtectedRoute>
-              }
-            />
-            <Route
               path="/portal/schools"
               element={
                 <ProtectedRoute allowedRoles={['STUDENT', 'ADMIN']}>
                   <SchoolFinder />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/portal/careers"
-              element={
-                <ProtectedRoute allowedRoles={['STUDENT', 'ADMIN']}>
-                  <CareerGuide />
                 </ProtectedRoute>
               }
             />
