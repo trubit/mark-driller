@@ -17,13 +17,26 @@
   <script type="module" src="/src/main.tsx"></script>
   <script>
     if ('serviceWorker' in navigator && window.location.protocol === 'https:') {
-      window.addEventListener('load', function() {
-        navigator.serviceWorker.register('/sw.js').then(function(reg) {
-          reg.update();
+      function syncServiceWorker() {
+        navigator.serviceWorker.getRegistrations().then(function(regs) {
+          for (var i = 0; i < regs.length; i++) {
+            regs[i].update().catch(function() {});
+          }
+        }).catch(function() {});
+
+        navigator.serviceWorker.register('/sw.js', { scope: '/' }).then(function(reg) {
+          reg.update().catch(function() {});
         }).catch(function(err) {
           console.warn('[SW Registration Notice]', err);
         });
-      });
+      }
+
+      if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        syncServiceWorker();
+      } else {
+        window.addEventListener('DOMContentLoaded', syncServiceWorker);
+        window.addEventListener('load', syncServiceWorker);
+      }
     }
   </script>
 </body>

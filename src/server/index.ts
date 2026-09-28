@@ -37,6 +37,15 @@ app.use((_req, res, next) => {
   next();
 });
 
+// Production request logging for network & diagnostic visibility
+app.use((req, _res, next) => {
+  if (!req.url.startsWith('/assets/')) {
+    const ua = (req.headers['user-agent'] || 'unknown').slice(0, 70);
+    console.log(`[HTTP] ${req.method} ${req.url} - UA: ${ua}`);
+  }
+  next();
+});
+
 // Security HTTP headers
 app.use(
   helmet({
