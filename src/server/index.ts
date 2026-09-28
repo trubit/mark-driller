@@ -31,6 +31,12 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
+// Disable/clear HTTP/3 (QUIC) alternate services to protect mobile networks with UDP 443 blocks
+app.use((_req, res, next) => {
+  res.setHeader('Alt-Svc', 'clear');
+  next();
+});
+
 // Security HTTP headers
 app.use(
   helmet({
@@ -184,6 +190,7 @@ app.get('/sw.js', (_req, res) => {
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
     res.setHeader('Content-Type', 'application/javascript; charset=UTF-8');
+    res.setHeader('Service-Worker-Allowed', '/');
     return res.sendFile(targetPath);
   }
   return res.status(404).end();
@@ -195,8 +202,19 @@ if (env.NODE_ENV === 'production') {
     ? path.resolve(__dirname, '../')
     : path.resolve(process.cwd(), 'dist');
 
-  app.use(express.static(distPath));
+  app.use(
+    express.static(distPath, {
+      setHeaders: (res, filePath) => {
+        if (filePath.endsWith('.html')) {
+          res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        } else if (filePath.match(/\.(js|css|svg|png|jpg|webp|woff2?)$/)) {
+          res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        }
+      },
+    })
+  );
   app.get('*', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.sendFile(path.resolve(distPath, 'index.html'));
   });
 }

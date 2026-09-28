@@ -27,13 +27,13 @@ services:
 
       # Application & Domain Routing
       - key: APP_URL
-        value: https://markdriller.com
+        value: https://markdriller.ng
       - key: CLIENT_URL
-        value: https://markdriller.com
+        value: https://markdriller.ng
       - key: CORS_ORIGIN
-        value: https://markdriller.com
+        value: https://markdriller.ng
       - key: ADMIN_EMAIL
-        value: admin@markdriller.com
+        value: admin@markdriller.ng
 
       # Auto-Generated Cryptographic Keys (No manual input needed)
       - key: JWT_SECRET

@@ -1,7 +1,7 @@
 // MarkDriller Production Service Worker (PWA Shell Caching & Offline Resilience)
-// Explicitly ignores API endpoints, authenticated calls, and payment webhooks.
+// Explicitly ignores API endpoints, authenticated calls, payment webhooks, and navigation requests.
 
-const CACHE_NAME = 'markdriller-shell-v2';
+const CACHE_NAME = 'markdriller-shell-v3';
 
 const STATIC_ASSETS = [
   '/',
@@ -10,7 +10,7 @@ const STATIC_ASSETS = [
   '/manifest.json',
 ];
 
-// Install: Cache essential app shell
+// Install: Cache essential static shell assets and immediately activate
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
@@ -22,7 +22,7 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// Activate: Purge obsolete version caches and take immediate control
+// Activate: Purge ALL obsolete version caches (v1, v2, etc.) and take immediate control of clients
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
@@ -34,12 +34,11 @@ self.addEventListener('activate', (event) => {
           }
         })
       );
-    })
+    }).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
-// Fetch: Safe caching strategy with SPA navigation fallback
+// Fetch: Safe caching strategy with zero interference on HTML navigation
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
@@ -52,37 +51,15 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 2. Navigation requests (HTML documents: /dashboard, /login, /cbt/practice, etc.)
-  // Always use Network-First with cached SPA shell fallback. NEVER return undefined to avoid ERR_FAILED.
-  if (event.request.mode === 'navigate') {
-    event.respondWith(
-      fetch(event.request)
-        .then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            const clone = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put('/index.html', clone);
-            });
-          }
-          return networkResponse;
-        })
-        .catch(async () => {
-          // Network failed (offline, cellular signal drop, or intermittent connection)
-          const cache = await caches.open(CACHE_NAME);
-          const cachedShell = (await cache.match('/index.html')) || (await cache.match('/'));
-          if (cachedShell) {
-            return cachedShell;
-          }
-          // Emergency fallback response to ensure respondWith NEVER resolves undefined
-          return new Response(
-            '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MarkDriller — Offline</title><style>body{font-family:system-ui,sans-serif;text-align:center;padding:50px 20px;background:#fdfbf7;color:#14181c}h1{color:#c2410c}.btn{display:inline-block;margin-top:20px;padding:10px 20px;background:#c2410c;color:#fff;text-decoration:none;border-radius:4px;font-weight:600}</style></head><body><h1>Connection Error</h1><p>MarkDriller could not reach the network. Please check your internet connection and try again.</p><a href="/" class="btn">Retry</a></body></html>',
-            {
-              status: 200,
-              headers: { 'Content-Type': 'text/html; charset=UTF-8' },
-            }
-          );
-        })
-    );
+  // 2. NEVER intercept top-level HTML navigation requests (/dashboard, /login, /, etc.)
+  // By letting the browser handle navigation natively, we completely eliminate the WebKit/iOS
+  // "ERR_FAILED" / "This site can't be reached" failure mode where a Service Worker respondWith()
+  // resolves to undefined or fails during cellular network / QUIC transitions.
+  if (
+    event.request.mode === 'navigate' ||
+    event.request.destination === 'document' ||
+    event.request.headers.get('accept')?.includes('text/html')
+  ) {
     return;
   }
 
@@ -106,7 +83,7 @@ self.addEventListener('fetch', (event) => {
         return cachedResponse;
       }
 
-      // If not in cache, fetch from network with safe Response fallback
+      // If not in cache, fetch from network with safe Response fallback (NEVER resolve undefined)
       return fetch(event.request)
         .then((networkResponse) => {
           if (

@@ -220,7 +220,7 @@ async function runComprehensiveVerification() {
   console.log('\n--- 4. Testing Service Worker & Mobile Compatibility Config ---');
 
   const swContent = fs.readFileSync(path.resolve(process.cwd(), 'public/sw.js'), 'utf-8');
-  assert(swContent.includes('markdriller-shell-v2'), 'Service Worker is upgraded to v2 cache');
+  assert(/markdriller-shell-v[2-9]/.test(swContent), 'Service Worker is upgraded to v2+ cache');
   assert(swContent.includes("event.request.mode === 'navigate'"), 'Service Worker handles navigation requests specifically');
   assert(swContent.includes('/index.html'), 'Service Worker includes SPA navigation fallback to /index.html');
   assert(!swContent.includes('.catch(() => cachedResponse);\n\n      return cachedResponse || fetchPromise;'), 'Broken undefined fallback eliminated from sw.js');
