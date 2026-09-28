@@ -9,6 +9,7 @@ import { Topic } from '../models/Topic.js';
 import { authenticateToken, requireRole, requireVerified, checkStudentSubscription, AuthenticatedRequest } from '../middleware/auth.js';
 import { QuestionIngestionService } from '../services/questionIngestionService.js';
 import { FreeTrialService } from '../services/freeTrialService.js';
+import { randomizeQuestionOptions } from '../utils/optionRandomizer.js';
 
 const router = Router();
 
@@ -81,10 +82,10 @@ router.get(
 
       const questions = bookmarks
         .filter((b) => b.questionId != null)
-        .map((b) => ({
+        .map((b: any) => ({
           bookmarkId: b._id,
           bookmarkDate: b.createdAt,
-          question: b.questionId,
+          question: randomizeQuestionOptions(b.questionId.toObject ? b.questionId.toObject() : b.questionId),
         }));
 
       res.status(200).json({ success: true, data: questions });
@@ -338,7 +339,7 @@ router.get(
         res.status(200).json({
           success: true,
           data: {
-            questions: allowedQuestions,
+            questions: allowedQuestions.map((q: any) => randomizeQuestionOptions(q)),
             pagination: {
               total,
               page: pageNum,
@@ -363,7 +364,7 @@ router.get(
       res.status(200).json({
         success: true,
         data: {
-          questions,
+          questions: questions.map((q: any) => randomizeQuestionOptions(q)),
           pagination: {
             total,
             page: pageNum,
@@ -433,7 +434,7 @@ router.get(
 
         res.status(200).json({
           success: true,
-          data: question,
+          data: randomizeQuestionOptions(question.toObject ? question.toObject() : question),
           trialUsage: {
             isPro: false,
             ...usage,
@@ -445,7 +446,7 @@ router.get(
       // Pro / Admin access
       res.status(200).json({
         success: true,
-        data: question,
+        data: randomizeQuestionOptions(question.toObject ? question.toObject() : question),
         trialUsage: {
           isPro: true,
           used: 0,

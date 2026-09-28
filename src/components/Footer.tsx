@@ -32,7 +32,6 @@ export const Footer: React.FC = () => {
               <li><Link to="/questions">NECO National Exams</Link></li>
               <li><Link to="/post-utme">University Post-UTME</Link></li>
               <li><Link to="/novels">JAMB English Novels</Link></li>
-              <li><Link to="/questions">BECE / Junior WAEC</Link></li>
             </ul>
           </div>
 

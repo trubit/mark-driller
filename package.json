@@ -21,7 +21,7 @@
     "preview": "vite preview",
     "db:index": "tsx scripts/ensure-production-indexes.ts",
     "type-check": "tsc --noEmit && tsc -p tsconfig.server.json --noEmit",
-    "test": "tsx scripts/verify-navbar-separation.ts && tsx scripts/verify-security-hardening.ts && tsx scripts/verify-4000-concurrency.ts && tsx scripts/verify-expansion-layout.ts",
+    "test": "tsx scripts/verify-navbar-separation.ts && tsx scripts/verify-security-hardening.ts && tsx scripts/verify-4000-concurrency.ts && tsx scripts/verify-expansion-layout.ts && tsx scripts/verify-option-randomization-and-mobile-compatibility.ts",
     "test:all": "tsx scripts/verify-navbar-separation.ts && tsx scripts/verify-security-hardening.ts && tsx scripts/verify-4000-concurrency.ts && tsx scripts/verify-expansion-layout.ts && tsx scripts/verify-paystack-e2e.ts && tsx scripts/verify-student-journey-e2e.ts",
     "test:navbar": "tsx scripts/verify-navbar-separation.ts",
     "test:access": "tsx scripts/verify-access-control.ts",
@@ -37,7 +37,9 @@
     "test:images": "tsx scripts/verify-image-assets-inventory.ts",
     "test:support": "tsx scripts/verify-dynamic-support-settings.ts",
     "test:support-email": "tsx scripts/verify-support-email-flow.ts",
-    "test:trial": "tsx scripts/verify-fresh-pro-access-control.ts"
+    "test:trial": "tsx scripts/verify-fresh-pro-access-control.ts",
+    "test:randomization": "tsx scripts/verify-option-randomization-and-mobile-compatibility.ts",
+    "test:otp": "tsx scripts/verify-otp-email-delivery.ts"
   },
 
   "keywords": [

@@ -65,6 +65,7 @@ app.use(
       },
     } : false,
     crossOriginEmbedderPolicy: false,
+    crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
     crossOriginResourcePolicy: { policy: 'cross-origin' },
     hsts: env.NODE_ENV === 'production' ? { maxAge: 31536000, includeSubDomains: true, preload: true } : false,
   })
@@ -168,6 +169,25 @@ app.use('/api/leads', leadsRouter);
 app.use('/api/support', supportRouter);
 app.use('/api', contentRouter);
 app.use('/api/content', contentRouter);
+
+// Explicitly serve service worker with strict no-cache headers to eliminate stale mobile worker failures
+app.get('/sw.js', (_req, res) => {
+  const distPath = fs.existsSync(path.resolve(__dirname, '../index.html'))
+    ? path.resolve(__dirname, '../')
+    : path.resolve(process.cwd(), 'dist');
+  const swDistPath = path.resolve(distPath, 'sw.js');
+  const swPublicPath = path.resolve(process.cwd(), 'public/sw.js');
+
+  const targetPath = fs.existsSync(swDistPath) ? swDistPath : fs.existsSync(swPublicPath) ? swPublicPath : null;
+  if (targetPath) {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Content-Type', 'application/javascript; charset=UTF-8');
+    return res.sendFile(targetPath);
+  }
+  return res.status(404).end();
+});
 
 // Production Static Serving
 if (env.NODE_ENV === 'production') {

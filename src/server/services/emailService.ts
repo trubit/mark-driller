@@ -46,6 +46,48 @@ export interface EmailDispatchResult {
   error?: string;
 }
 
+export const VERIFIED_BREVO_SENDER = 'oliversmith2140@gmail.com';
+export const DEFAULT_SENDER_NAME = 'MarkDriller Support';
+
+/**
+ * Robust RFC 5322 address parser.
+ * Safely extracts pure email address and display name from strings like:
+ *   '"MarkDriller" <oliversmith2140@gmail.com>'
+ *   'MarkDriller Support <oliversmith2140@gmail.com>'
+ *   'oliversmith2140@gmail.com'
+ */
+export function parseSenderAddress(raw?: string): { name: string; email: string } {
+  if (!raw || typeof raw !== 'string') {
+    return { name: DEFAULT_SENDER_NAME, email: VERIFIED_BREVO_SENDER };
+  }
+
+  const trimmed = raw.trim();
+
+  // Pattern: "Display Name" <email@domain.com> or Display Name <email@domain.com>
+  const angleMatch = trimmed.match(/^(?:"?([^"<]*)"?\s*)?<([^>]+)>$/);
+  if (angleMatch) {
+    const rawName = angleMatch[1]?.trim();
+    const rawEmail = angleMatch[2]?.trim().toLowerCase();
+    if (rawEmail && rawEmail.includes('@')) {
+      return {
+        name: rawName || DEFAULT_SENDER_NAME,
+        email: rawEmail,
+      };
+    }
+  }
+
+  // Plain email pattern (stripping any accidental enclosing quotes)
+  const cleaned = trimmed.replace(/^["']|["']$/g, '').trim().toLowerCase();
+  if (cleaned.includes('@') && !cleaned.includes(' ')) {
+    return {
+      name: DEFAULT_SENDER_NAME,
+      email: cleaned,
+    };
+  }
+
+  return { name: DEFAULT_SENDER_NAME, email: VERIFIED_BREVO_SENDER };
+}
+
 /**
  * Safe HTML escaping to prevent XSS and HTML injection in transactional emails
  */
@@ -68,30 +110,32 @@ export async function sendViaBrevoApi(options: EmailDispatchOptions): Promise<Em
     return { success: false, error: 'BREVO_API_KEY is not set' };
   }
 
-  // Brevo strictly requires sender.email to be a verified address in the Brevo account.
-  // The verified address in this account is oliversmith2140@gmail.com.
-  const sender = {
-    name: 'MarkDriller Support',
-    email: env.EMAIL_FROM || 'oliversmith2140@gmail.com',
+  // Parse configured sender, strictly ensuring sender.email is a clean RFC 5321 email address
+  const parsedSender = parseSenderAddress(env.EMAIL_FROM);
+  let activeSender = {
+    name: parsedSender.name || DEFAULT_SENDER_NAME,
+    email: parsedSender.email || VERIFIED_BREVO_SENDER,
   };
 
-  const payload: any = {
-    sender,
-    replyTo: options.replyTo || { email: 'support@markdriller.com', name: 'MarkDriller Academic Support' },
-    to: [{ email: options.to, name: options.toName || options.to.split('@')[0] }],
-    subject: options.subject,
-    htmlContent: options.html,
+  const buildPayload = (s: { name: string; email: string }) => {
+    const p: any = {
+      sender: s,
+      replyTo: options.replyTo || { email: 'support@markdriller.com', name: 'MarkDriller Academic Support' },
+      to: [{ email: options.to, name: options.toName || options.to.split('@')[0] }],
+      subject: options.subject,
+      htmlContent: options.html,
+    };
+    if (options.text) {
+      p.textContent = options.text;
+    }
+    if (options.tags && options.tags.length > 0) {
+      p.tags = options.tags;
+    }
+    return p;
   };
-
-  if (options.text) {
-    payload.textContent = options.text;
-  }
-  if (options.tags && options.tags.length > 0) {
-    payload.tags = options.tags;
-  }
 
   let lastError = '';
-  // Bounded retry logic: 2 attempts max with backoff
+  // Bounded retry logic: 2 attempts max with backoff and automatic verified-sender recovery
   for (let attempt = 1; attempt <= 2; attempt++) {
     try {
       const response = await fetch('https://api.brevo.com/v3/smtp/email', {
@@ -101,7 +145,7 @@ export async function sendViaBrevoApi(options: EmailDispatchOptions): Promise<Em
           'api-key': env.BREVO_API_KEY,
           'content-type': 'application/json',
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(buildPayload(activeSender)),
       });
 
       if (response.ok) {
@@ -109,14 +153,23 @@ export async function sendViaBrevoApi(options: EmailDispatchOptions): Promise<Em
         const messageId = (data as any).messageId || `brevo-${Date.now()}`;
         console.log(`📧 [EMAIL DELIVERY via BREVO REST API] Delivered "${options.subject}" to ${options.to} (msgId: ${messageId})`);
         return { success: true, messageId };
-      } else {
-        const errBody = await response.text().catch(() => '');
-        lastError = `Brevo HTTP ${response.status}: ${errBody.slice(0, 300)}`;
-        console.error(`❌ [BREVO API ERROR ${response.status}] Attempt ${attempt}: Failed to deliver "${options.subject}" to ${options.to}:`, errBody);
-        if (response.status < 500) {
-          // Client configuration error (4xx) - do not repeat
-          break;
-        }
+      }
+
+      const errBody = await response.text().catch(() => '');
+      lastError = `Brevo HTTP ${response.status}: ${errBody.slice(0, 300)}`;
+      console.error(`❌ [BREVO API ERROR ${response.status}] Attempt ${attempt}: Failed to deliver "${options.subject}" to ${options.to}:`, errBody);
+
+      // If Brevo rejected due to unverified sender email (400 Bad Request) and sender wasn't already VERIFIED_BREVO_SENDER,
+      // immediately switch to VERIFIED_BREVO_SENDER to ensure the user receives their critical OTP email!
+      if (response.status === 400 && activeSender.email !== VERIFIED_BREVO_SENDER) {
+        console.warn(`⚠️ [BREVO API RECOVERY] Sender "${activeSender.email}" rejected by Brevo. Falling back to verified account sender "${VERIFIED_BREVO_SENDER}"...`);
+        activeSender = { name: DEFAULT_SENDER_NAME, email: VERIFIED_BREVO_SENDER };
+        continue;
+      }
+
+      if (response.status < 500) {
+        // Client configuration error (4xx) - do not repeat
+        break;
       }
     } catch (netErr: any) {
       lastError = `Network error: ${netErr.message}`;
@@ -135,6 +188,9 @@ export async function sendViaBrevoApi(options: EmailDispatchOptions): Promise<Em
  * Resilient email dispatcher with primary Brevo API on cloud and SMTP support
  */
 export async function dispatchEmail(options: EmailDispatchOptions): Promise<EmailDispatchResult> {
+  const parsedSender = parseSenderAddress(env.EMAIL_FROM);
+  const formattedSenderHeader = `"${parsedSender.name}" <${parsedSender.email}>`;
+
   // 1. Primary: Brevo HTTPS REST API on port 443 (fast, reliable, immune to cloud SMTP port blocking)
   if (env.BREVO_API_KEY) {
     try {
@@ -151,7 +207,7 @@ export async function dispatchEmail(options: EmailDispatchOptions): Promise<Emai
     try {
       const t = getTransporter();
       const info = await t.sendMail({
-        from: env.EMAIL_FROM,
+        from: formattedSenderHeader,
         to: options.to,
         replyTo: options.replyTo
           ? (options.replyTo.name ? `"${options.replyTo.name}" <${options.replyTo.email}>` : options.replyTo.email)
@@ -172,7 +228,7 @@ export async function dispatchEmail(options: EmailDispatchOptions): Promise<Emai
     try {
       const t = getTransporter();
       const info = await t.sendMail({
-        from: env.EMAIL_FROM,
+        from: formattedSenderHeader,
         to: options.to,
         replyTo: options.replyTo
           ? (options.replyTo.name ? `"${options.replyTo.name}" <${options.replyTo.email}>` : options.replyTo.email)
@@ -262,12 +318,18 @@ export async function sendVerificationEmail(
 
   const html = wrapBrandedTemplate(subject, content);
 
-  console.log('\n============================================================');
-  console.log(`🔑 [MARKDRILLER OTP VERIFICATION PASSCODE]`);
-  console.log(`Recipient: ${to}`);
-  console.log(`Passcode:  ${otp}`);
-  console.log(`Expires:   ${expiresMinutes} minutes`);
-  console.log('============================================================\n');
+  const isProd = env.NODE_ENV === 'production';
+  if (!isProd) {
+    console.log('\n============================================================');
+    console.log(`🔑 [MARKDRILLER OTP VERIFICATION PASSCODE]`);
+    console.log(`Recipient: ${to}`);
+    console.log(`Passcode:  ${otp}`);
+    console.log(`Expires:   ${expiresMinutes} minutes`);
+    console.log('============================================================\n');
+  } else {
+    const maskedTo = to.replace(/^(.)(.*)(@.*)$/, (_, f, m, d) => `${f}${'*'.repeat(Math.min(m.length, 5))}${d}`);
+    console.log(`🔑 [MARKDRILLER OTP] Verification code dispatched to ${maskedTo} (valid ${expiresMinutes}m)`);
+  }
 
   const res = await dispatchEmail({ to, toName: fullName, subject, html });
   return res.success;
@@ -301,12 +363,18 @@ export async function sendPasswordResetEmail(
 
   const html = wrapBrandedTemplate(subject, content);
 
-  console.log('\n============================================================');
-  console.log(`🔑 [MARKDRILLER PASSWORD RESET PASSCODE]`);
-  console.log(`Recipient: ${to}`);
-  console.log(`Passcode:  ${otp}`);
-  console.log(`Expires:   ${expiresMinutes} minutes`);
-  console.log('============================================================\n');
+  const isProd = env.NODE_ENV === 'production';
+  if (!isProd) {
+    console.log('\n============================================================');
+    console.log(`🔑 [MARKDRILLER PASSWORD RESET PASSCODE]`);
+    console.log(`Recipient: ${to}`);
+    console.log(`Passcode:  ${otp}`);
+    console.log(`Expires:   ${expiresMinutes} minutes`);
+    console.log('============================================================\n');
+  } else {
+    const maskedTo = to.replace(/^(.)(.*)(@.*)$/, (_, f, m, d) => `${f}${'*'.repeat(Math.min(m.length, 5))}${d}`);
+    console.log(`🔑 [MARKDRILLER OTP] Password reset code dispatched to ${maskedTo} (valid ${expiresMinutes}m)`);
+  }
 
   const res = await dispatchEmail({ to, toName: fullName, subject, html });
   return res.success;

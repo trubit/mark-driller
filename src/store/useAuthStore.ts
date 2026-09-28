@@ -29,15 +29,51 @@ interface AuthState {
   checkAuth: () => Promise<boolean>;
 }
 
+function safeGetItem(key: string): string | null {
+  try {
+    return typeof window !== 'undefined' && window.localStorage ? window.localStorage.getItem(key) : null;
+  } catch {
+    return null;
+  }
+}
+
+function safeGetJson<T>(key: string, fallback: T): T {
+  const item = safeGetItem(key);
+  if (!item) return fallback;
+  try {
+    return JSON.parse(item) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+function safeSetItem(key: string, value: string): void {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem(key, value);
+    }
+  } catch {
+    // QuotaExceededError or SecurityError in strict mobile private browsing
+  }
+}
+
+function safeRemoveItem(key: string): void {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.removeItem(key);
+    }
+  } catch {}
+}
+
 export const useAuthStore = create<AuthState>((set, get) => ({
-  token: typeof window !== 'undefined' ? localStorage.getItem('md_token') : null,
-  user: typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('md_user') || 'null') : null,
-  isAuthenticated: typeof window !== 'undefined' ? !!localStorage.getItem('md_token') : false,
+  token: safeGetItem('md_token'),
+  user: safeGetJson<UserSession | null>('md_user', null),
+  isAuthenticated: !!safeGetItem('md_token'),
   isInitialized: false,
 
   setSession: (token, user) => {
-    localStorage.setItem('md_token', token);
-    localStorage.setItem('md_user', JSON.stringify(user));
+    safeSetItem('md_token', token);
+    safeSetItem('md_user', JSON.stringify(user));
     set({ token, user, isAuthenticated: true, isInitialized: true });
   },
 
@@ -45,19 +81,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set((state) => {
       if (!state.user) return state;
       const updatedUser = { ...state.user, ...updates };
-      localStorage.setItem('md_user', JSON.stringify(updatedUser));
+      safeSetItem('md_user', JSON.stringify(updatedUser));
       return { user: updatedUser };
     });
   },
 
   clearSession: () => {
-    localStorage.removeItem('md_token');
-    localStorage.removeItem('md_user');
+    safeRemoveItem('md_token');
+    safeRemoveItem('md_user');
     set({ token: null, user: null, isAuthenticated: false, isInitialized: true });
   },
 
   checkAuth: async () => {
-    const token = get().token || (typeof window !== 'undefined' ? localStorage.getItem('md_token') : null);
+    const token = get().token || safeGetItem('md_token');
     if (!token) {
       set({ token: null, user: null, isAuthenticated: false, isInitialized: true });
       return false;
@@ -82,8 +118,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             state: payload.data.profile?.state || payload.data.user.state,
             country: payload.data.profile?.country || payload.data.user.country || 'Nigeria',
           };
-          localStorage.setItem('md_token', token);
-          localStorage.setItem('md_user', JSON.stringify(freshUser));
+          safeSetItem('md_token', token);
+          safeSetItem('md_user', JSON.stringify(freshUser));
           set({
             token,
             user: freshUser,
@@ -111,15 +147,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   rehydrate: () => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('md_token') : null;
-    const userJson = typeof window !== 'undefined' ? localStorage.getItem('md_user') : null;
+    const token = safeGetItem('md_token');
+    const userJson = safeGetItem('md_user');
     if (token && userJson) {
       try {
         const user = JSON.parse(userJson);
         set({ token, user, isAuthenticated: true });
       } catch {
-        localStorage.removeItem('md_token');
-        localStorage.removeItem('md_user');
+        safeRemoveItem('md_token');
+        safeRemoveItem('md_user');
         set({ token: null, user: null, isAuthenticated: false, isInitialized: true });
         return;
       }

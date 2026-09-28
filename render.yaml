@@ -69,6 +69,6 @@ services:
       - key: BREVO_API_KEY
         sync: false
       - key: EMAIL_FROM
-        value: '"MarkDriller" <oliversmith2140@gmail.com>'
+        value: 'oliversmith2140@gmail.com'
       - key: QUESTION_SYNC_ENABLED
         value: "false"

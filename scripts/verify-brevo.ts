@@ -1,5 +1,5 @@
 import { env } from '../src/server/config/env.js';
-import { sendVerificationEmail } from '../src/server/services/emailService.js';
+import { sendVerificationEmail, parseSenderAddress } from '../src/server/services/emailService.js';
 import nodemailer from 'nodemailer';
 
 async function verifyBrevo() {
@@ -63,10 +63,15 @@ async function verifyBrevo() {
   });
 
   console.log('\n3. Dual-Delivery End-to-End Live Dispatch Test:');
-  console.log(`   Target: ${env.EMAIL_FROM}`);
+  const targetEmail = parseSenderAddress(env.EMAIL_FROM).email;
+  console.log(`   Target: ${targetEmail}`);
   try {
-    await sendVerificationEmail(env.EMAIL_FROM, 'Oliver Smith', '593812', 15);
-    console.log('   ✅ Live Verification Email Dispatched Successfully!');
+    const success = await sendVerificationEmail(targetEmail, 'Oliver Smith', '593812', 15);
+    if (success) {
+      console.log('   ✅ Live Verification Email Dispatched Successfully!');
+    } else {
+      console.error('   ❌ Live dispatch returned false');
+    }
   } catch (err: any) {
     console.error('   ❌ Live dispatch error:', err.message);
   }

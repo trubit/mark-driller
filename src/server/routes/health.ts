@@ -4,6 +4,7 @@ import { env } from '../config/env.js';
 import { Exam } from '../models/Exam.js';
 import { Question } from '../models/Question.js';
 import { StudyMaterial } from '../models/StudyMaterial.js';
+import { parseSenderAddress } from '../services/emailService.js';
 
 const router = Router();
 
@@ -46,7 +47,7 @@ router.get('/', async (_req: Request, res: Response) => {
       counts,
       email: {
         provider: env.EMAIL_PROVIDER,
-        sender: 'MarkDriller <oliversmith2140@gmail.com>',
+        sender: `${parseSenderAddress(env.EMAIL_FROM).name} <${parseSenderAddress(env.EMAIL_FROM).email}>`,
         apiConfigured: Boolean(env.BREVO_API_KEY),
       },
       timestamp: new Date().toISOString(),

@@ -52,7 +52,7 @@ export const Hero: React.FC = () => {
           </h1>
 
           <p className="lede">
-            Curriculum-verified study materials, past-question practice, and CBT simulations for <strong>JAMB/UTME</strong>, <strong>WAEC/SSCE</strong>, <strong>NECO</strong>, <strong>BECE</strong>, and university <strong>Post-UTME</strong>.
+            Curriculum-verified study materials, past-question practice, and CBT simulations for <strong>JAMB/UTME</strong>, <strong>WAEC/SSCE</strong>, <strong>NECO</strong>, and university <strong>Post-UTME</strong>.
           </p>
 
           <div className="hero-actions">

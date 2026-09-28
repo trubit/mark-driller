@@ -9,6 +9,7 @@ import { Subject } from '../models/Subject.js';
 import { Bookmark } from '../models/Bookmark.js';
 import { authenticateToken, requireVerified, requireCbtEntitlement, AuthenticatedRequest } from '../middleware/auth.js';
 import { QuestionIngestionService } from '../services/questionIngestionService.js';
+import { randomizeQuestionOptions } from '../utils/optionRandomizer.js';
 
 const router = Router();
 
@@ -238,25 +239,28 @@ router.post('/start', requireCbtEntitlement(), async (req: AuthenticatedRequest,
         timeSpentSeconds: 0,
       }));
 
-      const questionSnapshot = sliceQuestions.map((q: any) => ({
-        questionId: q._id,
-        year: q.year,
-        questionNumber: q.questionNumber,
-        questionText: q.questionText,
-        optionA: q.optionA,
-        optionB: q.optionB,
-        optionC: q.optionC,
-        optionD: q.optionD,
-        correctAnswer: q.correctAnswer,
-        explanation: q.explanation || '',
-        difficulty: q.difficulty,
-        topicId: q.topicId?._id,
-        topicName: q.topicId?.name || 'General Curriculum',
-        subjectId: q.subjectId?._id || q.subjectId,
-        subjectName: q.subjectId?.name || 'Subject',
-        subjectCode: q.subjectId?.code || 'SUB',
-        imageUrl: q.imageUrl || '',
-      }));
+      const questionSnapshot = sliceQuestions.map((q: any) => {
+        const rand = randomizeQuestionOptions(q);
+        return {
+          questionId: q._id,
+          year: q.year,
+          questionNumber: q.questionNumber,
+          questionText: q.questionText,
+          optionA: rand.optionA,
+          optionB: rand.optionB,
+          optionC: rand.optionC,
+          optionD: rand.optionD,
+          correctAnswer: rand.correctAnswer,
+          explanation: q.explanation || '',
+          difficulty: q.difficulty,
+          topicId: q.topicId?._id,
+          topicName: q.topicId?.name || 'General Curriculum',
+          subjectId: q.subjectId?._id || q.subjectId,
+          subjectName: q.subjectId?.name || 'Subject',
+          subjectCode: q.subjectId?.code || 'SUB',
+          imageUrl: q.imageUrl || '',
+        };
+      });
 
       const firstSubjId = sliceQuestions[0].subjectId?._id || sliceQuestions[0].subjectId;
       const allSubjIds = Array.from(new Set(sliceQuestions.map((q: any) => (q.subjectId?._id || q.subjectId)?.toString())));
@@ -280,8 +284,8 @@ router.post('/start', requireCbtEntitlement(), async (req: AuthenticatedRequest,
         percentage: 0,
       });
 
-      const cleansedQuestions = sliceQuestions.map((q: any) => ({
-        _id: q._id,
+      const cleansedQuestions = questionSnapshot.map((q: any) => ({
+        _id: q.questionId,
         year: q.year,
         questionNumber: q.questionNumber,
         questionText: q.questionText,
@@ -290,10 +294,10 @@ router.post('/start', requireCbtEntitlement(), async (req: AuthenticatedRequest,
         optionC: q.optionC,
         optionD: q.optionD,
         difficulty: q.difficulty,
-        topicName: q.topicId?.name || 'General Curriculum',
-        subjectId: q.subjectId?._id || q.subjectId,
-        subjectName: q.subjectId?.name || 'Subject',
-        subjectCode: q.subjectId?.code || 'SUB',
+        topicName: q.topicName || 'General Curriculum',
+        subjectId: q.subjectId,
+        subjectName: q.subjectName || 'Subject',
+        subjectCode: q.subjectCode || 'SUB',
         imageUrl: q.imageUrl || '',
         ...(data.mode === 'PRACTICE' || data.mode === 'STUDY'
           ? { correctAnswer: q.correctAnswer, explanation: q.explanation }
@@ -439,26 +443,29 @@ router.post('/start', requireCbtEntitlement(), async (req: AuthenticatedRequest,
       timeSpentSeconds: 0,
     }));
 
-    // Freeze immutable question snapshot for this attempt
-    const questionSnapshot = questions.map((q) => ({
-      questionId: q._id,
-      year: q.year,
-      questionNumber: q.questionNumber,
-      questionText: q.questionText,
-      optionA: q.optionA,
-      optionB: q.optionB,
-      optionC: q.optionC,
-      optionD: q.optionD,
-      correctAnswer: q.correctAnswer,
-      explanation: q.explanation || '',
-      difficulty: q.difficulty,
-      topicId: q.topicId?._id,
-      topicName: (q.topicId as any)?.name || 'General Curriculum',
-      subjectId: q.subjectId?._id || q.subjectId,
-      subjectName: (q.subjectId as any)?.name || 'Subject',
-      subjectCode: (q.subjectId as any)?.code || 'SUB',
-      imageUrl: q.imageUrl || '',
-    }));
+    // Freeze immutable question snapshot for this attempt with randomized options
+    const questionSnapshot = questions.map((q) => {
+      const rand = randomizeQuestionOptions(q);
+      return {
+        questionId: q._id,
+        year: q.year,
+        questionNumber: q.questionNumber,
+        questionText: q.questionText,
+        optionA: rand.optionA,
+        optionB: rand.optionB,
+        optionC: rand.optionC,
+        optionD: rand.optionD,
+        correctAnswer: rand.correctAnswer,
+        explanation: q.explanation || '',
+        difficulty: q.difficulty,
+        topicId: q.topicId?._id,
+        topicName: (q.topicId as any)?.name || 'General Curriculum',
+        subjectId: q.subjectId?._id || q.subjectId,
+        subjectName: (q.subjectId as any)?.name || 'Subject',
+        subjectCode: (q.subjectId as any)?.code || 'SUB',
+        imageUrl: q.imageUrl || '',
+      };
+    });
 
     const primarySubject = subjects[0];
     const isMultiSubject = subjects.length > 1;
@@ -483,8 +490,8 @@ router.post('/start', requireCbtEntitlement(), async (req: AuthenticatedRequest,
     });
 
     // Cleanse questions for mock mode (hide answers & explanations to prevent cheating)
-    const cleansedQuestions = questions.map((q) => ({
-      _id: q._id,
+    const cleansedQuestions = questionSnapshot.map((q) => ({
+      _id: q.questionId,
       year: q.year,
       questionNumber: q.questionNumber,
       questionText: q.questionText,
@@ -493,10 +500,10 @@ router.post('/start', requireCbtEntitlement(), async (req: AuthenticatedRequest,
       optionC: q.optionC,
       optionD: q.optionD,
       difficulty: q.difficulty,
-      topicName: (q.topicId as any)?.name,
-      subjectId: q.subjectId?._id || q.subjectId,
-      subjectName: (q.subjectId as any)?.name || primarySubject.name,
-      subjectCode: (q.subjectId as any)?.code || primarySubject.code,
+      topicName: q.topicName,
+      subjectId: q.subjectId,
+      subjectName: q.subjectName,
+      subjectCode: q.subjectCode,
       imageUrl: q.imageUrl || '',
       ...(data.mode === 'PRACTICE' || data.mode === 'STUDY'
         ? { correctAnswer: q.correctAnswer, explanation: q.explanation }

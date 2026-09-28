@@ -24,32 +24,34 @@ const registerSchema = z.object({
   targetExamCode: z.string().optional(),
 });
 
+const emailField = z.string().trim().email('Please provide a valid email address').transform((v) => v.toLowerCase());
+
 const loginSchema = z.object({
-  email: z.string().email('Please provide a valid email address'),
+  email: emailField,
   password: z.string().min(1, 'Password is required'),
 });
 
 const verifyEmailSchema = z.object({
-  email: z.string().email('Please provide a valid email address'),
-  otp: z.string().length(6, 'Verification code must be exactly 6 digits'),
+  email: emailField,
+  otp: z.string().trim().length(6, 'Verification code must be exactly 6 digits'),
 });
 
 const resendVerificationSchema = z.object({
-  email: z.string().email('Please provide a valid email address'),
+  email: emailField,
 });
 
 const forgotPasswordSchema = z.object({
-  email: z.string().email('Please provide a valid email address'),
+  email: emailField,
 });
 
 const verifyResetOtpSchema = z.object({
-  email: z.string().email('Please provide a valid email address'),
-  otp: z.string().length(6, 'Reset code must be exactly 6 digits'),
+  email: emailField,
+  otp: z.string().trim().length(6, 'Reset code must be exactly 6 digits'),
 });
 
 const resetPasswordSchema = z.object({
-  email: z.string().email('Please provide a valid email address'),
-  otp: z.string().length(6, 'Reset code must be exactly 6 digits'),
+  email: emailField,
+  otp: z.string().trim().length(6, 'Reset code must be exactly 6 digits'),
   newPassword: z.string().min(6, 'New password must be at least 6 characters').max(100),
 });
 
@@ -113,7 +115,10 @@ router.post(
 
       // Dispatch verification email
       try {
-        await sendVerificationEmail(user.email, user.fullName, plainOtp, env.OTP_EXPIRATION_MINUTES);
+        const sent = await sendVerificationEmail(user.email, user.fullName, plainOtp, env.OTP_EXPIRATION_MINUTES);
+        if (!sent) {
+          console.error(`⚠️ [AUTH REGISTRATION] sendVerificationEmail returned false for ${user.email}`);
+        }
       } catch (emailErr: any) {
         console.error('⚠️ [AUTH REGISTRATION] Failed to dispatch verification email:', emailErr?.message || emailErr);
       }
@@ -368,7 +373,10 @@ router.post(
 
       // Dispatch fresh verification email
       try {
-        await sendVerificationEmail(user.email, user.fullName, plainOtp, env.OTP_EXPIRATION_MINUTES);
+        const sent = await sendVerificationEmail(user.email, user.fullName, plainOtp, env.OTP_EXPIRATION_MINUTES);
+        if (!sent) {
+          console.error(`⚠️ [AUTH RESEND OTP] sendVerificationEmail returned false for ${user.email}`);
+        }
       } catch (emailErr: any) {
         console.error('⚠️ [AUTH RESEND OTP] Failed to dispatch verification email:', emailErr?.message || emailErr);
       }
@@ -432,7 +440,10 @@ router.post(
 
       // Dispatch password reset email
       try {
-        await sendPasswordResetEmail(user.email, user.fullName, plainOtp, env.OTP_EXPIRATION_MINUTES);
+        const sent = await sendPasswordResetEmail(user.email, user.fullName, plainOtp, env.OTP_EXPIRATION_MINUTES);
+        if (!sent) {
+          console.error(`⚠️ [AUTH FORGOT PASSWORD] sendPasswordResetEmail returned false for ${user.email}`);
+        }
       } catch (emailErr: any) {
         console.error('⚠️ [AUTH FORGOT PASSWORD] Failed to dispatch password reset email:', emailErr?.message || emailErr);
       }

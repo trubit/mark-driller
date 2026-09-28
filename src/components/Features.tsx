@@ -62,7 +62,7 @@ export const Features: React.FC = () => {
         </svg>
       ),
       title: '150,000+ Past Questions Bank',
-      description: 'Complete year-by-year past questions (1978–2026) for JAMB, WAEC, NECO, BECE, and Post-UTME. Drill by specific topic, year, or syllabus difficulty level.',
+      description: 'Complete year-by-year past questions (1978–2026) for JAMB, WAEC, NECO, and Post-UTME. Drill by specific topic, year, or syllabus difficulty level.',
       tag: qCount,
       link: '/questions',
       image: '/assets/images/study-space.jpg',

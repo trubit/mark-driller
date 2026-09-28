@@ -42,7 +42,7 @@ export const envSchema = z.object({
   EMAIL_PORT: z.string().default('465').transform((val) => parseInt(val, 10)),
   EMAIL_USER: z.string().default(''),
   EMAIL_PASSWORD: z.string().default(''),
-  EMAIL_FROM: z.string().default('"MarkDriller" <oliversmith2140@gmail.com>'),
+  EMAIL_FROM: z.string().default('oliversmith2140@gmail.com'),
   BREVO_API_KEY: z.string().default(''),
 
   // OTP Configuration
