@@ -9,35 +9,43 @@ interface StepItem {
 const STEPS: StepItem[] = [
   {
     number: '01',
-    title: 'Pick your exam',
-    description: 'Tell us your level and target exam — WAEC, JAMB, a university course, or all three.',
+    title: 'Choose an Examination',
+    description: 'Select your target examination board — JAMB/UTME, WAEC, NECO, GCE, or university Post-UTME.',
   },
   {
     number: '02',
-    title: 'Study the layer',
-    description: 'Work through syllabus-mapped materials for that stage, topic by topic.',
+    title: 'Choose Subject & Topic',
+    description: 'Pick your registered subjects and navigate topic-by-topic aligned with the official national syllabus.',
   },
   {
     number: '03',
-    title: 'Drill past questions',
-    description: 'Practise with real past questions, with instant marking and explanations.',
+    title: 'Practice or Study',
+    description: 'Solve authentic past questions with instant marking, step-by-step working, and Chief Examiner explanations.',
   },
   {
     number: '04',
-    title: 'Sit a full CBT mock',
-    description: 'Simulate exam day under a real countdown clock, then review where marks were lost.',
+    title: 'Take a Timed CBT Mock',
+    description: 'Sit full-length timed mock exams under official 8-key keyboard controls, built-in calculator, and exam clock.',
+  },
+  {
+    number: '05',
+    title: 'Review Your Performance',
+    description: 'Inspect detailed analytics on speed-per-question, accuracy percentage, and pinpoint exact weak topics.',
   },
 ];
 
 export const HowItWorks: React.FC = () => {
   return (
-    <section className="section">
+    <section className="section" id="how-it-works" aria-label="How MarkDriller Works">
       <div className="wrap">
         <div className="section-head">
-          <span className="eyebrow">How it works</span>
-          <h2>From sign-up to score sheet</h2>
+          <span className="eyebrow">User Journey</span>
+          <h2>How It Works</h2>
+          <p style={{ maxWidth: '620px', margin: '0 auto', color: 'var(--ink-soft)', fontSize: '15.5px' }}>
+            A proven, structured five-step preparation workflow from initial topic revision to exam-day confidence.
+          </p>
         </div>
-        <div className="steps">
+        <div className="steps" style={{ marginTop: '36px' }}>
           {STEPS.map((step) => (
             <div className="step" key={step.number}>
               <span className="step-num mono">{step.number}</span>
@@ -50,4 +58,3 @@ export const HowItWorks: React.FC = () => {
     </section>
   );
 };
-

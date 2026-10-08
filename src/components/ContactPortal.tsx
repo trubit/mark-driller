@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNotificationStore } from '../store/useNotificationStore.js';
 import { useAuthStore } from '../store/useAuthStore.js';
-import { useSupportContactQuery, buildWhatsAppLink, buildTelLink, buildMailtoLink } from '../api/supportContact.js';
+import { useSupportContactQuery, buildWhatsAppLink, buildTelLink, buildMailtoLink, isWhatsAppNumberValid } from '../api/supportContact.js';
 import { useSubmitSupportTicketMutation } from '../api/support.js';
 
 export const ContactPortal: React.FC = () => {
@@ -11,7 +11,7 @@ export const ContactPortal: React.FC = () => {
   const { data: support } = useSupportContactQuery();
 
   const isWhatsAppEnabled = support ? support.whatsappEnabled !== false : true;
-  const whatsappNum = support?.whatsappNumber || '2348030001234';
+  const whatsappNum = support?.whatsappNumber || '';
   const phoneDisplay = support?.phoneDisplay || support?.phone || '+234 803 000 1234';
   const emailDisplay = support?.emailDisplay || support?.email || 'support@markdriller.com';
   const isPhoneEnabled = support ? support.phoneEnabled !== false : true;
@@ -108,7 +108,7 @@ export const ContactPortal: React.FC = () => {
                 Fastest response for subscription validation, bank transfer verification, and account support.
               </p>
             </div>
-            {isWhatsAppEnabled && whatsappNum ? (
+            {isWhatsAppEnabled && isWhatsAppNumberValid(whatsappNum) ? (
               <a
                 href={buildWhatsAppLink(whatsappNum, 'Hello MarkDriller Support, I need assistance')}
                 target="_blank"

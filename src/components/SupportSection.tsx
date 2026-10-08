@@ -1,11 +1,11 @@
 import React from 'react';
-import { useSupportContactQuery, buildWhatsAppLink, buildTelLink, buildMailtoLink } from '../api/supportContact.js';
+import { useSupportContactQuery, buildWhatsAppLink, buildTelLink, buildMailtoLink, isWhatsAppNumberValid } from '../api/supportContact.js';
 
 export const SupportSection: React.FC = () => {
   const { data: support } = useSupportContactQuery();
 
   const isWhatsAppEnabled = support ? support.whatsappEnabled !== false : true;
-  const whatsappNum = support?.whatsappNumber || '2348030001234';
+  const whatsappNum = support?.whatsappNumber || '';
   const whatsappDisplay = support?.whatsappDisplay || '+234 803 000 1234';
   const phoneDisplay = support?.phoneDisplay || support?.phone || '+234 803 000 1234';
   const emailDisplay = support?.emailDisplay || support?.email || 'support@markdriller.com';
@@ -13,6 +13,7 @@ export const SupportSection: React.FC = () => {
   const isEmailEnabled = support ? support.emailEnabled !== false : true;
   const workingHours = support?.workingHours || 'Monday – Saturday, 8:00 AM to 8:00 PM WAT';
 
+  const isWhatsAppLive = isWhatsAppEnabled && isWhatsAppNumberValid(whatsappNum);
   const whatsappUrl = buildWhatsAppLink(whatsappNum, 'Hello MarkDriller Support, I need assistance with CBT practice / activation.');
 
   return (
@@ -154,8 +155,8 @@ export const SupportSection: React.FC = () => {
             </div>
           )}
 
-          {/* Card 3: WhatsApp Instant Support */}
-          {isWhatsAppEnabled && (
+          {/* Card 3: WhatsApp Support or Direct Help Desk */}
+          {isWhatsAppLive ? (
             <div
               style={{
                 background: 'var(--white)',
@@ -187,7 +188,7 @@ export const SupportSection: React.FC = () => {
                 WhatsApp Instant Support
               </h3>
               <p style={{ fontSize: '13px', color: 'var(--ink-soft)', margin: 0, lineHeight: 1.5 }}>
-                Chat directly with our student onboarding reps for immediate scratch card resolution and links ({whatsappDisplay}).
+                Chat directly with our student onboarding reps for immediate scratch card resolution and links ({whatsappDisplay || whatsappNum}).
               </p>
               <div style={{ marginTop: 'auto', paddingTop: '8px' }}>
                 <a
@@ -206,6 +207,58 @@ export const SupportSection: React.FC = () => {
                   }}
                 >
                   Start WhatsApp Chat →
+                </a>
+              </div>
+            </div>
+          ) : (
+            <div
+              style={{
+                background: 'var(--white)',
+                border: '1.5px solid var(--paper-line)',
+                borderRadius: '8px',
+                padding: '24px',
+                boxShadow: 'var(--card-shadow)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px',
+              }}
+            >
+              <div
+                style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '8px',
+                  backgroundColor: 'rgba(168, 86, 47, 0.1)',
+                  color: 'var(--rust)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '20px',
+                }}
+              >
+                🎫
+              </div>
+              <h3 style={{ fontSize: '16px', margin: 0, color: 'var(--ink)' }}>
+                Direct Support Desk &amp; Inquiries
+              </h3>
+              <p style={{ fontSize: '13px', color: 'var(--ink-soft)', margin: 0, lineHeight: 1.5 }}>
+                Submit technical questions, CBT feedback, or subscription confirmation tickets directly to our student support team.
+              </p>
+              <div style={{ marginTop: 'auto', paddingTop: '8px' }}>
+                <a
+                  href="/contact"
+                  style={{
+                    fontFamily: "var(--font-sans)",
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    color: 'var(--rust)',
+                    textDecoration: 'none',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}
+                >
+                  Open Support Desk Ticket →
                 </a>
               </div>
             </div>

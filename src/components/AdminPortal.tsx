@@ -192,11 +192,11 @@ export const AdminPortal: React.FC = () => {
   const { data: currentSupportSettings, isLoading: supportSettingsLoading } = useAdminSupportSettingsQuery();
   const updateSupportSettingsMutation = useUpdateAdminSupportSettingsMutation();
   const [supportForm, setSupportForm] = useState<SupportContactInfo>({
-    whatsappNumber: '2348030001234',
-    whatsappDisplay: '+234 803 000 1234',
+    whatsappNumber: '',
+    whatsappDisplay: '',
     whatsappEnabled: true,
-    phone: '+2348030001234',
-    phoneDisplay: '+234 803 000 1234',
+    phone: '',
+    phoneDisplay: '',
     phoneEnabled: true,
     email: 'support@markdriller.com',
     emailDisplay: 'support@markdriller.com',
@@ -221,10 +221,21 @@ export const AdminPortal: React.FC = () => {
     }
   }, [currentSupportSettings]);
 
+  // Derived validation helpers for WhatsApp channel in Admin Dashboard
+  const cleanAdminWhatsApp = (supportForm.whatsappNumber || '').replace(/[^0-9]/g, '');
+  const isNigerianLocalWhatsApp = cleanAdminWhatsApp.startsWith('0') && cleanAdminWhatsApp.length === 11;
+  const normalizedAdminWhatsApp = isNigerianLocalWhatsApp ? ('234' + cleanAdminWhatsApp.slice(1)) : cleanAdminWhatsApp;
+  const isPlaceholderAdminWhatsApp = ['2348030001234', '2348099887766', '2348000000000'].includes(normalizedAdminWhatsApp);
+  const isValidAdminWhatsApp = normalizedAdminWhatsApp.length >= 10 && !isPlaceholderAdminWhatsApp;
+
   const handleSaveSupportSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await updateSupportSettingsMutation.mutateAsync(supportForm);
+      const payloadToSave: SupportContactInfo = {
+        ...supportForm,
+        whatsappNumber: isNigerianLocalWhatsApp ? normalizedAdminWhatsApp : cleanAdminWhatsApp,
+      };
+      await updateSupportSettingsMutation.mutateAsync(payloadToSave);
       setActionNotice({
         type: 'success',
         text: 'Customer support channels updated in MongoDB and deployed live across the platform.',
@@ -3713,11 +3724,32 @@ export const AdminPortal: React.FC = () => {
                           <input
                             type="text"
                             required
-                            placeholder="e.g. 2348030001234"
+                            placeholder="e.g. 2348012345678 or 08012345678"
                             value={supportForm.whatsappNumber}
                             onChange={(e) => setSupportForm({ ...supportForm, whatsappNumber: e.target.value })}
                             style={{ width: '100%', padding: '9px 12px', border: '1.5px solid var(--ink)', borderRadius: '3px', fontSize: '13px', boxSizing: 'border-box' }}
                           />
+                          {isNigerianLocalWhatsApp && (
+                            <button
+                              type="button"
+                              onClick={() => setSupportForm({ ...supportForm, whatsappNumber: normalizedAdminWhatsApp })}
+                              style={{
+                                marginTop: '6px',
+                                padding: '4px 8px',
+                                fontSize: '11px',
+                                borderRadius: '3px',
+                                backgroundColor: 'var(--rust)',
+                                color: '#ffffff',
+                                border: 'none',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                              }}
+                            >
+                              ⚡ Click to convert to WhatsApp format: {normalizedAdminWhatsApp}
+                            </button>
+                          )}
                         </div>
                         <div>
                           <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, fontFamily: "var(--font-sans)", marginBottom: '4px' }}>
@@ -3725,15 +3757,76 @@ export const AdminPortal: React.FC = () => {
                           </label>
                           <input
                             type="text"
-                            placeholder="e.g. +234 803 000 1234"
+                            placeholder="e.g. +234 801 234 5678"
                             value={supportForm.whatsappDisplay}
                             onChange={(e) => setSupportForm({ ...supportForm, whatsappDisplay: e.target.value })}
                             style={{ width: '100%', padding: '9px 12px', border: '1.5px solid var(--ink)', borderRadius: '3px', fontSize: '13px', boxSizing: 'border-box' }}
                           />
                         </div>
                       </div>
+
+                      {/* Real-time Status & Tester Banner */}
+                      {isPlaceholderAdminWhatsApp && (
+                        <div
+                          style={{
+                            marginTop: '10px',
+                            padding: '10px 12px',
+                            backgroundColor: '#fffbeb',
+                            border: '1px solid #f59e0b',
+                            borderRadius: '4px',
+                            fontSize: '12px',
+                            color: '#92400e',
+                            lineHeight: 1.45,
+                          }}
+                        >
+                          <strong>⚠️ Inactive Placeholder Detected:</strong> <code>{cleanAdminWhatsApp}</code> is a test placeholder and is not on WhatsApp. WhatsApp returns an error when students click it. Enter your real, active WhatsApp phone number above to enable live messaging.
+                        </div>
+                      )}
+
+                      {isValidAdminWhatsApp && (
+                        <div
+                          style={{
+                            marginTop: '10px',
+                            padding: '8px 12px',
+                            backgroundColor: '#ecfdf5',
+                            border: '1px solid #10b981',
+                            borderRadius: '4px',
+                            fontSize: '12px',
+                            color: '#065f46',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            flexWrap: 'wrap',
+                            gap: '8px',
+                          }}
+                        >
+                          <span>
+                            ✅ <strong>Ready for WhatsApp:</strong> <code>https://wa.me/{normalizedAdminWhatsApp}</code>
+                          </span>
+                          <a
+                            href={`https://wa.me/${normalizedAdminWhatsApp}?text=${encodeURIComponent('Hello MarkDriller Support Desk test message')}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              padding: '4px 10px',
+                              backgroundColor: '#16a34a',
+                              color: '#ffffff',
+                              borderRadius: '3px',
+                              fontWeight: 700,
+                              fontSize: '11.5px',
+                              textDecoration: 'none',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                            }}
+                          >
+                            Test WhatsApp Link ↗
+                          </a>
+                        </div>
+                      )}
+
                       <div style={{ fontSize: '11px', color: 'var(--slate)', marginTop: '6px' }}>
-                        Generates secure link: <code>https://wa.me/{supportForm.whatsappNumber.replace(/[^0-9]/g, '') || '...' }</code>
+                        Generates secure universal link: <code>https://wa.me/{normalizedAdminWhatsApp || '...' }</code>
                       </div>
                     </div>
 
@@ -3879,7 +3972,7 @@ export const AdminPortal: React.FC = () => {
                         <div style={{ fontSize: '11px', color: 'var(--slate)', marginBottom: '6px', fontWeight: 600 }}>
                           FLOATING CONTACT BUTTON:
                         </div>
-                        {supportForm.whatsappEnabled && supportForm.whatsappNumber ? (
+                        {supportForm.whatsappEnabled && isValidAdminWhatsApp ? (
                           <div
                             style={{
                               display: 'inline-flex',
@@ -3898,22 +3991,28 @@ export const AdminPortal: React.FC = () => {
                             <span>Need Help? Chat on WhatsApp</span>
                           </div>
                         ) : (
-                          <div
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '8px',
-                              backgroundColor: 'var(--rust)',
-                              color: '#fff',
-                              borderRadius: '50px',
-                              padding: '8px 16px',
-                              fontSize: '12px',
-                              fontWeight: 700,
-                              fontFamily: "var(--font-sans)",
-                            }}
-                          >
-                            <span>✉️</span>
-                            <span>Support Desk</span>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <div
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                backgroundColor: 'var(--rust)',
+                                color: '#fff',
+                                borderRadius: '50px',
+                                padding: '8px 16px',
+                                fontSize: '12px',
+                                fontWeight: 700,
+                                fontFamily: "var(--font-sans)",
+                                width: 'fit-content',
+                              }}
+                            >
+                              <span>✉️</span>
+                              <span>Support Desk</span>
+                            </div>
+                            <span style={{ fontSize: '11px', color: 'var(--slate)', fontStyle: 'italic' }}>
+                              (Public site safely displays Support Desk button until a verified WhatsApp number is saved)
+                            </span>
                           </div>
                         )}
                       </div>
@@ -3926,7 +4025,10 @@ export const AdminPortal: React.FC = () => {
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                               <span>💬</span>
                               <strong>WhatsApp:</strong>
-                              <span style={{ color: '#16a34a', fontWeight: 600 }}>{supportForm.whatsappDisplay || supportForm.whatsappNumber}</span>
+                              <span style={{ color: isValidAdminWhatsApp ? '#16a34a' : 'var(--amber)', fontWeight: 600 }}>
+                                {supportForm.whatsappDisplay || supportForm.whatsappNumber}
+                                {!isValidAdminWhatsApp && ' (Placeholder — Inactive on public site)'}
+                              </span>
                             </div>
                           )}
                           {supportForm.phoneEnabled && (

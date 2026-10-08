@@ -135,6 +135,19 @@ export const ExamBoards: React.FC = () => {
   const { isAuthenticated } = useAuthStore();
   const { data: boardsData } = useExamBoards();
   const [filterMode, setFilterMode] = useState<string>('ALL');
+  const [expandedCardIds, setExpandedCardIds] = useState<Set<string>>(new Set());
+
+  const toggleCardExpansion = (cardId: string) => {
+    setExpandedCardIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(cardId)) {
+        next.delete(cardId);
+      } else {
+        next.add(cardId);
+      }
+      return next;
+    });
+  };
 
   const filteredCards =
     filterMode === 'ALL'
@@ -169,7 +182,7 @@ export const ExamBoards: React.FC = () => {
   };
 
   return (
-    <section className="boards section" id="boards" aria-label="Official Nigerian Examination Boards">
+    <section className="boards section" id="exam-boards" aria-label="Official Nigerian Examination Boards">
       <div className="wrap">
         <div className="section-head" style={{ marginBottom: '32px' }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
@@ -225,19 +238,13 @@ export const ExamBoards: React.FC = () => {
           ))}
         </div>
 
-        {/* 6-Card Professional Examination Grid */}
-        <div
-          className="grid-fluid-cards"
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))',
-            gap: 'clamp(16px, 3vw, 24px)',
-          }}
-        >
+        {/* 6-Card Professional Examination Grid (Strictly 3-in-a-Line Desktop) */}
+        <div className="exam-boards-grid-3col">
           {filteredCards.map((card) => {
             const dbBoard = boardsData?.find(
               (b) => b.shortCode === card.shortCode
             );
+            const isExpanded = expandedCardIds.has(card.id);
 
             return (
               <div
@@ -252,6 +259,7 @@ export const ExamBoards: React.FC = () => {
                   flexDirection: 'column',
                   boxShadow: 'var(--card-shadow, 0 4px 16px rgba(0, 0, 0, 0.05))',
                   transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                  alignSelf: 'start',
                 }}
               >
                 {/* Photo Thumbnail Banner */}
@@ -383,162 +391,199 @@ export const ExamBoards: React.FC = () => {
                     {card.description}
                   </p>
 
-                  {/* Exam Specs Table/Strip */}
-                  <div
+                  {/* Interactive Toggle Button to Show/Hide Complete Details */}
+                  <button
+                    type="button"
+                    onClick={() => toggleCardExpansion(card.id)}
+                    className="btn-custom btn-custom-ghost"
                     style={{
-                      backgroundColor: 'var(--paper)',
-                      borderRadius: '6px',
-                      padding: '10px 12px',
-                      display: 'grid',
-                      gridTemplateColumns: '1fr 1fr',
-                      gap: '8px',
-                      border: '1px solid var(--paper-line)',
-                      fontFamily: "var(--font-sans)",
-                      fontSize: '11px',
+                      width: '100%',
+                      justifyContent: 'center',
+                      fontSize: '12.5px',
+                      padding: '8px 14px',
+                      color: 'var(--rust)',
+                      borderColor: isExpanded ? 'var(--rust)' : 'var(--paper-line)',
+                      backgroundColor: isExpanded ? 'var(--rust-soft)' : 'transparent',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      marginTop: 'auto',
+                      transition: 'all 0.15s ease',
                     }}
+                    aria-expanded={isExpanded}
+                    aria-controls={`exam-details-${card.id}`}
                   >
-                    <div>
-                      <span style={{ color: 'var(--ink-soft)', display: 'block' }}>GRADING:</span>
-                      <strong style={{ color: 'var(--ink)' }}>{card.gradingSystem}</strong>
-                    </div>
-                    <div>
-                      <span style={{ color: 'var(--ink-soft)', display: 'block' }}>DURATION:</span>
-                      <strong style={{ color: 'var(--ink)' }}>{card.sessionDuration}</strong>
-                    </div>
-                    <div>
-                      <span style={{ color: 'var(--ink-soft)', display: 'block' }}>YEARS:</span>
-                      <strong style={{ color: 'var(--rust)' }}>{card.yearsAvailable}</strong>
-                    </div>
-                    <div>
-                      <span style={{ color: 'var(--ink-soft)', display: 'block' }}>DATABASE:</span>
-                      <strong style={{ color: 'var(--amber)' }}>
-                        {dbBoard ? `${dbBoard.questionCount.toLocaleString()} Questions` : `${card.subjectsSummary}`}
-                      </strong>
-                    </div>
-                  </div>
+                    {isExpanded ? 'Hide Details ▲' : 'Read Complete Details ▼'}
+                  </button>
 
-                  {/* Available Subjects Highlight */}
-                  <div>
+                  {/* Collapsible Complete Details (Shown only when expanded) */}
+                  {isExpanded && (
                     <div
+                      id={`exam-details-${card.id}`}
                       style={{
                         display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        marginBottom: '6px',
+                        flexDirection: 'column',
+                        gap: '14px',
+                        paddingTop: '12px',
+                        borderTop: '1px solid var(--paper-line)',
                       }}
                     >
-                      <span
+                      {/* Exam Specs Table/Strip */}
+                      <div
                         style={{
+                          backgroundColor: 'var(--paper)',
+                          borderRadius: '6px',
+                          padding: '10px 12px',
+                          display: 'grid',
+                          gridTemplateColumns: '1fr 1fr',
+                          gap: '8px',
+                          border: '1px solid var(--paper-line)',
                           fontFamily: "var(--font-sans)",
-                          fontSize: '10.5px',
-                          fontWeight: 700,
-                          color: 'var(--ink-soft)',
-                          textTransform: 'uppercase',
+                          fontSize: '11px',
                         }}
                       >
-                        Available Subjects ({card.totalSubjects})
-                      </span>
-                    </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
-                      {card.keySubjects.map((subj, i) => (
-                        <span
-                          key={i}
+                        <div>
+                          <span style={{ color: 'var(--ink-soft)', display: 'block' }}>GRADING:</span>
+                          <strong style={{ color: 'var(--ink)' }}>{card.gradingSystem}</strong>
+                        </div>
+                        <div>
+                          <span style={{ color: 'var(--ink-soft)', display: 'block' }}>DURATION:</span>
+                          <strong style={{ color: 'var(--ink)' }}>{card.sessionDuration}</strong>
+                        </div>
+                        <div>
+                          <span style={{ color: 'var(--ink-soft)', display: 'block' }}>YEARS:</span>
+                          <strong style={{ color: 'var(--rust)' }}>{card.yearsAvailable}</strong>
+                        </div>
+                        <div>
+                          <span style={{ color: 'var(--ink-soft)', display: 'block' }}>DATABASE:</span>
+                          <strong style={{ color: 'var(--amber)' }}>
+                            {dbBoard ? `${dbBoard.questionCount.toLocaleString()} Questions` : `${card.subjectsSummary}`}
+                          </strong>
+                        </div>
+                      </div>
+
+                      {/* Available Subjects Highlight */}
+                      <div>
+                        <div
                           style={{
-                            fontSize: '10.5px',
-                            fontFamily: "var(--font-sans)",
-                            backgroundColor: 'var(--paper-soft, rgba(20,24,28,0.04))',
-                            color: 'var(--ink)',
-                            padding: '3px 8px',
-                            borderRadius: '3px',
-                            border: '1px solid var(--paper-line)',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            marginBottom: '6px',
                           }}
                         >
-                          {subj}
-                        </span>
-                      ))}
-                      <span
+                          <span
+                            style={{
+                              fontFamily: "var(--font-sans)",
+                              fontSize: '10.5px',
+                              fontWeight: 700,
+                              color: 'var(--ink-soft)',
+                              textTransform: 'uppercase',
+                            }}
+                          >
+                            Available Subjects ({card.totalSubjects})
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                          {card.keySubjects.map((subj, i) => (
+                            <span
+                              key={i}
+                              style={{
+                                fontSize: '10.5px',
+                                fontFamily: "var(--font-sans)",
+                                backgroundColor: 'var(--paper-soft, rgba(20,24,28,0.04))',
+                                color: 'var(--ink)',
+                                padding: '3px 8px',
+                                borderRadius: '3px',
+                                border: '1px solid var(--paper-line)',
+                              }}
+                            >
+                              {subj}
+                            </span>
+                          ))}
+                          <span
+                            style={{
+                              fontSize: '10.5px',
+                              fontFamily: "var(--font-sans)",
+                              color: 'var(--rust)',
+                              padding: '3px 6px',
+                            }}
+                          >
+                            +{card.totalSubjects - card.keySubjects.length} more
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* 3 Prominent Required Action Buttons */}
+                      <div
                         style={{
-                          fontSize: '10.5px',
-                          fontFamily: "var(--font-sans)",
-                          color: 'var(--rust)',
-                          padding: '3px 6px',
+                          paddingTop: '8px',
+                          borderTop: '1px solid var(--paper-line)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '8px',
                         }}
                       >
-                        +{card.totalSubjects - card.keySubjects.length} more
-                      </span>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                          {/* 1. Practice Option */}
+                          <button
+                            type="button"
+                            onClick={() => handlePracticeOption(card.shortCode)}
+                            className="btn-custom btn-custom-ghost"
+                            style={{
+                              fontSize: '12px',
+                              padding: '8px 10px',
+                              textAlign: 'center',
+                              justifyContent: 'center',
+                            }}
+                            title={`Practice ${card.shortCode} questions topic-by-topic`}
+                          >
+                            🎯 Practice Topics
+                          </button>
+
+                          {/* 2. Mock Examination Option */}
+                          <button
+                            type="button"
+                            onClick={() => handleMockOption(card.shortCode)}
+                            className="btn-custom btn-custom-primary"
+                            style={{
+                              fontSize: '12px',
+                              padding: '8px 10px',
+                              textAlign: 'center',
+                              justifyContent: 'center',
+                            }}
+                            title={`Simulate official ${card.shortCode} timed CBT mock exam`}
+                          >
+                            ⏱️ Mock Exam
+                          </button>
+                        </div>
+
+                        {/* 3. Past-Question Option */}
+                        <button
+                          type="button"
+                          onClick={() => handlePastQuestionOption(card.shortCode)}
+                          style={{
+                            width: '100%',
+                            padding: '7px 12px',
+                            backgroundColor: 'var(--paper)',
+                            border: '1px solid var(--paper-line)',
+                            borderRadius: '4px',
+                            color: 'var(--ink)',
+                            fontSize: '11.5px',
+                            fontFamily: "var(--font-sans)",
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            textAlign: 'center',
+                            transition: 'background 0.15s ease',
+                          }}
+                          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--paper-soft, #eceee6)')}
+                          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'var(--paper)')}
+                          title={`Browse complete ${card.shortCode} past questions archive`}
+                        >
+                          📖 Browse Past Questions ({card.yearsAvailable})
+                        </button>
+                      </div>
                     </div>
-                  </div>
-
-                  {/* 3 Prominent Required Action Buttons */}
-                  <div
-                    style={{
-                      marginTop: 'auto',
-                      paddingTop: '14px',
-                      borderTop: '1px solid var(--paper-line)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '8px',
-                    }}
-                  >
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                      {/* 1. Practice Option */}
-                      <button
-                        type="button"
-                        onClick={() => handlePracticeOption(card.shortCode)}
-                        className="btn-custom btn-custom-ghost"
-                        style={{
-                          fontSize: '12px',
-                          padding: '8px 10px',
-                          textAlign: 'center',
-                          justifyContent: 'center',
-                        }}
-                        title={`Practice ${card.shortCode} questions topic-by-topic`}
-                      >
-                        🎯 Practice Topics
-                      </button>
-
-                      {/* 2. Mock Examination Option */}
-                      <button
-                        type="button"
-                        onClick={() => handleMockOption(card.shortCode)}
-                        className="btn-custom btn-custom-primary"
-                        style={{
-                          fontSize: '12px',
-                          padding: '8px 10px',
-                          textAlign: 'center',
-                          justifyContent: 'center',
-                        }}
-                        title={`Simulate official ${card.shortCode} timed CBT mock exam`}
-                      >
-                        ⏱️ Mock Exam
-                      </button>
-                    </div>
-
-                    {/* 3. Past-Question Option */}
-                    <button
-                      type="button"
-                      onClick={() => handlePastQuestionOption(card.shortCode)}
-                      style={{
-                        width: '100%',
-                        padding: '7px 12px',
-                        backgroundColor: 'var(--paper)',
-                        border: '1px solid var(--paper-line)',
-                        borderRadius: '4px',
-                        color: 'var(--ink)',
-                        fontSize: '11.5px',
-                        fontFamily: "var(--font-sans)",
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        textAlign: 'center',
-                        transition: 'background 0.15s ease',
-                      }}
-                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--paper-soft, #eceee6)')}
-                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'var(--paper)')}
-                      title={`Browse complete ${card.shortCode} past questions archive`}
-                    >
-                      📖 Browse Past Questions ({card.yearsAvailable})
-                    </button>
-                  </div>
+                  )}
                 </div>
               </div>
             );

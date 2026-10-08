@@ -26,7 +26,7 @@ export const StudentProgressSection: React.FC = () => {
   ];
 
   return (
-    <section className="section" id="progress" aria-label="Student Progress and Diagnostic Analytics">
+    <section className="section" id="performance" aria-label="Student Progress and Diagnostic Analytics">
       <div className="wrap">
         <div className="section-head" style={{ marginBottom: '32px' }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
@@ -97,7 +97,7 @@ export const StudentProgressSection: React.FC = () => {
                     fontWeight: 600,
                   }}
                 >
-                  +42 Marks in 3 Weeks
+                  Real-Time Tracking
                 </span>
               </div>
 
@@ -111,7 +111,7 @@ export const StudentProgressSection: React.FC = () => {
               </div>
 
               <p style={{ fontSize: '13px', color: 'var(--ink-soft)', margin: '0 0 20px 0', lineHeight: 1.5 }}>
-                Current projected score across 4 subjects based on 12 timed CBT mock sessions and 840 practice questions.
+                Automated aggregate scoring projected across 4 registered examination subjects based on completed CBT drill sessions.
               </p>
 
               {/* Subject Breakdown Bars */}

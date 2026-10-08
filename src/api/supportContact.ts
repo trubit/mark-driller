@@ -72,9 +72,47 @@ export function useUpdateAdminSupportSettingsMutation() {
   });
 }
 
+/**
+ * Normalizes a phone number for WhatsApp wa.me links:
+ * - Strips non-digits
+ * - Converts Nigerian 11-digit local format (e.g. 080... -> 23480...)
+ * - Rejects known placeholder/dummy numbers that fail on WhatsApp with "Phone number isn't on WhatsApp"
+ */
+export function normalizeWhatsAppNumber(rawNumber?: string): string {
+  if (!rawNumber) return '';
+  let digits = rawNumber.replace(/[^0-9]/g, '');
+
+  // Convert Nigerian local 11-digit mobile (080..., 081..., 070..., 090...) to international 234...
+  if (digits.startsWith('0') && digits.length === 11) {
+    digits = '234' + digits.slice(1);
+  }
+
+  // Reject known test/dummy numbers that are not registered on WhatsApp
+  const placeholderNumbers = new Set([
+    '2348030001234',
+    '2348099887766',
+    '2348000000000',
+    '2340000000000',
+    '1234567890',
+  ]);
+
+  if (placeholderNumbers.has(digits) || digits.length < 10) {
+    return '';
+  }
+
+  return digits;
+}
+
+/**
+ * Checks whether a configured number is a valid, non-placeholder WhatsApp number.
+ */
+export function isWhatsAppNumberValid(number?: string): boolean {
+  return Boolean(normalizeWhatsAppNumber(number));
+}
+
 // Safe action link builders
 export function buildWhatsAppLink(number?: string, message?: string): string {
-  const cleanNumber = (number || '').replace(/[^0-9]/g, '');
+  const cleanNumber = normalizeWhatsAppNumber(number);
   if (!cleanNumber) {
     return '/contact';
   }

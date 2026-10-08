@@ -10,10 +10,13 @@ export const PublicLandingRoute: React.FC = () => {
   const location = useLocation();
 
   useEffect(() => {
-    // If redirected here from a protected route with openLogin state, open login modal
+    // If redirected here with openLogin or openSignup state, open appropriate modal
     if (location.state && (location.state as any).openLogin && !isAuthenticated) {
       openAuthModal('login');
       // Clear state so modal doesn't re-open unexpectedly on subsequent interactions
+      window.history.replaceState({}, document.title);
+    } else if (location.state && (location.state as any).openSignup && !isAuthenticated) {
+      openAuthModal('signup');
       window.history.replaceState({}, document.title);
     }
   }, [location.state, isAuthenticated, openAuthModal]);

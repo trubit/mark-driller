@@ -62,13 +62,21 @@ export const App: React.FC = () => {
           {/* ======================================================== */}
           <Route element={<PublicLayout />}>
             <Route path="/" element={<PublicLandingRoute />} />
-            <Route path="/pricing" element={<SubscriptionPlans />} />
-            <Route path="/blog" element={<BlogPortal />} />
-            <Route path="/contact" element={<ContactPortal />} />
+
+            {/* Clean Application-Level Redirects for Removed Landing-Page Destinations */}
+            <Route path="/pricing" element={<Navigate to="/" replace />} />
+            <Route path="/blog" element={<Navigate to="/" replace />} />
+            <Route path="/contact" element={<Navigate to="/" replace />} />
+            <Route path="/cbt" element={<Navigate to="/" replace />} />
+            <Route path="/cbt-practice" element={<Navigate to="/" replace />} />
+            <Route path="/novels" element={<Navigate to="/" replace />} />
+            <Route path="/novel-jamb" element={<Navigate to="/" replace />} />
+            <Route path="/login" element={<Navigate to="/" state={{ openLogin: true }} replace />} />
+            <Route path="/signin" element={<Navigate to="/" state={{ openLogin: true }} replace />} />
+            <Route path="/signup" element={<Navigate to="/" state={{ openSignup: true }} replace />} />
+            <Route path="/register" element={<Navigate to="/" state={{ openSignup: true }} replace />} />
 
             {/* Public Academic Discovery & Practice Tools */}
-            <Route path="/cbt" element={<CbtPracticePortal />} />
-            <Route path="/novels" element={<LiteratureNovelsView />} />
             <Route path="/questions" element={<QuestionCatalog />} />
             <Route path="/materials" element={<StudyMaterialsView />} />
             <Route path="/post-utme" element={<PostUtmePortal />} />

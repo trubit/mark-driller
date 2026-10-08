@@ -242,7 +242,7 @@ export const MockExamSection: React.FC = () => {
             </button>
             <button
               type="button"
-              onClick={() => navigate('/cbt')}
+              onClick={() => navigate('/questions')}
               className="btn-custom btn-custom-ghost btn-custom-lg"
               style={{ color: '#ffffff', borderColor: 'rgba(255,255,255,0.3)', fontSize: '13.5px' }}
             >

@@ -30,8 +30,13 @@ export async function getDynamicSupportConfig(): Promise<CustomerSupportConfig> 
   try {
     const setting = await SystemSetting.findOne({ key: 'CUSTOMER_SUPPORT_CONFIG' }).lean();
     if (setting && setting.value) {
+      let rawWhatsApp = String(setting.value.whatsappNumber || DEFAULT_SUPPORT_CONFIG.whatsappNumber).replace(/[^0-9]/g, '');
+      if (rawWhatsApp.startsWith('0') && rawWhatsApp.length === 11) {
+        rawWhatsApp = '234' + rawWhatsApp.slice(1);
+      }
+
       return {
-        whatsappNumber: String(setting.value.whatsappNumber || DEFAULT_SUPPORT_CONFIG.whatsappNumber).replace(/[^0-9]/g, ''),
+        whatsappNumber: rawWhatsApp,
         whatsappDisplay: String(setting.value.whatsappDisplay || DEFAULT_SUPPORT_CONFIG.whatsappDisplay),
         whatsappEnabled: setting.value.whatsappEnabled !== false,
         phone: String(setting.value.phone || DEFAULT_SUPPORT_CONFIG.phone),

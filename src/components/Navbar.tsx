@@ -34,13 +34,11 @@ export const Navbar: React.FC = () => {
               📊 Dashboard
             </Link>
           )}
-          <Link to="/cbt" style={{ fontWeight: 600, color: 'var(--rust)' }}>
-            💻 CBT Practice
-          </Link>
-          <Link to="/novels">JAMB Novels</Link>
-          <Link to="/pricing">Pricing</Link>
-          <Link to="/blog">Blog</Link>
-          <Link to="/contact">Contact</Link>
+          <a href="#offers">What We Offer</a>
+          <a href="#exam-boards">Examinations</a>
+          <a href="#how-it-works">How It Works</a>
+          <a href="#experience">Exam Simulator</a>
+          <a href="#performance">Analytics</a>
         </div>
 
         <div className="nav-cta" style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
@@ -133,13 +131,11 @@ export const Navbar: React.FC = () => {
                 🛡️ Admin Portal
               </Link>
             )}
-            <Link to="/cbt" onClick={handleNavClick} style={{ color: 'var(--rust)', fontWeight: 700 }}>
-              💻 CBT Practice Simulator
-            </Link>
-            <Link to="/novels" onClick={handleNavClick}>📖 JAMB Novels &amp; Summaries</Link>
-            <Link to="/pricing" onClick={handleNavClick}>★ Subscription Plans</Link>
-            <Link to="/blog" onClick={handleNavClick}>📰 Academic Blog &amp; Guides</Link>
-            <Link to="/contact" onClick={handleNavClick}>📞 24/7 Support &amp; Helpline</Link>
+            <a href="#offers" onClick={handleNavClick}>🎯 What We Offer</a>
+            <a href="#exam-boards" onClick={handleNavClick}>🏛️ Examination Boards</a>
+            <a href="#how-it-works" onClick={handleNavClick}>⚡ How It Works</a>
+            <a href="#experience" onClick={handleNavClick}>💻 CBT Exam Simulator</a>
+            <a href="#performance" onClick={handleNavClick}>📊 Diagnostic Analytics</a>
           </div>
           <div style={{ marginTop: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {isAuthenticated ? (

@@ -1,13 +1,12 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
-import { useSupportContactQuery, buildWhatsAppLink } from '../api/supportContact.js';
+import { useSupportContactQuery, buildWhatsAppLink, isWhatsAppNumberValid } from '../api/supportContact.js';
 
 export const FloatingWhatsApp: React.FC = () => {
   const { data: support } = useSupportContactQuery();
 
   const isEnabled = support ? support.whatsappEnabled !== false : true;
-  const whatsappNumber = support?.whatsappNumber || '2348030001234';
-  const hasWhatsApp = isEnabled && Boolean(whatsappNumber);
+  const whatsappNumber = support?.whatsappNumber || '';
+  const hasWhatsApp = isEnabled && isWhatsAppNumberValid(whatsappNumber);
   const targetUrl = buildWhatsAppLink(whatsappNumber, 'Hello MarkDriller Support, I need assistance with CBT practice / activation.');
 
   const commonStyles: React.CSSProperties = {
@@ -63,8 +62,8 @@ export const FloatingWhatsApp: React.FC = () => {
   }
 
   return (
-    <Link
-      to="/contact"
+    <a
+      href="mailto:support@markdriller.com"
       aria-label="Contact MarkDriller Academic Help Desk"
       style={{ ...commonStyles, backgroundColor: 'var(--rust)' }}
       onMouseEnter={handleMouseEnter}
@@ -72,6 +71,6 @@ export const FloatingWhatsApp: React.FC = () => {
     >
       <span style={{ fontSize: '16px', lineHeight: 1 }}>✉️</span>
       <span>Support Desk</span>
-    </Link>
+    </a>
   );
 };

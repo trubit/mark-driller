@@ -1,8 +1,39 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { BrandLogo } from './BrandLogo.js';
+import { useAppStore } from '../store/useAppStore.js';
+import { useAuthStore } from '../store/useAuthStore.js';
 
 export const Footer: React.FC = () => {
+  const { openAuthModal } = useAppStore();
+  const { isAuthenticated } = useAuthStore();
+  const navigate = useNavigate();
+
+  const handleCreateAccountAction = (dest?: string) => {
+    if (isAuthenticated && dest) {
+      if (dest.startsWith('#')) {
+        const el = document.querySelector(dest);
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+      } else {
+        navigate(dest);
+      }
+    } else {
+      openAuthModal('signup');
+    }
+  };
+
+  const footLinkStyle: React.CSSProperties = {
+    background: 'none',
+    border: 'none',
+    padding: 0,
+    color: 'rgba(248, 247, 242, 0.85)',
+    fontSize: '13px',
+    cursor: 'pointer',
+    textAlign: 'left',
+    font: 'inherit',
+    lineHeight: '1.5',
+    transition: 'color 0.15s ease',
+  };
 
   return (
     <footer className="site-footer" aria-label="Site Footer">
@@ -27,11 +58,61 @@ export const Footer: React.FC = () => {
               Examinations
             </h4>
             <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px' }}>
-              <li><Link to="/questions">JAMB / UTME CBT</Link></li>
-              <li><Link to="/questions">WAEC / WASSCE SSCE</Link></li>
-              <li><Link to="/questions">NECO National Exams</Link></li>
-              <li><Link to="/post-utme">University Post-UTME</Link></li>
-              <li><Link to="/novels">JAMB English Novels</Link></li>
+              <li>
+                <button
+                  type="button"
+                  className="foot-link"
+                  style={footLinkStyle}
+                  onClick={() => handleCreateAccountAction('/questions')}
+                  aria-label="Create account for JAMB / UTME CBT"
+                >
+                  JAMB / UTME CBT
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  className="foot-link"
+                  style={footLinkStyle}
+                  onClick={() => handleCreateAccountAction('/questions')}
+                  aria-label="Create account for WAEC / WASSCE SSCE"
+                >
+                  WAEC / WASSCE SSCE
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  className="foot-link"
+                  style={footLinkStyle}
+                  onClick={() => handleCreateAccountAction('/questions')}
+                  aria-label="Create account for NECO National Exams"
+                >
+                  NECO National Exams
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  className="foot-link"
+                  style={footLinkStyle}
+                  onClick={() => handleCreateAccountAction('/post-utme')}
+                  aria-label="Create account for University Post-UTME"
+                >
+                  University Post-UTME
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  className="foot-link"
+                  style={footLinkStyle}
+                  onClick={() => handleCreateAccountAction('#exam-boards')}
+                  aria-label="Create account for Accredited Exam Boards"
+                >
+                  Accredited Exam Boards
+                </button>
+              </li>
             </ul>
           </div>
 
@@ -41,26 +122,75 @@ export const Footer: React.FC = () => {
               Learning Tools
             </h4>
             <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px' }}>
-              <li><Link to="/cbt">CBT Exam Simulator</Link></li>
-              <li><Link to="/materials">Curriculum Notes &amp; PDFs</Link></li>
-              <li><Link to="/novels">JAMB Literature Novels</Link></li>
-              <li><Link to="/games">Educational Revision Games</Link></li>
-              <li><Link to="/challenge">Weekly UTME Sprint</Link></li>
-              <li><Link to="/lessons">Curriculum Video Lessons</Link></li>
+              <li>
+                <button
+                  type="button"
+                  className="foot-link"
+                  style={footLinkStyle}
+                  onClick={() => handleCreateAccountAction('#experience')}
+                  aria-label="Create account for CBT Exam Simulator"
+                >
+                  CBT Exam Simulator
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  className="foot-link"
+                  style={footLinkStyle}
+                  onClick={() => handleCreateAccountAction('/materials')}
+                  aria-label="Create account for Curriculum Notes & PDFs"
+                >
+                  Curriculum Notes &amp; PDFs
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  className="foot-link"
+                  style={footLinkStyle}
+                  onClick={() => handleCreateAccountAction('#offers')}
+                  aria-label="Create account for Past Questions & Solutions"
+                >
+                  Past Questions &amp; Solutions
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  className="foot-link"
+                  style={footLinkStyle}
+                  onClick={() => handleCreateAccountAction('/schools')}
+                  aria-label="Create account for School & Course Finder"
+                >
+                  School &amp; Course Finder
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  className="foot-link"
+                  style={footLinkStyle}
+                  onClick={() => handleCreateAccountAction('#performance')}
+                  aria-label="Create account for Diagnostic Analytics"
+                >
+                  Diagnostic Analytics
+                </button>
+              </li>
             </ul>
           </div>
 
           {/* Col 4: Admissions & Network */}
           <div className="foot-col">
             <h4 style={{ fontSize: '13px', fontFamily: "var(--font-sans)", letterSpacing: '1px', textTransform: 'uppercase', color: '#ffffff', marginBottom: '14px' }}>
-              Partners &amp; Support
+              Platform &amp; Guidance
             </h4>
             <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px' }}>
-              <li><Link to="/contact">Institutional Partnerships</Link></li>
-              <li><Link to="/blog">Academic Blog &amp; Guides</Link></li>
+              <li><a href="#how-it-works">How MarkDriller Works</a></li>
+              <li><a href="#offers">What We Offer</a></li>
               <li><Link to="/schools">Nigerian School Finder</Link></li>
-              <li><Link to="/contact">24/7 Helpline &amp; WhatsApp</Link></li>
-              <li><Link to="/pricing">Pro Subscription Plans</Link></li>
+              <li><a href="#cta">Start Practising Free</a></li>
+              <li><a href="mailto:support@markdriller.com">Academic Support Desk</a></li>
             </ul>
           </div>
         </div>

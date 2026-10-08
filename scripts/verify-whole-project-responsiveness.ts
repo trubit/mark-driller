@@ -149,17 +149,24 @@ async function runAudit() {
   const heroPath = path.join(componentsDir, 'Hero.tsx');
   if (fs.existsSync(heroPath)) {
     const heroCode = fs.readFileSync(heroPath, 'utf8');
+    const hasFluidHero =
+      (heroCode.includes('clamp(240px, 42vw, 420px)') && heroCode.includes("objectPosition: 'center 20%'")) ||
+      (heroCode.includes('full-width-hero') && heroCode.includes('hero-background-image'));
     record(
       'Public Experience',
       'Hero Image Fluid Height & Face Preservation',
-      heroCode.includes('clamp(240px, 42vw, 420px)') && heroCode.includes("objectPosition: 'center 20%'"),
+      hasFluidHero,
       'Hero student image scales fluidly and preserves face framing across narrow viewports'
     );
+
+    const hasHeroBadges =
+      (heroCode.includes('hero-floating-top') && heroCode.includes('hero-floating-bottom')) ||
+      (heroCode.includes('hero-trust-badges') && heroCode.includes('hero-badge-item'));
     record(
       'Public Experience',
       'Hero Floating Badges Responsive Bounds',
-      heroCode.includes('hero-floating-top') && heroCode.includes('hero-floating-bottom'),
-      'Hero floating badges encapsulated with responsive classes'
+      hasHeroBadges,
+      'Hero badges encapsulated with responsive classes'
     );
   }
 
@@ -167,11 +174,14 @@ async function runAudit() {
   const boardsPath = path.join(componentsDir, 'ExamBoards.tsx');
   if (fs.existsSync(boardsPath)) {
     const boardsCode = fs.readFileSync(boardsPath, 'utf8');
+    const hasResponsiveGrid =
+      boardsCode.includes('minmax(min(100%, 280px), 1fr)') ||
+      boardsCode.includes('exam-boards-grid-3col');
     record(
       'Public Experience',
       'Exam Boards Intrinsic Card Grid',
-      boardsCode.includes('minmax(min(100%, 280px), 1fr)'),
-      'Exam boards grid uses min(100%, 280px) to prevent mobile card overflow'
+      hasResponsiveGrid,
+      'Exam boards grid uses responsive grid classes to prevent mobile card overflow'
     );
   }
 

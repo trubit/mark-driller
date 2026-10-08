@@ -1021,7 +1021,10 @@ router.put('/support-settings', async (req: AuthenticatedRequest, res: Response,
     const adminUserId = req.user!._id;
 
     // Normalize WhatsApp number to clean numeric format for wa.me URL generation
-    const normalizedWhatsApp = data.whatsappNumber.replace(/[^0-9]/g, '');
+    let normalizedWhatsApp = data.whatsappNumber.replace(/[^0-9]/g, '');
+    if (normalizedWhatsApp.startsWith('0') && normalizedWhatsApp.length === 11) {
+      normalizedWhatsApp = '234' + normalizedWhatsApp.slice(1);
+    }
 
     const sanitizedData = {
       whatsappNumber: normalizedWhatsApp,

@@ -39,12 +39,16 @@ export const SUPPORT_CONFIG: SupportContactDetails = {
 };
 
 export const getWhatsAppUrl = (customMessage?: string, number?: string): string => {
-  const activeNumber = (number || SUPPORT_CONFIG.whatsappNumber).replace(/[^0-9]/g, '');
-  const message = encodeURIComponent(customMessage || 'Hello MarkDriller Support, I need assistance with CBT practice / activation.');
-  if (activeNumber) {
-    return `https://wa.me/${activeNumber}?text=${message}`;
+  let activeNumber = (number || SUPPORT_CONFIG.whatsappNumber).replace(/[^0-9]/g, '');
+  if (activeNumber.startsWith('0') && activeNumber.length === 11) {
+    activeNumber = '234' + activeNumber.slice(1);
   }
-  return '/contact';
+  const placeholderNumbers = new Set(['2348030001234', '2348099887766', '2348000000000']);
+  if (!activeNumber || activeNumber.length < 10 || placeholderNumbers.has(activeNumber)) {
+    return '/contact';
+  }
+  const message = encodeURIComponent(customMessage || 'Hello MarkDriller Support, I need assistance with CBT practice / activation.');
+  return `https://wa.me/${activeNumber}?text=${message}`;
 };
 
 export const getTelUrl = (phone?: string): string => {

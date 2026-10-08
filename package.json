@@ -39,7 +39,8 @@
     "test:support-email": "tsx scripts/verify-support-email-flow.ts",
     "test:trial": "tsx scripts/verify-fresh-pro-access-control.ts",
     "test:randomization": "tsx scripts/verify-option-randomization-and-mobile-compatibility.ts",
-    "test:otp": "tsx scripts/verify-otp-email-delivery.ts"
+    "test:otp": "tsx scripts/verify-otp-email-delivery.ts",
+    "test:landing": "tsx scripts/verify-landing-redesign.ts"
   },
 
   "keywords": [
