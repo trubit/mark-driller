@@ -18,8 +18,10 @@ const router = Router();
 router.get('/contact-info', async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const config = await getDynamicSupportConfig();
-    // Cache for 60 seconds with 120s stale-while-revalidate to ensure instant responsiveness without stale locks
-    res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=60, stale-while-revalidate=120');
+    // No-cache headers guarantee that admin updates propagate immediately to all clients without HTTP cache lag
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     res.status(200).json({
       success: true,
       data: {

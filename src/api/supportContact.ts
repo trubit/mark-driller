@@ -121,6 +121,19 @@ export function buildWhatsAppLink(number?: string, message?: string): string {
   return `https://wa.me/${cleanNumber}?text=${encodedText}`;
 }
 
+/**
+ * Direct WhatsApp Web URL (strictly avoids OS protocol handler popups on desktop browsers)
+ */
+export function buildWhatsAppWebLink(number?: string, message?: string): string {
+  const cleanNumber = normalizeWhatsAppNumber(number);
+  if (!cleanNumber) {
+    return '/contact';
+  }
+  const defaultMsg = 'Hello MarkDriller Support, I need assistance with CBT practice / activation.';
+  const encodedText = encodeURIComponent(message || defaultMsg);
+  return `https://web.whatsapp.com/send?phone=${cleanNumber}&text=${encodedText}`;
+}
+
 export function buildTelLink(phone?: string): string {
   if (!phone) return '/contact';
   const cleanPhone = phone.replace(/[^0-9+]/g, '');
@@ -129,7 +142,7 @@ export function buildTelLink(phone?: string): string {
 
 export function buildMailtoLink(email?: string, subject?: string): string {
   if (!email) return '/contact';
-  const cleanEmail = email.trim();
-  const defaultSubj = encodeURIComponent(subject || 'Inquiry: MarkDriller Platform');
-  return `mailto:${cleanEmail}?subject=${defaultSubj}`;
+  const cleanEmail = email.trim().replace(/[\r\n]/g, '');
+  const cleanSubject = (subject || 'Inquiry: MarkDriller Platform').replace(/[\r\n]/g, ' ');
+  return `mailto:${cleanEmail}?subject=${encodeURIComponent(cleanSubject)}`;
 }

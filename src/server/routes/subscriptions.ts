@@ -26,11 +26,10 @@ export const SUBSCRIPTION_PLANS = [
     billingPeriod: 'Forever Free',
     description: 'Essential revision tools for secondary students beginning exam prep.',
     features: [
-      'Maximum 200 Past Questions free trial allowance',
-      'Exam Mode (🔒 Pro Required)',
-      'Practice Mode (🔒 Pro Required)',
-      'Study Mode (🔒 Pro Required)',
+      'Strict 3 Free Trial examination attempts',
+      'Year 2024 Past Questions included across all subjects',
       'Basic student dashboard & score history',
+      'Instant result slip & score overview',
     ],
     isPopular: false,
   },
@@ -42,8 +41,8 @@ export const SUBSCRIPTION_PLANS = [
     billingPeriod: '1 Month',
     description: 'Complete high-stakes preparation suite for JAMB / UTME and WAEC candidates.',
     features: [
-      'Unlimited CBT mock examinations with official timer',
-      'Full question bank access (30,000+ past questions)',
+      'Unlimited CBT examinations with official timer',
+      'Full question bank access (all years 2015–2025)',
       'Detailed step-by-step worked mathematical solutions',
       'In-depth syllabus topic mastery & weakness analytics',
       'Downloadable curriculum notes and revision summaries',
@@ -59,9 +58,9 @@ export const SUBSCRIPTION_PLANS = [
     description: 'Two-month dedicated preparation pass for exam revision and multi-subject mocks.',
     features: [
       'All Pro features for a fixed 60-day period',
-      'Multi-year past question pooling (2020–2025)',
-      'Advanced timing & shuffle options',
-      'Instant study mode with worked explanations',
+      'Multi-year past question pooling (2015–2025)',
+      'Advanced timing & question shuffle options',
+      'Complete worked solutions & step-by-step rationales',
       'Full performance analytics & weakness diagnostics',
     ],
     isPopular: true,
@@ -75,7 +74,7 @@ export const SUBSCRIPTION_PLANS = [
     description: 'Complete academic term syllabus coverage for secondary & UTME candidates.',
     features: [
       'All Pro features for full 90-day term',
-      'Unlimited CBT timed mocks & study mode',
+      'Unlimited CBT timed examinations',
       'Priority offline study material access',
       'Topic-by-topic mastery tracking',
       'Save ₦500 compared to monthly renewal',
@@ -308,7 +307,10 @@ router.get('/my-subscription', async (req: AuthenticatedRequest, res: Response, 
     }).sort({ createdAt: -1 });
 
     if (!sub) {
-      const trialUsage = await FreeTrialService.getUsage(userId);
+      const [trialUsage, freeTrial] = await Promise.all([
+        FreeTrialService.getUsage(userId),
+        FreeTrialService.getTrialStatus(userId, false),
+      ]);
       res.status(200).json({
         success: true,
         data: {
@@ -321,6 +323,7 @@ router.get('/my-subscription', async (req: AuthenticatedRequest, res: Response, 
             isPro: false,
             ...trialUsage,
           },
+          freeTrial,
         },
       });
       return;
@@ -330,7 +333,10 @@ router.get('/my-subscription', async (req: AuthenticatedRequest, res: Response, 
     if (sub.endDate && new Date(sub.endDate) < new Date()) {
       sub.status = 'EXPIRED';
       await sub.save();
-      const trialUsage = await FreeTrialService.getUsage(userId);
+      const [trialUsage, freeTrial] = await Promise.all([
+        FreeTrialService.getUsage(userId),
+        FreeTrialService.getTrialStatus(userId, false),
+      ]);
       res.status(200).json({
         success: true,
         data: {
@@ -341,15 +347,19 @@ router.get('/my-subscription', async (req: AuthenticatedRequest, res: Response, 
             isPro: false,
             ...trialUsage,
           },
+          freeTrial,
         },
       });
       return;
     }
 
     const isPro = sub.plan !== 'FREE';
-    const trialUsage = isPro
-      ? { isPro: true, used: 0, limit: 200, remaining: 200, isLimitReached: false }
-      : { isPro: false, ...(await FreeTrialService.getUsage(userId)) };
+    const [trialUsage, freeTrial] = await Promise.all([
+      isPro
+        ? Promise.resolve({ isPro: true, used: 0, limit: 200, remaining: 200, isLimitReached: false })
+        : FreeTrialService.getUsage(userId).then((u) => ({ isPro: false, ...u })),
+      FreeTrialService.getTrialStatus(userId, isPro),
+    ]);
 
     res.status(200).json({
       success: true,
@@ -357,6 +367,7 @@ router.get('/my-subscription', async (req: AuthenticatedRequest, res: Response, 
         ...sub.toJSON(),
         isPro,
         trialUsage,
+        freeTrial,
       },
     });
   } catch (error) {

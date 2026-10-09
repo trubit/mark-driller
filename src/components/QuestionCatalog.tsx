@@ -40,13 +40,13 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
 
   return (
     <div
-      className="question-card"
+      className="mk-card mk-card-hover question-card"
       style={{
         backgroundColor: 'var(--white)',
-        border: '1.5px solid rgba(20,24,28,0.14)',
-        borderRadius: '4px',
+        border: '1.5px solid var(--paper-line)',
+        borderRadius: '12px',
         padding: '24px',
-        boxShadow: 'var(--shadow)',
+        boxShadow: 'var(--card-shadow)',
         display: 'flex',
         flexDirection: 'column',
         gap: '16px',
@@ -60,7 +60,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
           alignItems: 'flex-start',
           flexWrap: 'wrap',
           gap: '10px',
-          borderBottom: '1px solid rgba(20,24,28,0.08)',
+          borderBottom: '1px solid var(--paper-line)',
           paddingBottom: '12px',
         }}
       >
@@ -81,7 +81,8 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
               fontFamily: "var(--font-sans)",
               backgroundColor: 'var(--paper)',
               padding: '2px 8px',
-              borderRadius: '2px',
+              borderRadius: '4px',
+              border: '1px solid var(--paper-line)',
               color: 'var(--rust)',
               fontWeight: 600,
             }}
@@ -94,7 +95,8 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
               fontFamily: "var(--font-sans)",
               backgroundColor: 'var(--paper-dim)',
               padding: '2px 8px',
-              borderRadius: '2px',
+              borderRadius: '4px',
+              border: '1px solid var(--paper-line)',
               color: 'var(--ink-soft)',
             }}
           >
@@ -105,10 +107,12 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
               style={{
                 fontSize: '11px',
                 fontFamily: "var(--font-sans)",
-                backgroundColor: '#e7edf3',
+                backgroundColor: 'var(--steel-soft, rgba(147, 197, 253, 0.14))',
                 padding: '2px 8px',
-                borderRadius: '2px',
-                color: 'var(--steel-deep)',
+                borderRadius: '4px',
+                border: '1px solid var(--paper-line)',
+                color: 'var(--steel)',
+                fontWeight: 600,
               }}
             >
               {question.topicId.name}
@@ -117,29 +121,43 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <span
-            style={{
-              fontSize: '10.5px',
-              fontFamily: "var(--font-sans)",
-              fontWeight: 700,
-              padding: '2px 6px',
-              borderRadius: '2px',
-              backgroundColor:
-                question.difficulty === 'EASY'
-                  ? '#e4f5ea'
-                  : question.difficulty === 'HARD'
-                  ? '#fde8e8'
-                  : '#fef3e2',
-              color:
-                question.difficulty === 'EASY'
-                  ? '#217844'
-                  : question.difficulty === 'HARD'
-                  ? '#b91c1c'
-                  : '#a16207',
-            }}
-          >
-            {question.difficulty}
-          </span>
+          {(() => {
+            const diffStyle =
+              question.difficulty === 'EASY'
+                ? {
+                    bg: 'var(--forest-soft, rgba(94, 234, 212, 0.15))',
+                    color: 'var(--forest)',
+                    border: '1px solid rgba(94, 234, 212, 0.3)',
+                  }
+                : question.difficulty === 'HARD'
+                ? {
+                    bg: 'var(--rust-soft, rgba(239, 68, 68, 0.15))',
+                    color: 'var(--rust)',
+                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                  }
+                : {
+                    bg: 'var(--amber-soft, rgba(251, 191, 36, 0.15))',
+                    color: 'var(--amber-deep)',
+                    border: '1px solid rgba(251, 191, 36, 0.3)',
+                  };
+            return (
+              <span
+                style={{
+                  fontSize: '10.5px',
+                  fontFamily: "var(--font-sans)",
+                  fontWeight: 700,
+                  padding: '2px 7px',
+                  borderRadius: '4px',
+                  backgroundColor: diffStyle.bg,
+                  color: diffStyle.color,
+                  border: diffStyle.border,
+                  letterSpacing: '0.02em',
+                }}
+              >
+                {question.difficulty}
+              </span>
+            );
+          })()}
 
           <button
             type="button"
@@ -147,9 +165,9 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
             disabled={isBookmarkPending}
             title={isBookmarked ? 'Remove Bookmark' : 'Bookmark Question'}
             style={{
-              background: isBookmarked ? '#faede7' : 'transparent',
-              border: isBookmarked ? '1px solid var(--rust)' : '1px solid rgba(20,24,28,0.2)',
-              borderRadius: '3px',
+              background: isBookmarked ? 'var(--rust-soft, rgba(200, 75, 38, 0.15))' : 'transparent',
+              border: isBookmarked ? '1px solid var(--rust)' : '1px solid var(--paper-line)',
+              borderRadius: '4px',
               padding: '4px 8px',
               cursor: 'pointer',
               fontSize: '12px',
@@ -184,20 +202,21 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
           const isWrong = showExplanation && isChosen && opt.label !== question.correctAnswer;
 
           let bg = 'var(--paper)';
-          let border = '1px solid rgba(20,24,28,0.12)';
+          let border = '1px solid var(--paper-line)';
           let color = 'var(--ink)';
 
           if (isCorrect) {
-            bg = '#e4f5ea';
-            border = '1.5px solid #217844';
-            color = '#11532c';
+            bg = 'rgba(34, 197, 94, 0.16)';
+            border = '1.5px solid #22c55e';
+            color = 'var(--ink)';
           } else if (isWrong) {
-            bg = '#fde8e8';
-            border = '1.5px solid #b91c1c';
-            color = '#991b1b';
+            bg = 'rgba(239, 68, 68, 0.16)';
+            border = '1.5px solid #ef4444';
+            color = 'var(--ink)';
           } else if (isChosen) {
-            bg = '#e8f0fe';
+            bg = 'var(--steel-soft, rgba(147, 197, 253, 0.16))';
             border = '1.5px solid var(--steel)';
+            color = 'var(--ink)';
           }
 
           return (
@@ -208,7 +227,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
               style={{
                 textAlign: 'left',
                 padding: '12px 14px',
-                borderRadius: '3px',
+                borderRadius: '8px',
                 backgroundColor: bg,
                 border,
                 color,
@@ -226,9 +245,11 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                   fontWeight: 700,
                   fontFamily: "var(--font-sans)",
                   fontSize: '13px',
-                  backgroundColor: 'rgba(20,24,28,0.06)',
+                  backgroundColor: 'var(--paper-dim)',
+                  border: '1px solid var(--paper-line)',
+                  color: 'var(--ink)',
                   padding: '2px 6px',
-                  borderRadius: '2px',
+                  borderRadius: '4px',
                   minWidth: '22px',
                   textAlign: 'center',
                 }}
@@ -266,7 +287,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
             marginTop: '6px',
             padding: '16px 20px',
             backgroundColor: 'var(--paper)',
-            borderRadius: '3px',
+            borderRadius: '8px',
             borderLeft: '4px solid var(--rust)',
           }}
         >
@@ -445,11 +466,12 @@ export const QuestionCatalog: React.FC = () => {
 
         {/* Filter Toolbar */}
         <div
+          className="mk-card"
           style={{
             backgroundColor: 'var(--white)',
             padding: '20px',
-            borderRadius: '4px',
-            border: '1.5px solid rgba(20,24,28,0.14)',
+            borderRadius: '12px',
+            border: '1.5px solid var(--paper-line)',
             marginBottom: '32px',
             display: 'flex',
             flexDirection: 'column',
@@ -467,8 +489,10 @@ export const QuestionCatalog: React.FC = () => {
                 flex: '1 1 200px',
                 minWidth: 0,
                 padding: '10px 14px',
-                borderRadius: '2px',
-                border: '1px solid rgba(20,24,28,0.2)',
+                borderRadius: '4px',
+                border: '1px solid var(--paper-line)',
+                backgroundColor: 'var(--paper)',
+                color: 'var(--ink)',
                 fontSize: '14px',
                 fontFamily: "var(--font-sans)",
                 boxSizing: 'border-box',
@@ -485,9 +509,9 @@ export const QuestionCatalog: React.FC = () => {
                 alignItems: 'center',
                 gap: '8px',
                 padding: '10px 18px',
-                borderRadius: '2px',
-                border: showBookmarksOnly ? '1.5px solid var(--rust)' : '1px solid rgba(20,24,28,0.2)',
-                backgroundColor: showBookmarksOnly ? '#fdf0ed' : 'var(--paper)',
+                borderRadius: '4px',
+                border: showBookmarksOnly ? '1.5px solid var(--rust)' : '1px solid var(--paper-line)',
+                backgroundColor: showBookmarksOnly ? 'var(--rust-soft, rgba(200, 75, 38, 0.15))' : 'var(--paper)',
                 color: showBookmarksOnly ? 'var(--rust)' : 'var(--ink)',
                 fontSize: '13px',
                 fontFamily: "var(--font-sans)",
@@ -503,7 +527,7 @@ export const QuestionCatalog: React.FC = () => {
               {bookmarksData && bookmarksData.length > 0 && (
                 <span
                   style={{
-                    backgroundColor: showBookmarksOnly ? 'var(--rust)' : 'rgba(20,24,28,0.1)',
+                    backgroundColor: showBookmarksOnly ? 'var(--rust)' : 'var(--paper-dim)',
                     color: showBookmarksOnly ? '#fff' : 'var(--ink)',
                     fontSize: '11px',
                     padding: '1px 6px',
@@ -540,9 +564,10 @@ export const QuestionCatalog: React.FC = () => {
                 style={{
                   width: '100%',
                   padding: '8px 10px',
-                  borderRadius: '2px',
-                  border: '1px solid rgba(20,24,28,0.2)',
+                  borderRadius: '4px',
+                  border: '1px solid var(--paper-line)',
                   backgroundColor: 'var(--paper)',
+                  color: 'var(--ink)',
                   fontSize: '13px',
                   fontFamily: "var(--font-sans)",
                 }}
@@ -577,9 +602,10 @@ export const QuestionCatalog: React.FC = () => {
                 style={{
                   width: '100%',
                   padding: '8px 10px',
-                  borderRadius: '2px',
-                  border: '1px solid rgba(20,24,28,0.2)',
+                  borderRadius: '4px',
+                  border: '1px solid var(--paper-line)',
                   backgroundColor: 'var(--paper)',
+                  color: 'var(--ink)',
                   fontSize: '13px',
                   fontFamily: "var(--font-sans)",
                 }}
@@ -615,9 +641,10 @@ export const QuestionCatalog: React.FC = () => {
                 style={{
                   width: '100%',
                   padding: '8px 10px',
-                  borderRadius: '2px',
-                  border: '1px solid rgba(20,24,28,0.2)',
+                  borderRadius: '4px',
+                  border: '1px solid var(--paper-line)',
                   backgroundColor: 'var(--paper)',
+                  color: 'var(--ink)',
                   fontSize: '13px',
                   fontFamily: "var(--font-sans)",
                   opacity: selectedSubjectId ? 1 : 0.6,
@@ -653,9 +680,10 @@ export const QuestionCatalog: React.FC = () => {
                 style={{
                   width: '100%',
                   padding: '8px 10px',
-                  borderRadius: '2px',
-                  border: '1px solid rgba(20,24,28,0.2)',
+                  borderRadius: '4px',
+                  border: '1px solid var(--paper-line)',
                   backgroundColor: 'var(--paper)',
+                  color: 'var(--ink)',
                   fontSize: '13px',
                   fontFamily: "var(--font-sans)",
                 }}
@@ -691,9 +719,10 @@ export const QuestionCatalog: React.FC = () => {
                 style={{
                   width: '100%',
                   padding: '8px 10px',
-                  borderRadius: '2px',
-                  border: '1px solid rgba(20,24,28,0.2)',
+                  borderRadius: '4px',
+                  border: '1px solid var(--paper-line)',
                   backgroundColor: 'var(--paper)',
+                  color: 'var(--ink)',
                   fontSize: '13px',
                   fontFamily: "var(--font-sans)",
                 }}
@@ -732,8 +761,8 @@ export const QuestionCatalog: React.FC = () => {
         {(questionsData?.acquiredOnDemand || syncSuccessMsg) && (
           <div
             style={{
-              backgroundColor: '#f0fdf4',
-              border: '1.5px solid #86efac',
+              backgroundColor: 'var(--forest-soft, rgba(34, 197, 94, 0.12))',
+              border: '1px solid var(--forest)',
               padding: '12px 18px',
               borderRadius: '4px',
               marginBottom: '20px',
@@ -741,7 +770,6 @@ export const QuestionCatalog: React.FC = () => {
               alignItems: 'center',
               justifyContent: 'space-between',
               gap: '12px',
-              boxShadow: '0 2px 8px rgba(34,197,94,0.08)',
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -752,7 +780,7 @@ export const QuestionCatalog: React.FC = () => {
                     display: 'block',
                     fontSize: '13.5px',
                     fontFamily: "var(--font-sans)",
-                    color: '#166534',
+                    color: 'var(--forest)',
                     fontWeight: 700,
                   }}
                 >
@@ -761,7 +789,7 @@ export const QuestionCatalog: React.FC = () => {
                 <span
                   style={{
                     fontSize: '12.5px',
-                    color: '#15803d',
+                    color: 'var(--ink)',
                     fontFamily: "var(--font-sans)",
                   }}
                 >
@@ -778,7 +806,7 @@ export const QuestionCatalog: React.FC = () => {
                   background: 'none',
                   border: 'none',
                   cursor: 'pointer',
-                  color: '#166534',
+                  color: 'var(--forest)',
                   fontWeight: 'bold',
                   fontSize: '16px',
                 }}
@@ -795,13 +823,14 @@ export const QuestionCatalog: React.FC = () => {
           if (!effectiveUsage || effectiveUsage.isPro) return null;
           return (
             <div
+              className="mk-card"
               style={{
                 padding: '14px 18px',
                 backgroundColor: 'var(--white)',
-                border: `1.5px solid ${effectiveUsage.isLimitReached ? 'var(--rust)' : 'rgba(20,24,28,0.14)'}`,
-                borderRadius: '6px',
+                border: `1.5px solid ${effectiveUsage.isLimitReached ? 'var(--rust)' : 'var(--paper-line)'}`,
+                borderRadius: '12px',
                 marginBottom: '20px',
-                boxShadow: 'var(--shadow)',
+                boxShadow: 'var(--card-shadow)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
@@ -824,7 +853,7 @@ export const QuestionCatalog: React.FC = () => {
                     </span>
                   )}
                 </div>
-                <div style={{ width: '100%', maxWidth: '360px', height: '7px', backgroundColor: 'rgba(20,24,28,0.08)', borderRadius: '4px', overflow: 'hidden' }}>
+                <div style={{ width: '100%', maxWidth: '360px', height: '7px', backgroundColor: 'var(--paper-dim)', borderRadius: '4px', overflow: 'hidden' }}>
                   <div
                     style={{
                       width: `${Math.min(100, (effectiveUsage.used / effectiveUsage.limit) * 100)}%`,
@@ -875,7 +904,7 @@ export const QuestionCatalog: React.FC = () => {
               </button>
             </div>
             {!bookmarksData || bookmarksData.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '48px 24px', background: 'var(--white)', border: '1.5px dashed rgba(20,24,28,0.2)', borderRadius: '4px' }}>
+              <div style={{ textAlign: 'center', padding: '48px 24px', background: 'var(--white)', border: '1.5px dashed var(--paper-line)', borderRadius: '4px' }}>
                 <div style={{ fontSize: '32px', marginBottom: '12px' }}>★</div>
                 <h3 style={{ fontFamily: "var(--font-sans)", fontSize: '18px', margin: '0 0 8px' }}>No Bookmarked Questions Yet</h3>
                 <p style={{ color: 'var(--ink-soft)', fontSize: '14px', maxWidth: '46ch', margin: '0 auto 16px' }}>
@@ -1037,7 +1066,7 @@ export const QuestionCatalog: React.FC = () => {
                         fontWeight: isActive ? 700 : 500,
                         backgroundColor: isActive ? 'var(--ink)' : 'var(--white)',
                         color: isActive ? 'var(--white)' : 'var(--ink)',
-                        border: '1px solid rgba(20,24,28,0.2)',
+                        border: '1px solid var(--paper-line)',
                         borderRadius: '3px',
                         cursor: 'pointer',
                       }}
@@ -1079,7 +1108,7 @@ export const QuestionCatalog: React.FC = () => {
               textAlign: 'center',
               backgroundColor: 'var(--white)',
               borderRadius: '4px',
-              border: '1.5px solid rgba(20,24,28,0.12)',
+              border: '1.5px solid var(--paper-line)',
             }}
           >
             <h3 style={{ fontFamily: "var(--font-sans)", marginBottom: '8px' }}>No Questions Found</h3>

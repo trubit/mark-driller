@@ -26,6 +26,7 @@ import { UserProfileView } from './components/UserProfileView.js';
 import { UserSettingsView } from './components/UserSettingsView.js';
 import { LiteratureNovelsView } from './components/LiteratureNovelsView.js';
 import { ContactPortal } from './components/ContactPortal.js';
+import { TermsAndConditions } from './components/TermsAndConditions.js';
 import { FloatingWhatsApp } from './components/FloatingWhatsApp.js';
 import { AuthModal } from './components/AuthModal.js';
 import { EmailVerificationModal } from './components/EmailVerificationModal.js';
@@ -81,6 +82,9 @@ export const App: React.FC = () => {
             <Route path="/materials" element={<StudyMaterialsView />} />
             <Route path="/post-utme" element={<PostUtmePortal />} />
             <Route path="/schools" element={<SchoolFinder />} />
+            {/* Student Terms & Conditions Legal Documentation */}
+            <Route path="/terms" element={<TermsAndConditions />} />
+            <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
           </Route>
 
           {/* ======================================================== */}
@@ -234,6 +238,14 @@ export const App: React.FC = () => {
               element={
                 <ProtectedRoute allowedRoles={['STUDENT', 'ADMIN']}>
                   <ContactPortal />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/portal/terms"
+              element={
+                <ProtectedRoute allowedRoles={['STUDENT', 'ADMIN']}>
+                  <TermsAndConditions />
                 </ProtectedRoute>
               }
             />

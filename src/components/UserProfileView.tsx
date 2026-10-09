@@ -342,18 +342,19 @@ export const UserProfileView: React.FC = () => {
         >
           <Link
             to="/dashboard"
+            className="mk-card mk-card-interactive"
             style={{
               backgroundColor: 'var(--white)',
               border: '1px solid var(--paper-line)',
-              borderRadius: '8px',
+              borderRadius: '12px',
               padding: '16px',
               textDecoration: 'none',
               color: 'var(--ink)',
               display: 'flex',
               alignItems: 'center',
               gap: '12px',
-              boxShadow: 'var(--shadow)',
-              transition: 'transform 0.15s ease',
+              boxShadow: 'var(--card-shadow)',
+              transition: 'transform 0.15s ease, box-shadow 0.15s ease',
             }}
           >
             <span style={{ fontSize: '24px' }}>⏱️</span>
@@ -365,18 +366,19 @@ export const UserProfileView: React.FC = () => {
 
           <Link
             to="/portal/questions"
+            className="mk-card mk-card-interactive"
             style={{
               backgroundColor: 'var(--white)',
               border: '1px solid var(--paper-line)',
-              borderRadius: '8px',
+              borderRadius: '12px',
               padding: '16px',
               textDecoration: 'none',
               color: 'var(--ink)',
               display: 'flex',
               alignItems: 'center',
               gap: '12px',
-              boxShadow: 'var(--shadow)',
-              transition: 'transform 0.15s ease',
+              boxShadow: 'var(--card-shadow)',
+              transition: 'transform 0.15s ease, box-shadow 0.15s ease',
             }}
           >
             <span style={{ fontSize: '24px' }}>📚</span>
@@ -388,18 +390,19 @@ export const UserProfileView: React.FC = () => {
 
           <Link
             to="/settings?tab=bookmarks"
+            className="mk-card mk-card-interactive"
             style={{
               backgroundColor: 'var(--white)',
               border: '1px solid var(--paper-line)',
-              borderRadius: '8px',
+              borderRadius: '12px',
               padding: '16px',
               textDecoration: 'none',
               color: 'var(--ink)',
               display: 'flex',
               alignItems: 'center',
               gap: '12px',
-              boxShadow: 'var(--shadow)',
-              transition: 'transform 0.15s ease',
+              boxShadow: 'var(--card-shadow)',
+              transition: 'transform 0.15s ease, box-shadow 0.15s ease',
             }}
           >
             <span style={{ fontSize: '24px' }}>📑</span>
@@ -411,18 +414,19 @@ export const UserProfileView: React.FC = () => {
 
           <Link
             to="/analytics"
+            className="mk-card mk-card-interactive"
             style={{
               backgroundColor: 'var(--white)',
               border: '1px solid var(--paper-line)',
-              borderRadius: '8px',
+              borderRadius: '12px',
               padding: '16px',
               textDecoration: 'none',
               color: 'var(--ink)',
               display: 'flex',
               alignItems: 'center',
               gap: '12px',
-              boxShadow: 'var(--shadow)',
-              transition: 'transform 0.15s ease',
+              boxShadow: 'var(--card-shadow)',
+              transition: 'transform 0.15s ease, box-shadow 0.15s ease',
             }}
           >
             <span style={{ fontSize: '24px' }}>📊</span>
@@ -448,12 +452,13 @@ export const UserProfileView: React.FC = () => {
           >
             {/* Metric 1: Readiness Score */}
             <div
+              className="mk-card mk-card-stat"
               style={{
                 backgroundColor: 'var(--white)',
                 border: '1px solid var(--paper-line)',
-                borderRadius: '8px',
+                borderRadius: '12px',
                 padding: '20px',
-                boxShadow: 'var(--shadow)',
+                boxShadow: 'var(--card-shadow)',
               }}
             >
               <div style={{ fontSize: '12px', color: 'var(--ink-soft)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '6px' }}>
@@ -469,12 +474,13 @@ export const UserProfileView: React.FC = () => {
 
             {/* Metric 2: Mocks Taken */}
             <div
+              className="mk-card mk-card-stat"
               style={{
                 backgroundColor: 'var(--white)',
                 border: '1px solid var(--paper-line)',
-                borderRadius: '8px',
+                borderRadius: '12px',
                 padding: '20px',
-                boxShadow: 'var(--shadow)',
+                boxShadow: 'var(--card-shadow)',
               }}
             >
               <div style={{ fontSize: '12px', color: 'var(--ink-soft)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '6px' }}>
@@ -490,12 +496,13 @@ export const UserProfileView: React.FC = () => {
 
             {/* Metric 3: Questions Answered */}
             <div
+              className="mk-card mk-card-stat"
               style={{
                 backgroundColor: 'var(--white)',
                 border: '1px solid var(--paper-line)',
-                borderRadius: '8px',
+                borderRadius: '12px',
                 padding: '20px',
-                boxShadow: 'var(--shadow)',
+                boxShadow: 'var(--card-shadow)',
               }}
             >
               <div style={{ fontSize: '12px', color: 'var(--ink-soft)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '6px' }}>
@@ -511,12 +518,13 @@ export const UserProfileView: React.FC = () => {
 
             {/* Metric 4: Overall Accuracy */}
             <div
+              className="mk-card mk-card-stat"
               style={{
                 backgroundColor: 'var(--white)',
                 border: '1px solid var(--paper-line)',
-                borderRadius: '8px',
+                borderRadius: '12px',
                 padding: '20px',
-                boxShadow: 'var(--shadow)',
+                boxShadow: 'var(--card-shadow)',
               }}
             >
               <div style={{ fontSize: '12px', color: 'var(--ink-soft)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '6px' }}>

@@ -71,7 +71,6 @@ export const CbtPracticePortal: React.FC = () => {
   const [isSetupOpen, setIsSetupOpen] = useState(false);
   const [selectedExamId, setSelectedExamId] = useState<string>('');
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | undefined>(undefined);
-  const [selectedMode, setSelectedMode] = useState<'TIMED_MOCK' | 'PRACTICE'>('TIMED_MOCK');
 
   // Map server exams or fallback
   const resolvedExams = useMemo(() => {
@@ -83,14 +82,13 @@ export const CbtPracticePortal: React.FC = () => {
 
   const isPro = Boolean(subscription?.isPro || user?.role === 'ADMIN');
 
-  const handleLaunchMock = (examId?: string, mode: 'TIMED_MOCK' | 'PRACTICE' = 'TIMED_MOCK') => {
+  const handleLaunchMock = (examId?: string) => {
     if (!isAuthenticated) {
       openAuthModal('login');
       return;
     }
     const targetExamId = examId || (resolvedExams.length > 0 ? resolvedExams[0]._id : '');
     setSelectedExamId(targetExamId);
-    setSelectedMode(mode);
     setSelectedSubjectId(undefined);
     setIsSetupOpen(true);
   };
@@ -200,7 +198,7 @@ export const CbtPracticePortal: React.FC = () => {
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center' }}>
                 <button
                   type="button"
-                  onClick={() => handleLaunchMock(undefined, 'TIMED_MOCK')}
+                  onClick={() => handleLaunchMock()}
                   className="btn-custom btn-custom-primary"
                   style={{
                     backgroundColor: 'var(--rust, #a8562f)',
@@ -218,12 +216,12 @@ export const CbtPracticePortal: React.FC = () => {
                     transition: 'all 0.15s ease',
                   }}
                 >
-                  <span>⚡ Launch Quick Mock Exam {!isPro && '🔒 (Pro)'}</span>
+                  <span>⚡ Launch CBT Simulation</span>
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => handleLaunchMock(undefined, 'PRACTICE')}
+                  onClick={() => handleLaunchMock()}
                   style={{
                     backgroundColor: 'rgba(255, 255, 255, 0.1)',
                     color: '#ffffff',
@@ -246,7 +244,7 @@ export const CbtPracticePortal: React.FC = () => {
                     e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
                   }}
                 >
-                  <span>🎯 Practice Drill {!isPro && '🔒 (Pro)'}</span>
+                  <span>🎯 Configure Exam Session</span>
                 </button>
 
 
@@ -271,7 +269,7 @@ export const CbtPracticePortal: React.FC = () => {
           </section>
 
           {/* ======================================================== */}
-          {/* 2. PRACTICE MODES: 4 TAILORED LEARNING PATHWAYS          */}
+          {/* 2. OFFICIAL CBT SIMULATIONS & EXAM PATHWAYS              */}
           {/* ======================================================== */}
           <section>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
@@ -285,10 +283,10 @@ export const CbtPracticePortal: React.FC = () => {
                     margin: 0,
                   }}
                 >
-                  Select Your Examination Practice Mode
+                  Official CBT Examination Simulations
                 </h2>
                 <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: 'var(--ink-soft)' }}>
-                  Tailor your session according to your revision goals and available time.
+                  Launch real computer-based tests designed to mirror Nigerian national examinations.
                 </p>
               </div>
             </div>
@@ -300,8 +298,9 @@ export const CbtPracticePortal: React.FC = () => {
                 gap: '16px',
               }}
             >
-              {/* Mode Card 1: Full Standard Mock */}
+              {/* Simulation Card 1: Full Standard Mock */}
               <div
+                className="mk-card mk-card-hover"
                 style={{
                   backgroundColor: 'var(--white, #ffffff)',
                   border: '1.5px solid var(--paper-line)',
@@ -332,15 +331,15 @@ export const CbtPracticePortal: React.FC = () => {
                     </span>
                   </div>
                   <h3 style={{ fontFamily: "var(--font-sans)", fontSize: '17px', fontWeight: 700, margin: '0 0 8px 0', color: 'var(--ink)' }}>
-                    Full Standard Mock Exam
+                    Full Standard CBT Simulation
                   </h3>
                   <p style={{ fontSize: '13px', lineHeight: 1.5, color: 'var(--ink-soft)', margin: '0 0 16px 0' }}>
-                    Simulates official examination conditions. 4-subject combination, 180 questions, 120-minute countdown timer, and true JAMB 8-key controls.
+                    Simulates official examination conditions. Choose your board, subject combinations, countdown timer, and authentic 8-key keyboard navigation.
                   </p>
                 </div>
                 <button
                   type="button"
-                  onClick={() => handleLaunchMock(undefined, 'TIMED_MOCK')}
+                  onClick={() => handleLaunchMock()}
                   className="btn-custom btn-custom-primary"
                   style={{
                     width: '100%',
@@ -355,12 +354,13 @@ export const CbtPracticePortal: React.FC = () => {
                     gap: '6px',
                   }}
                 >
-                  Start Full Mock ➔
+                  Configure &amp; Start CBT ➔
                 </button>
               </div>
 
-              {/* Mode Card 2: Single Subject Topic Drill */}
+              {/* Simulation Card 2: Single Subject Drill */}
               <div
+                className="mk-card mk-card-hover"
                 style={{
                   backgroundColor: 'var(--white, #ffffff)',
                   border: '1.5px solid var(--paper-line)',
@@ -387,19 +387,19 @@ export const CbtPracticePortal: React.FC = () => {
                         borderRadius: '4px',
                       }}
                     >
-                      TOPICAL MASTERY
+                      SUBJECT DRILL
                     </span>
                   </div>
                   <h3 style={{ fontFamily: "var(--font-sans)", fontSize: '17px', fontWeight: 700, margin: '0 0 8px 0', color: 'var(--ink)' }}>
-                    Single Subject Drill
+                    Single Subject Assessment
                   </h3>
                   <p style={{ fontSize: '13px', lineHeight: 1.5, color: 'var(--ink-soft)', margin: '0 0 16px 0' }}>
-                    Focus on one subject or specific syllabus topic to eliminate weak points. Customize question count (10 to 60) and practice untimed or timed.
+                    Focus directly on a specific subject to eliminate weak points. Customize question count and test your mastery against verified past questions.
                   </p>
                 </div>
                 <button
                   type="button"
-                  onClick={() => handleLaunchMock(undefined, 'PRACTICE')}
+                  onClick={() => handleLaunchMock()}
                   style={{
                     width: '100%',
                     padding: '10px',
@@ -417,12 +417,13 @@ export const CbtPracticePortal: React.FC = () => {
                     transition: 'all 0.15s ease',
                   }}
                 >
-                  Start Subject Drill ➔
+                  Start Subject Test ➔
                 </button>
               </div>
 
-              {/* Mode Card 3: Speed & Reflex Drill */}
+              {/* Simulation Card 3: Speed & Reflex Drill */}
               <div
+                className="mk-card mk-card-hover"
                 style={{
                   backgroundColor: 'var(--white, #ffffff)',
                   border: '1.5px solid var(--paper-line)',
@@ -449,19 +450,19 @@ export const CbtPracticePortal: React.FC = () => {
                         borderRadius: '4px',
                       }}
                     >
-                      SPEED TEST
+                      TIMED DRILL
                     </span>
                   </div>
                   <h3 style={{ fontFamily: "var(--font-sans)", fontSize: '17px', fontWeight: 700, margin: '0 0 8px 0', color: 'var(--ink)' }}>
-                    Speed &amp; Reflex Sprint
+                    Timed Speed Simulation
                   </h3>
                   <p style={{ fontSize: '13px', lineHeight: 1.5, color: 'var(--ink-soft)', margin: '0 0 16px 0' }}>
-                    20 rapid-fire questions in 10 minutes. Builds speed reading, rapid calculations, and instantaneous question comprehension under pressure.
+                    High-intensity question testing under strict timed pressure. Builds speed reading, rapid calculations, and instantaneous comprehension.
                   </p>
                 </div>
                 <button
                   type="button"
-                  onClick={() => handleLaunchMock(undefined, 'TIMED_MOCK')}
+                  onClick={() => handleLaunchMock()}
                   style={{
                     width: '100%',
                     padding: '10px',
@@ -485,12 +486,13 @@ export const CbtPracticePortal: React.FC = () => {
                     e.currentTarget.style.borderColor = 'var(--paper-line)';
                   }}
                 >
-                  Launch Speed Sprint ➔
+                  Launch Timed Test ➔
                 </button>
               </div>
 
-              {/* Mode Card 4: Bookmarks Revision */}
+              {/* Simulation Card 4: Bookmarks Revision */}
               <div
+                className="mk-card mk-card-hover"
                 style={{
                   backgroundColor: 'var(--white, #ffffff)',
                   border: '1.5px solid var(--paper-line)',
@@ -521,10 +523,10 @@ export const CbtPracticePortal: React.FC = () => {
                     </span>
                   </div>
                   <h3 style={{ fontFamily: "var(--font-sans)", fontSize: '17px', fontWeight: 700, margin: '0 0 8px 0', color: 'var(--ink)' }}>
-                    Bookmarked Questions Drill
+                    Bookmarked Questions
                   </h3>
                   <p style={{ fontSize: '13px', lineHeight: 1.5, color: 'var(--ink-soft)', margin: '0 0 16px 0' }}>
-                    Generate a personalized exam constructed solely from tricky questions you have bookmarked during past drills and catalog explorations.
+                    Review and re-test questions you saved during previous sessions to reinforce challenging topics and syllabus concepts.
                   </p>
                 </div>
                 <Link
@@ -675,11 +677,11 @@ export const CbtPracticePortal: React.FC = () => {
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <button
                         type="button"
-                        onClick={() => handleLaunchMock(targetExamId, 'TIMED_MOCK')}
+                        onClick={() => handleLaunchMock(targetExamId)}
                         className="btn-custom btn-custom-primary"
                         style={{
-                          flex: 1,
-                          padding: '9px 12px',
+                          width: '100%',
+                          padding: '10px 14px',
                           fontSize: '13px',
                           fontWeight: 700,
                           borderRadius: '6px',
@@ -690,30 +692,8 @@ export const CbtPracticePortal: React.FC = () => {
                           gap: '6px',
                         }}
                       >
-                        {isPro ? 'Start Mock' : '🔒 Start Mock (Pro)'}
+                        Start CBT Examination ➔
                       </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleLaunchMock(targetExamId, 'PRACTICE')}
-                        style={{
-                          flex: 1,
-                          padding: '9px 12px',
-                          fontSize: '13px',
-                          fontWeight: 600,
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          backgroundColor: 'var(--paper)',
-                          color: 'var(--ink)',
-                          border: '1px solid var(--paper-line)',
-                          display: 'flex',
-                          justifyContent: 'center',
-                          alignItems: 'center',
-                        }}
-                      >
-                        {isPro ? 'Custom Setup' : '🔒 Practice (Pro)'}
-                      </button>
-
                     </div>
                   </div>
                 );
@@ -998,7 +978,6 @@ export const CbtPracticePortal: React.FC = () => {
         }}
         defaultExamId={selectedExamId}
         defaultSubjectId={selectedSubjectId}
-        defaultMode={selectedMode}
       />
     </div>
   );

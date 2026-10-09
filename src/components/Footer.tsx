@@ -3,22 +3,33 @@ import { useNavigate, Link } from 'react-router-dom';
 import { BrandLogo } from './BrandLogo.js';
 import { useAppStore } from '../store/useAppStore.js';
 import { useAuthStore } from '../store/useAuthStore.js';
+import { useSupportContactQuery, buildMailtoLink } from '../api/supportContact.js';
 
 export const Footer: React.FC = () => {
   const { openAuthModal } = useAppStore();
   const { isAuthenticated } = useAuthStore();
+  const { data: support } = useSupportContactQuery();
   const navigate = useNavigate();
+
+  const supportEmail = support?.email || 'support@markdriller.com';
 
   const handleCreateAccountAction = (dest?: string) => {
     if (isAuthenticated && dest) {
-      if (dest.startsWith('#')) {
-        const el = document.querySelector(dest);
+      if (dest === 'exam-boards' || dest === 'experience' || dest === 'offers' || dest === 'performance') {
+        const el = document.getElementById(dest);
         if (el) el.scrollIntoView({ behavior: 'smooth' });
       } else {
         navigate(dest);
       }
     } else {
       openAuthModal('signup');
+    }
+  };
+
+  const scrollToSection = (sectionId: string) => {
+    const el = document.getElementById(sectionId);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' });
     }
   };
 
@@ -107,7 +118,7 @@ export const Footer: React.FC = () => {
                   type="button"
                   className="foot-link"
                   style={footLinkStyle}
-                  onClick={() => handleCreateAccountAction('#exam-boards')}
+                  onClick={() => handleCreateAccountAction('exam-boards')}
                   aria-label="Create account for Accredited Exam Boards"
                 >
                   Accredited Exam Boards
@@ -127,7 +138,7 @@ export const Footer: React.FC = () => {
                   type="button"
                   className="foot-link"
                   style={footLinkStyle}
-                  onClick={() => handleCreateAccountAction('#experience')}
+                  onClick={() => handleCreateAccountAction('experience')}
                   aria-label="Create account for CBT Exam Simulator"
                 >
                   CBT Exam Simulator
@@ -149,7 +160,7 @@ export const Footer: React.FC = () => {
                   type="button"
                   className="foot-link"
                   style={footLinkStyle}
-                  onClick={() => handleCreateAccountAction('#offers')}
+                  onClick={() => handleCreateAccountAction('offers')}
                   aria-label="Create account for Past Questions & Solutions"
                 >
                   Past Questions &amp; Solutions
@@ -171,7 +182,7 @@ export const Footer: React.FC = () => {
                   type="button"
                   className="foot-link"
                   style={footLinkStyle}
-                  onClick={() => handleCreateAccountAction('#performance')}
+                  onClick={() => handleCreateAccountAction('performance')}
                   aria-label="Create account for Diagnostic Analytics"
                 >
                   Diagnostic Analytics
@@ -186,11 +197,39 @@ export const Footer: React.FC = () => {
               Platform &amp; Guidance
             </h4>
             <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px' }}>
-              <li><a href="#how-it-works">How MarkDriller Works</a></li>
-              <li><a href="#offers">What We Offer</a></li>
+              <li>
+                <button
+                  type="button"
+                  className="foot-link"
+                  style={footLinkStyle}
+                  onClick={() => scrollToSection('how-it-works')}
+                >
+                  How MarkDriller Works
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  className="foot-link"
+                  style={footLinkStyle}
+                  onClick={() => scrollToSection('offers')}
+                >
+                  What We Offer
+                </button>
+              </li>
               <li><Link to="/schools">Nigerian School Finder</Link></li>
-              <li><a href="#cta">Start Practising Free</a></li>
-              <li><a href="mailto:support@markdriller.com">Academic Support Desk</a></li>
+              <li><Link to="/terms" style={{ color: 'rgba(248, 247, 242, 0.85)', textDecoration: 'none' }}>Student Terms &amp; Conditions</Link></li>
+              <li>
+                <button
+                  type="button"
+                  className="foot-link"
+                  style={footLinkStyle}
+                  onClick={() => scrollToSection('cta')}
+                >
+                  Start Practising Free
+                </button>
+              </li>
+              <li><a href={buildMailtoLink(supportEmail, 'MarkDriller Academic Support Desk Inquiry')}>Academic Support Desk</a></li>
             </ul>
           </div>
         </div>
@@ -209,9 +248,15 @@ export const Footer: React.FC = () => {
           Disclaimer: MarkDriller is an independent Nigerian educational examination-preparation platform. Joint Admissions and Matriculation Board (JAMB), West African Examinations Council (WAEC), and National Examinations Council (NECO) names, trademarks, and associated emblems are the registered property of their respective statutory bodies and are referenced strictly for descriptive curriculum alignment under fair educational nominative use.
         </div>
 
-        <div className="foot-bottom" style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', fontSize: '12px', fontFamily: "var(--font-sans)", color: 'rgba(248, 247, 242, 0.6)' }}>
+        <div className="foot-bottom" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', fontSize: '12px', fontFamily: "var(--font-sans)", color: 'rgba(248, 247, 242, 0.6)' }}>
           <span>© 2026 MARKDRILLER PLATFORM. ALL RIGHTS RESERVED.</span>
-          <span>LAGOS · ABUJA · ENUGU · IBADAN · KADUNA</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <Link to="/terms" style={{ color: 'rgba(248, 247, 242, 0.75)', textDecoration: 'underline' }}>
+              Terms &amp; Conditions
+            </Link>
+            <span>·</span>
+            <span>LAGOS · ABUJA · ENUGU · IBADAN · KADUNA</span>
+          </div>
         </div>
       </div>
     </footer>

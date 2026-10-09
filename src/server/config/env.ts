@@ -29,8 +29,25 @@ export const envSchema = z.object({
   ADMIN_EMAIL: z
     .string()
     .email('ADMIN_EMAIL must be a valid email address')
-    .default('admin@markdriller.com')
+    .default('trustezika831@gmail.com')
     .transform((val) => val.trim().toLowerCase()),
+
+  SECONDARY_ADMIN_EMAIL: z
+    .string()
+    .email('SECONDARY_ADMIN_EMAIL must be a valid email address')
+    .default('markzionsinachi@gmail.com')
+    .transform((val) => val.trim().toLowerCase()),
+
+  ADMIN_EMAILS: z
+    .string()
+    .optional()
+    .default('trustezika831@gmail.com,markzionsinachi@gmail.com')
+    .transform((val) =>
+      val
+        .split(',')
+        .map((e) => e.trim().toLowerCase())
+        .filter(Boolean)
+    ),
 
   JWT_SECRET: z.string().min(16, 'JWT_SECRET must be at least 16 characters').default('markdriller_dev_super_secret_jwt_key_2026_change_in_production'),
   JWT_EXPIRES_IN: z.string().default('24h'),

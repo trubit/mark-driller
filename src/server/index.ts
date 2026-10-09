@@ -24,6 +24,8 @@ import materialsRouter from './routes/materials.js';
 import subscriptionsRouter from './routes/subscriptions.js';
 import contentRouter from './routes/content.js';
 import supportRouter from './routes/support.js';
+import notificationsRouter from './routes/notifications.js';
+import termsRouter from './routes/terms.js';
 
 const __filename = fileURLToPath(import.meta.url);
 
@@ -182,6 +184,8 @@ app.use('/api/subscriptions', subscriptionsRouter);
 app.use('/api/exam-boards', examBoardsRouter);
 app.use('/api/leads', leadsRouter);
 app.use('/api/support', supportRouter);
+app.use('/api/notifications', notificationsRouter);
+app.use('/api/terms', termsRouter);
 app.use('/api', contentRouter);
 app.use('/api/content', contentRouter);
 

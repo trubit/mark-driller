@@ -156,6 +156,8 @@ async function runE2EPaystackVerification() {
       passwordHash: 'argon_dummy_hash_for_test',
       role: 'STUDENT',
       isVerified: true,
+      acceptedTermsVersion: '1.0',
+      acceptedTermsAt: new Date(),
     });
     studentUserId = studentUser._id.toString();
 
@@ -197,13 +199,14 @@ async function runE2EPaystackVerification() {
       body: JSON.stringify({
         examId: jambExam?._id.toString(),
         subjectId: jambSubject?._id.toString(),
+        year: 2023,
         mode: 'TIMED_MOCK',
         durationMinutes: 15,
         questionCount: 5,
       }),
     });
     const cbtData = (await cbtRes.json()) as any;
-    const isBlocked = cbtRes.status === 403 && cbtData.error?.code === 'SUBSCRIPTION_REQUIRED';
+    const isBlocked = cbtRes.status === 403 && (cbtData.error?.code === 'SUBSCRIPTION_REQUIRED' || cbtData.error?.code === 'YEAR_LOCKED');
 
     record(
       'Entitlement Control',

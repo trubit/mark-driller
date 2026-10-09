@@ -63,6 +63,7 @@ import {
   useUpdateAdminSupportSettingsMutation,
   type SupportContactInfo,
 } from '../api/supportContact.js';
+import { useTermsAuditQuery } from '../api/terms.js';
 import {
   useAdminSupportTicketsQuery,
   useUpdateAdminSupportTicketMutation,
@@ -190,6 +191,7 @@ export const AdminPortal: React.FC = () => {
 
   // Dynamic Customer Support Channels State
   const { data: currentSupportSettings, isLoading: supportSettingsLoading } = useAdminSupportSettingsQuery();
+  const { data: termsAudit, isLoading: termsAuditLoading } = useTermsAuditQuery();
   const updateSupportSettingsMutation = useUpdateAdminSupportSettingsMutation();
   const [supportForm, setSupportForm] = useState<SupportContactInfo>({
     whatsappNumber: '',
@@ -504,7 +506,7 @@ export const AdminPortal: React.FC = () => {
   if (!user || user.role !== 'ADMIN') {
     return (
       <div className="premium-portal-page premium-admin-page" style={{ minHeight: '100vh', backgroundColor: 'var(--paper)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px', textAlign: 'center' }}>
-        <div style={{ maxWidth: '460px', background: 'var(--white)', border: '2px solid var(--ink)', padding: '36px', boxShadow: '4px 4px 0 var(--ink)' }}>
+        <div className="mk-card mk-card-featured" style={{ maxWidth: '460px', background: 'var(--white)', border: '1.5px solid var(--paper-line)', borderRadius: '12px', padding: '36px', boxShadow: 'var(--card-shadow)' }}>
           <div style={{ color: 'var(--rust)', fontSize: '32px', marginBottom: '16px' }}>🔒</div>
           <h2 style={{ fontFamily: "var(--font-sans)", fontSize: '24px', margin: '0 0 12px' }}>Administrator Access Required</h2>
           <p style={{ color: 'var(--slate)', fontSize: '14px', lineHeight: 1.6, marginBottom: '24px' }}>
@@ -978,37 +980,37 @@ export const AdminPortal: React.FC = () => {
             ) : overview ? (
               <div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '36px', alignItems: 'start' }}>
-                  <div style={{ background: 'var(--white)', border: '1px solid var(--ink)', padding: '18px', boxShadow: '3px 3px 0 var(--ink)' }}>
+                  <div className="mk-card mk-card-stat" style={{ background: 'var(--white)', border: '1.5px solid var(--paper-line)', borderRadius: '12px', padding: '18px', boxShadow: 'var(--card-shadow)' }}>
                     <div style={{ fontSize: '11px', fontFamily: "var(--font-sans)", color: 'var(--slate)', textTransform: 'uppercase' }}>Total Users</div>
                     <div style={{ fontFamily: "var(--font-sans)", fontSize: '28px', color: 'var(--ink)', margin: '6px 0 2px' }}>{overview.totalUsers}</div>
                     <div style={{ fontSize: '11px', color: 'var(--forest)' }}>{overview.totalStudents} Students • {overview.totalAdmins} Admins</div>
                   </div>
 
-                  <div style={{ background: 'var(--white)', border: '1px solid var(--ink)', padding: '18px', boxShadow: '3px 3px 0 var(--ink)' }}>
+                  <div className="mk-card mk-card-stat" style={{ background: 'var(--white)', border: '1.5px solid var(--paper-line)', borderRadius: '12px', padding: '18px', boxShadow: 'var(--card-shadow)' }}>
                     <div style={{ fontSize: '11px', fontFamily: "var(--font-sans)", color: 'var(--slate)', textTransform: 'uppercase' }}>Questions in Bank</div>
                     <div style={{ fontFamily: "var(--font-sans)", fontSize: '28px', color: 'var(--ink)', margin: '6px 0 2px' }}>{overview.totalQuestions}</div>
                     <div style={{ fontSize: '11px', color: 'var(--slate)' }}>{overview.totalPublishedQuestions} Published</div>
                   </div>
 
-                  <div style={{ background: 'var(--white)', border: '1px solid var(--ink)', padding: '18px', boxShadow: '3px 3px 0 var(--ink)' }}>
+                  <div className="mk-card mk-card-stat" style={{ background: 'var(--white)', border: '1.5px solid var(--paper-line)', borderRadius: '12px', padding: '18px', boxShadow: 'var(--card-shadow)' }}>
                     <div style={{ fontSize: '11px', fontFamily: "var(--font-sans)", color: 'var(--slate)', textTransform: 'uppercase' }}>CBT Mocks Logged</div>
                     <div style={{ fontFamily: "var(--font-sans)", fontSize: '28px', color: 'var(--rust)', margin: '6px 0 2px' }}>{overview.totalAttempts}</div>
                     <div style={{ fontSize: '11px', color: 'var(--slate)' }}>Server-timed sessions</div>
                   </div>
 
-                  <div style={{ background: 'var(--white)', border: '1px solid var(--ink)', padding: '18px', boxShadow: '3px 3px 0 var(--ink)' }}>
+                  <div className="mk-card mk-card-stat" style={{ background: 'var(--white)', border: '1.5px solid var(--paper-line)', borderRadius: '12px', padding: '18px', boxShadow: 'var(--card-shadow)' }}>
                     <div style={{ fontSize: '11px', fontFamily: "var(--font-sans)", color: 'var(--slate)', textTransform: 'uppercase' }}>Pro Subscriptions</div>
                     <div style={{ fontFamily: "var(--font-sans)", fontSize: '28px', color: 'var(--forest)', margin: '6px 0 2px' }}>{overview.activePaidSubscriptions}</div>
                     <div style={{ fontSize: '11px', color: 'var(--slate)' }}>Active candidate tiers</div>
                   </div>
 
-                  <div style={{ background: 'var(--white)', border: '1px solid var(--ink)', padding: '18px', boxShadow: '3px 3px 0 var(--ink)' }}>
+                  <div className="mk-card mk-card-stat" style={{ background: 'var(--white)', border: '1.5px solid var(--paper-line)', borderRadius: '12px', padding: '18px', boxShadow: 'var(--card-shadow)' }}>
                     <div style={{ fontSize: '11px', fontFamily: "var(--font-sans)", color: 'var(--slate)', textTransform: 'uppercase' }}>Total Revenue</div>
                     <div style={{ fontFamily: "var(--font-sans)", fontSize: '28px', color: 'var(--ink)', margin: '6px 0 2px' }}>₦{overview.totalRevenueNGN.toLocaleString()}</div>
                     <div style={{ fontSize: '11px', color: 'var(--forest)' }}>{overview.successfulPayments} verified payments</div>
                   </div>
 
-                  <div style={{ background: 'var(--white)', border: '1px solid var(--ink)', padding: '18px', boxShadow: '3px 3px 0 var(--ink)' }}>
+                  <div className="mk-card mk-card-stat" style={{ background: 'var(--white)', border: '1.5px solid var(--paper-line)', borderRadius: '12px', padding: '18px', boxShadow: 'var(--card-shadow)' }}>
                     <div style={{ fontSize: '11px', fontFamily: "var(--font-sans)", color: 'var(--slate)', textTransform: 'uppercase' }}>Curriculum Entities</div>
                     <div style={{ fontFamily: "var(--font-sans)", fontSize: '28px', color: 'var(--ink)', margin: '6px 0 2px' }}>{overview.totalExams} Boards</div>
                     <div style={{ fontSize: '11px', color: 'var(--slate)' }}>{overview.totalSubjects} Subjects • {overview.totalTopics} Topics</div>
@@ -1016,7 +1018,7 @@ export const AdminPortal: React.FC = () => {
                 </div>
 
                 {/* Recent Users List */}
-                <div style={{ background: 'var(--white)', border: '1px solid var(--ink)', padding: '24px', boxShadow: '3px 3px 0 var(--ink)' }}>
+                <div className="mk-card" style={{ background: 'var(--white)', border: '1.5px solid var(--paper-line)', borderRadius: '12px', padding: '24px', boxShadow: 'var(--card-shadow)' }}>
                   <h3 style={{ fontFamily: "var(--font-sans)", fontSize: '18px', margin: '0 0 16px' }}>Recently Registered Accounts</h3>
                   <div style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
@@ -1058,7 +1060,7 @@ export const AdminPortal: React.FC = () => {
 
         {/* TAB 2: USERS DIRECTORY */}
         {activeTab === 'USERS' && (
-          <div style={{ background: 'var(--white)', border: '1px solid var(--ink)', padding: '24px', boxShadow: '3px 3px 0 var(--ink)' }}>
+          <div className="mk-card" style={{ background: 'var(--white)', border: '1.5px solid var(--paper-line)', borderRadius: '12px', padding: '24px', boxShadow: 'var(--card-shadow)' }}>
             <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
               <div>
                 <h2 style={{ fontFamily: "var(--font-sans)", fontSize: '20px', margin: '0 0 4px' }}>User Directory & Access Controls</h2>
@@ -1170,7 +1172,7 @@ export const AdminPortal: React.FC = () => {
         {activeTab === 'CURRICULUM' && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: '24px', alignItems: 'start' }}>
             {/* Create Exam Form */}
-            <div style={{ background: 'var(--white)', border: '1px solid var(--ink)', padding: '24px', boxShadow: '3px 3px 0 var(--ink)' }}>
+            <div className="mk-card" style={{ background: 'var(--white)', border: '1.5px solid var(--paper-line)', borderRadius: '12px', padding: '24px', boxShadow: 'var(--card-shadow)' }}>
               <h3 style={{ fontFamily: "var(--font-sans)", fontSize: '18px', margin: '0 0 16px' }}>Create Examination Board</h3>
               <form onSubmit={handleCreateExam}>
                 <div style={{ marginBottom: '12px' }}>
@@ -1193,60 +1195,60 @@ export const AdminPortal: React.FC = () => {
                   <label style={{ display: 'block', fontSize: '11px', fontFamily: "var(--font-sans)", marginBottom: '4px' }}>Syllabus Session</label>
                   <input type="text" required value={examSyllabusYear} onChange={(e) => setExamSyllabusYear(e.target.value)} placeholder="2025/2026" style={{ width: '100%', padding: '8px', border: '1px solid var(--ink)' }} />
                 </div>
-                <button type="submit" disabled={createExamMutation.isPending} style={{ width: '100%', padding: '10px', background: 'var(--ink)', color: '#fff', border: 'none', fontFamily: "var(--font-sans)", fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
+                <button type="submit" disabled={createExamMutation.isPending} style={{ width: '100%', padding: '10px', background: 'var(--ink)', color: 'var(--white)', border: 'none', borderRadius: '8px', fontFamily: "var(--font-sans)", fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
                   {createExamMutation.isPending ? 'Saving...' : 'Add Examination Board +'}
                 </button>
               </form>
             </div>
 
             {/* Create Subject Form */}
-            <div style={{ background: 'var(--white)', border: '1px solid var(--ink)', padding: '24px', boxShadow: '3px 3px 0 var(--ink)' }}>
+            <div className="mk-card" style={{ background: 'var(--white)', border: '1.5px solid var(--paper-line)', borderRadius: '12px', padding: '24px', boxShadow: 'var(--card-shadow)' }}>
               <h3 style={{ fontFamily: "var(--font-sans)", fontSize: '18px', margin: '0 0 16px' }}>Add Subject</h3>
               <form onSubmit={handleCreateSubject}>
                 <div style={{ marginBottom: '12px' }}>
                   <label style={{ display: 'block', fontSize: '11px', fontFamily: "var(--font-sans)", marginBottom: '4px' }}>Select Examination Board</label>
-                  <select required value={subjectExamId} onChange={(e) => setSubjectExamId(e.target.value)} style={{ width: '100%', padding: '8px', border: '1px solid var(--ink)' }}>
+                  <select required value={subjectExamId} onChange={(e) => setSubjectExamId(e.target.value)} style={{ width: '100%', padding: '8px', border: '1px solid var(--paper-line)', borderRadius: '8px' }}>
                     <option value="">-- Choose Board --</option>
                     {exams?.map((e: ExamItem) => <option key={e._id} value={e._id}>{e.shortCode} — {e.name}</option>)}
                   </select>
                 </div>
                 <div style={{ marginBottom: '12px' }}>
                   <label style={{ display: 'block', fontSize: '11px', fontFamily: "var(--font-sans)", marginBottom: '4px' }}>Subject Name</label>
-                  <input type="text" required value={subjectName} onChange={(e) => setSubjectName(e.target.value)} placeholder="e.g. Further Mathematics" style={{ width: '100%', padding: '8px', border: '1px solid var(--ink)' }} />
+                  <input type="text" required value={subjectName} onChange={(e) => setSubjectName(e.target.value)} placeholder="e.g. Further Mathematics" style={{ width: '100%', padding: '8px', border: '1px solid var(--paper-line)', borderRadius: '8px' }} />
                 </div>
                 <div style={{ marginBottom: '16px' }}>
                   <label style={{ display: 'block', fontSize: '11px', fontFamily: "var(--font-sans)", marginBottom: '4px' }}>Subject Code</label>
-                  <input type="text" required value={subjectCode} onChange={(e) => setSubjectCode(e.target.value)} placeholder="e.g. FMTH" style={{ width: '100%', padding: '8px', border: '1px solid var(--ink)' }} />
+                  <input type="text" required value={subjectCode} onChange={(e) => setSubjectCode(e.target.value)} placeholder="e.g. FMTH" style={{ width: '100%', padding: '8px', border: '1px solid var(--paper-line)', borderRadius: '8px' }} />
                 </div>
-                <button type="submit" disabled={createSubjectMutation.isPending} style={{ width: '100%', padding: '10px', background: 'var(--ink)', color: '#fff', border: 'none', fontFamily: "var(--font-sans)", fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
+                <button type="submit" disabled={createSubjectMutation.isPending} style={{ width: '100%', padding: '10px', background: 'var(--ink)', color: 'var(--white)', border: 'none', borderRadius: '8px', fontFamily: "var(--font-sans)", fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
                   {createSubjectMutation.isPending ? 'Saving...' : 'Add Subject +'}
                 </button>
               </form>
             </div>
 
             {/* Create Topic Form */}
-            <div style={{ background: 'var(--white)', border: '1px solid var(--ink)', padding: '24px', boxShadow: '3px 3px 0 var(--ink)' }}>
+            <div className="mk-card" style={{ background: 'var(--white)', border: '1.5px solid var(--paper-line)', borderRadius: '12px', padding: '24px', boxShadow: 'var(--card-shadow)' }}>
               <h3 style={{ fontFamily: "var(--font-sans)", fontSize: '18px', margin: '0 0 16px' }}>Add Syllabus Topic</h3>
               <form onSubmit={handleCreateTopic}>
                 <div style={{ marginBottom: '12px' }}>
                   <label style={{ display: 'block', fontSize: '11px', fontFamily: "var(--font-sans)", marginBottom: '4px' }}>Select Subject</label>
-                  <select required value={topicSubjectId} onChange={(e) => setTopicSubjectId(e.target.value)} style={{ width: '100%', padding: '8px', border: '1px solid var(--ink)' }}>
+                  <select required value={topicSubjectId} onChange={(e) => setTopicSubjectId(e.target.value)} style={{ width: '100%', padding: '8px', border: '1px solid var(--paper-line)', borderRadius: '8px' }}>
                     <option value="">-- Choose Subject --</option>
                     {curriculumSubjects?.map((s: SubjectItem) => <option key={s._id} value={s._id}>{s.name} ({s.code})</option>)}
                   </select>
                 </div>
                 <div style={{ marginBottom: '16px' }}>
                   <label style={{ display: 'block', fontSize: '11px', fontFamily: "var(--font-sans)", marginBottom: '4px' }}>Topic Title</label>
-                  <input type="text" required value={topicName} onChange={(e) => setTopicName(e.target.value)} placeholder="e.g. Matrices & Transformations" style={{ width: '100%', padding: '8px', border: '1px solid var(--ink)' }} />
+                  <input type="text" required value={topicName} onChange={(e) => setTopicName(e.target.value)} placeholder="e.g. Matrices & Transformations" style={{ width: '100%', padding: '8px', border: '1px solid var(--paper-line)', borderRadius: '8px' }} />
                 </div>
-                <button type="submit" disabled={createTopicMutation.isPending} style={{ width: '100%', padding: '10px', background: 'var(--ink)', color: '#fff', border: 'none', fontFamily: "var(--font-sans)", fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
+                <button type="submit" disabled={createTopicMutation.isPending} style={{ width: '100%', padding: '10px', background: 'var(--ink)', color: 'var(--white)', border: 'none', borderRadius: '8px', fontFamily: "var(--font-sans)", fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
                   {createTopicMutation.isPending ? 'Saving...' : 'Add Topic +'}
                 </button>
               </form>
             </div>
 
             {/* List Existing Exams and Curriculum Structure */}
-            <div style={{ background: 'var(--white)', border: '1px solid var(--ink)', padding: '24px', boxShadow: '3px 3px 0 var(--ink)', gridColumn: '1 / -1' }}>
+            <div className="mk-card" style={{ background: 'var(--white)', border: '1.5px solid var(--paper-line)', borderRadius: '12px', padding: '24px', boxShadow: 'var(--card-shadow)', gridColumn: '1 / -1' }}>
               <h3 style={{ fontFamily: "var(--font-sans)", fontSize: '18px', margin: '0 0 16px' }}>Accredited Examination Boards</h3>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 260px), 1fr))', gap: '16px', alignItems: 'start' }}>
                 {exams?.map((exam: ExamItem) => (
@@ -1445,7 +1447,7 @@ export const AdminPortal: React.FC = () => {
                     type="button"
                     disabled={triggerSyncMutation.isPending}
                     onClick={handleTriggerFullSync}
-                    style={{ width: '100%', padding: '8px 16px', background: 'var(--ink)', border: '1px solid var(--ink)', color: '#fff', fontWeight: 600, cursor: 'pointer', fontFamily: "var(--font-sans)", fontSize: '12px' }}
+                    style={{ width: '100%', padding: '8px 16px', background: 'var(--ink)', border: '1px solid var(--paper-line)', color: 'var(--white)', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', fontFamily: "var(--font-sans)", fontSize: '12px' }}
                   >
                     {triggerSyncMutation.isPending ? '⏳ Running...' : '⚡ Full Cycle Sync'}
                   </button>
@@ -1529,7 +1531,7 @@ export const AdminPortal: React.FC = () => {
             </div>
 
 
-            <div style={{ background: 'var(--white)', border: '1px solid var(--ink)', padding: '24px', boxShadow: '3px 3px 0 var(--ink)' }}>
+            <div className="mk-card" style={{ background: 'var(--white)', border: '1.5px solid var(--paper-line)', borderRadius: '12px', padding: '24px', boxShadow: 'var(--card-shadow)' }}>
               <h3 style={{ fontFamily: "var(--font-sans)", fontSize: '18px', margin: '0 0 16px' }}>Create Past Question</h3>
               <form onSubmit={handleCreateQuestion}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '16px' }}>
@@ -1620,7 +1622,7 @@ export const AdminPortal: React.FC = () => {
             </div>
 
             {/* List Questions with Search, Filter & Edit Modal (Req 41, 46-51) */}
-            <div style={{ background: 'var(--white)', border: '1px solid var(--ink)', padding: '24px', boxShadow: '3px 3px 0 var(--ink)' }}>
+            <div className="mk-card" style={{ background: 'var(--white)', border: '1.5px solid var(--paper-line)', borderRadius: '12px', padding: '24px', boxShadow: 'var(--card-shadow)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
                 <h3 style={{ fontFamily: "var(--font-sans)", fontSize: '18px', margin: 0 }}>
                   Question Bank Archive ({questionsList?.pagination?.total || 0} Total Entries)
@@ -1899,7 +1901,7 @@ export const AdminPortal: React.FC = () => {
         {/* TAB 5: STUDY MATERIALS */}
         {activeTab === 'MATERIALS' && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: '24px', alignItems: 'start' }}>
-            <div style={{ background: 'var(--white)', border: '1px solid var(--ink)', padding: '24px', boxShadow: '3px 3px 0 var(--ink)' }}>
+            <div className="mk-card" style={{ background: 'var(--white)', border: '1.5px solid var(--paper-line)', borderRadius: '12px', padding: '24px', boxShadow: 'var(--card-shadow)' }}>
               <h3 style={{ fontFamily: "var(--font-sans)", fontSize: '18px', margin: '0 0 16px' }}>Upload Revision Guide (PDF Only)</h3>
               <form onSubmit={handleUploadMaterial}>
                 <div style={{ marginBottom: '12px' }}>
@@ -1938,7 +1940,7 @@ export const AdminPortal: React.FC = () => {
                   </label>
                 </div>
 
-                <button type="submit" disabled={uploadMaterialMutation.isPending || createMaterialMutation.isPending} style={{ width: '100%', padding: '12px', background: 'var(--ink)', color: '#fff', border: 'none', fontFamily: "var(--font-sans)", fontSize: '12.5px', fontWeight: 700, cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                <button type="submit" disabled={uploadMaterialMutation.isPending || createMaterialMutation.isPending} style={{ width: '100%', padding: '12px', background: 'var(--ink)', color: 'var(--white)', border: 'none', borderRadius: '8px', fontFamily: "var(--font-sans)", fontSize: '12.5px', fontWeight: 700, cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                   {uploadMaterialMutation.isPending || createMaterialMutation.isPending ? (
                     <BrandLoader mode="inline" size="sm" message="Validating & Uploading..." />
                   ) : (
@@ -1949,7 +1951,7 @@ export const AdminPortal: React.FC = () => {
             </div>
 
             {/* List Published Materials */}
-            <div style={{ background: 'var(--white)', border: '1px solid var(--ink)', padding: '24px', boxShadow: '3px 3px 0 var(--ink)' }}>
+            <div className="mk-card" style={{ background: 'var(--white)', border: '1.5px solid var(--paper-line)', borderRadius: '12px', padding: '24px', boxShadow: 'var(--card-shadow)' }}>
               <h3 style={{ fontFamily: "var(--font-sans)", fontSize: '18px', margin: '0 0 16px' }}>Curated Study Materials</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {materialsList?.map((m: StudyMaterialItem) => (
@@ -2008,7 +2010,7 @@ export const AdminPortal: React.FC = () => {
         {activeTab === 'PAYMENTS' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             {/* Dynamic Receiving Bank Account Configuration Card */}
-            <div style={{ background: 'var(--white)', border: '1.5px solid var(--ink)', padding: '28px', boxShadow: '4px 4px 0 var(--ink)' }}>
+            <div className="mk-card" style={{ background: 'var(--white)', border: '1.5px solid var(--paper-line)', borderRadius: '12px', padding: '28px', boxShadow: 'var(--card-shadow)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', marginBottom: '20px' }}>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
@@ -2160,7 +2162,7 @@ export const AdminPortal: React.FC = () => {
             </div>
 
             {/* Manual Bank Transfer Verifications Card */}
-            <div style={{ background: 'var(--white)', border: '1px solid var(--ink)', padding: '24px', boxShadow: '3px 3px 0 var(--ink)' }}>
+            <div className="mk-card" style={{ background: 'var(--white)', border: '1.5px solid var(--paper-line)', borderRadius: '12px', padding: '24px', boxShadow: 'var(--card-shadow)' }}>
               <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
                 <div>
                   <h3 style={{ fontFamily: "var(--font-sans)", fontSize: '20px', margin: '0 0 6px', color: 'var(--ink)' }}>
@@ -3212,7 +3214,7 @@ export const AdminPortal: React.FC = () => {
         {activeTab === 'TICKETS' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             {/* Header & Metrics */}
-            <div style={{ background: 'var(--white)', border: '1px solid var(--ink)', padding: '24px', boxShadow: '3px 3px 0 var(--ink)' }}>
+            <div className="mk-card" style={{ background: 'var(--white)', border: '1.5px solid var(--paper-line)', borderRadius: '12px', padding: '24px', boxShadow: 'var(--card-shadow)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', marginBottom: '20px', borderBottom: '1.5px solid var(--ink)', paddingBottom: '16px' }}>
                 <div>
                   <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
@@ -3307,7 +3309,7 @@ export const AdminPortal: React.FC = () => {
             </div>
 
             {/* Tickets Table */}
-            <div style={{ background: 'var(--white)', border: '1px solid var(--ink)', boxShadow: '3px 3px 0 var(--ink)', overflowX: 'auto' }}>
+            <div className="mk-card" style={{ background: 'var(--white)', border: '1.5px solid var(--paper-line)', borderRadius: '12px', boxShadow: 'var(--card-shadow)', overflowX: 'auto' }}>
               {ticketsLoading ? (
                 <div style={{ padding: '48px', textAlign: 'center' }}>
                   <BrandLoader mode="inline" size="md" message="Loading support inquiries from MongoDB..." />
@@ -3657,7 +3659,7 @@ export const AdminPortal: React.FC = () => {
         {/* ======================================================== */}
         {activeTab === 'SETTINGS' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-            <div style={{ background: 'var(--white)', border: '1px solid var(--ink)', padding: '28px', boxShadow: '3px 3px 0 var(--ink)' }}>
+            <div className="mk-card" style={{ background: 'var(--white)', border: '1.5px solid var(--paper-line)', borderRadius: '12px', padding: '28px', boxShadow: 'var(--card-shadow)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', marginBottom: '24px', borderBottom: '1.5px solid var(--ink)', paddingBottom: '16px' }}>
 
                 <div>
@@ -4060,6 +4062,113 @@ export const AdminPortal: React.FC = () => {
                   </div>
                 </div>
               )}
+            </div>
+
+            {/* Legal & Student Terms & Conditions Management Card */}
+            <div className="mk-card" style={{ background: 'var(--white)', border: '1.5px solid var(--paper-line)', borderRadius: '12px', padding: '28px', boxShadow: 'var(--card-shadow)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', marginBottom: '24px', borderBottom: '1.5px solid var(--ink)', paddingBottom: '16px' }}>
+                <div>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                    <span style={{ fontSize: '20px' }}>📜</span>
+                    <h2 style={{ fontFamily: "var(--font-sans)", fontSize: '22px', margin: 0, color: 'var(--ink)' }}>
+                      Legal &amp; Student Terms &amp; Conditions
+                    </h2>
+                  </div>
+                  <p style={{ color: 'var(--slate)', fontSize: '13.5px', margin: 0, maxWidth: '800px', lineHeight: 1.5 }}>
+                    Governing terms for student examination sessions, misconduct disclaimers, timing rules, and intellectual property. The 14-section Student Terms &amp; Conditions is strictly enforced prior to initiating any CBT session.
+                  </p>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <a
+                    href="/terms"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-custom btn-custom-ghost"
+                    style={{ padding: '6px 14px', fontSize: '12px' }}
+                  >
+                    View Live Terms Page ↗
+                  </a>
+                  <span
+                    style={{
+                      fontSize: '11px',
+                      padding: '4px 10px',
+                      borderRadius: '3px',
+                      fontWeight: 700,
+                      background: 'var(--forest-soft)',
+                      color: 'var(--forest)',
+                      border: '1px solid var(--forest)',
+                    }}
+                  >
+                    ● Version 1.0 Active &amp; Enforced
+                  </span>
+                </div>
+              </div>
+
+              {/* Terms Overview Metrics */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+                <div style={{ padding: '16px', border: '1px solid var(--paper-line)', borderRadius: '6px', background: 'var(--paper)' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--ink-soft)', textTransform: 'uppercase', fontWeight: 700 }}>Active Document</span>
+                  <div style={{ fontSize: '15px', fontWeight: 700, marginTop: '4px', color: 'var(--ink)' }}>Student Terms &amp; Conditions</div>
+                  <span style={{ fontSize: '12px', color: 'var(--forest)', fontWeight: 600 }}>14 Sections · 6 Declaration Pledges</span>
+                </div>
+                <div style={{ padding: '16px', border: '1px solid var(--paper-line)', borderRadius: '6px', background: 'var(--paper)' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--ink-soft)', textTransform: 'uppercase', fontWeight: 700 }}>Total Student Acceptances</span>
+                  <div style={{ fontSize: '22px', fontWeight: 800, marginTop: '4px', color: 'var(--ink)' }}>
+                    {termsAudit?.totalAcceptances ?? 0}
+                  </div>
+                  <span style={{ fontSize: '12px', color: 'var(--ink-soft)' }}>Across all versions</span>
+                </div>
+                <div style={{ padding: '16px', border: '1px solid var(--paper-line)', borderRadius: '6px', background: 'var(--paper)' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--ink-soft)', textTransform: 'uppercase', fontWeight: 700 }}>Current Version (v1.0)</span>
+                  <div style={{ fontSize: '22px', fontWeight: 800, marginTop: '4px', color: 'var(--forest)' }}>
+                    {termsAudit?.currentVersionAcceptances ?? 0}
+                  </div>
+                  <span style={{ fontSize: '12px', color: 'var(--ink-soft)' }}>CBT-ready students</span>
+                </div>
+              </div>
+
+              {/* Recent Acceptances Audit Log */}
+              <div>
+                <h3 style={{ fontSize: '15px', margin: '0 0 12px', color: 'var(--ink)', fontFamily: 'var(--font-sans)' }}>
+                  Recent Student Terms Acceptance Audit Log
+                </h3>
+                {termsAuditLoading ? (
+                  <div style={{ padding: '24px', textAlign: 'center' }}>
+                    <BrandLoader mode="inline" size="sm" message="Loading terms acceptance audit records..." />
+                  </div>
+                ) : !termsAudit?.recentAcceptances || termsAudit.recentAcceptances.length === 0 ? (
+                  <div style={{ padding: '24px', textAlign: 'center', backgroundColor: 'var(--paper)', borderRadius: '6px', border: '1px dashed var(--paper-line)', fontSize: '13px', color: 'var(--ink-soft)' }}>
+                    No terms acceptance audit records recorded yet. Acceptance is recorded when students launch a CBT attempt.
+                  </div>
+                ) : (
+                  <div style={{ overflowX: 'auto', border: '1px solid var(--paper-line)', borderRadius: '6px' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12.5px', textAlign: 'left' }}>
+                      <thead>
+                        <tr style={{ backgroundColor: 'var(--paper)', borderBottom: '1px solid var(--paper-line)' }}>
+                          <th style={{ padding: '10px 14px', color: 'var(--ink)' }}>Student</th>
+                          <th style={{ padding: '10px 14px', color: 'var(--ink)' }}>Email</th>
+                          <th style={{ padding: '10px 14px', color: 'var(--ink)' }}>Version</th>
+                          <th style={{ padding: '10px 14px', color: 'var(--ink)' }}>Accepted At</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {termsAudit.recentAcceptances.map((rec) => (
+                          <tr key={rec._id} style={{ borderBottom: '1px solid var(--paper-line)' }}>
+                            <td style={{ padding: '10px 14px', fontWeight: 600, color: 'var(--ink)' }}>{rec.userId?.fullName || 'Student'}</td>
+                            <td style={{ padding: '10px 14px', color: 'var(--ink-soft)' }}>{rec.userId?.email || '—'}</td>
+                            <td style={{ padding: '10px 14px' }}>
+                              <span style={{ padding: '2px 6px', borderRadius: '3px', backgroundColor: 'var(--forest-soft)', color: 'var(--forest)', fontWeight: 700, fontSize: '11px' }}>
+                                v{rec.termsVersion}
+                              </span>
+                            </td>
+                            <td style={{ padding: '10px 14px', color: 'var(--ink-soft)' }}>{new Date(rec.acceptedAt).toLocaleString()}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}

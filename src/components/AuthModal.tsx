@@ -295,7 +295,20 @@ export const AuthModal: React.FC = () => {
               gap: '6px',
             }}>
               {isSignUp ? (
-                'NO CREDIT CARD REQUIRED · INSTANT ACCESS'
+                <>
+                  <span>NO CREDIT CARD REQUIRED · INSTANT ACCESS</span>
+                  <span style={{ display: 'block', width: '100%', marginTop: '4px', fontSize: '11px', color: 'var(--ink-soft)' }}>
+                    By signing up, you agree to our{' '}
+                    <a
+                      href="/terms"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ color: 'var(--forest)', textDecoration: 'underline' }}
+                    >
+                      Terms &amp; Conditions
+                    </a>
+                  </span>
+                </>
               ) : (
                 <>
                   <LockOutlinedIcon style={{ fontSize: '14px', color: 'var(--forest)' }} />

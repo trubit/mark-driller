@@ -1,5 +1,5 @@
 import React from 'react';
-import { useSupportContactQuery, buildWhatsAppLink, buildTelLink, buildMailtoLink, isWhatsAppNumberValid } from '../api/supportContact.js';
+import { useSupportContactQuery, buildWhatsAppWebLink, buildTelLink, buildMailtoLink, isWhatsAppNumberValid } from '../api/supportContact.js';
 
 export const SupportSection: React.FC = () => {
   const { data: support } = useSupportContactQuery();
@@ -14,7 +14,7 @@ export const SupportSection: React.FC = () => {
   const workingHours = support?.workingHours || 'Monday – Saturday, 8:00 AM to 8:00 PM WAT';
 
   const isWhatsAppLive = isWhatsAppEnabled && isWhatsAppNumberValid(whatsappNum);
-  const whatsappUrl = buildWhatsAppLink(whatsappNum, 'Hello MarkDriller Support, I need assistance with CBT practice / activation.');
+  const whatsappUrl = buildWhatsAppWebLink(whatsappNum, 'Hello MarkDriller Support, I need assistance with CBT practice / activation.');
 
   return (
     <section className="section" id="support" aria-label="Customer and Institutional Support">

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useExamsQuery, useExamSubjectsQuery, useSubjectTopicsQuery } from '../api/exams.js';
-import { useStartCbtMutation } from '../api/cbt.js';
+import { useStartCbtMutation, useCbtTrialStatusQuery } from '../api/cbt.js';
 import { useMySubscriptionQuery } from '../api/subscriptions.js';
+import { useTermsStatusQuery } from '../api/terms.js';
 import { useAuthStore } from '../store/useAuthStore.js';
 
 interface CbtSetupModalProps {
@@ -11,7 +12,6 @@ interface CbtSetupModalProps {
   defaultExamId?: string;
   defaultSubjectId?: string;
   defaultTopicId?: string;
-  defaultMode?: 'TIMED_MOCK' | 'PRACTICE' | 'STUDY';
 }
 
 type DrillScope = 'SINGLE' | 'MULTI' | 'BOOKMARKS';
@@ -24,14 +24,19 @@ export const CbtSetupModal: React.FC<CbtSetupModalProps> = ({
   defaultExamId,
   defaultSubjectId,
   defaultTopicId,
-  defaultMode = 'TIMED_MOCK',
 }) => {
   const navigate = useNavigate();
   const { user: authUser } = useAuthStore();
   const { data: currentSub } = useMySubscriptionQuery();
+  const { data: trialStatus } = useCbtTrialStatusQuery();
   const { data: exams } = useExamsQuery();
 
   const isPro = Boolean(currentSub?.isPro || authUser?.role === 'ADMIN');
+  const freeTrial = trialStatus || currentSub?.freeTrial;
+  const trialsAllowed = 3;
+  const trialsUsed = freeTrial?.used ?? 0;
+  const trialsRemaining = isPro ? 3 : Math.max(0, trialsAllowed - trialsUsed);
+  const isTrialExhausted = !isPro && (freeTrial?.isExhausted || trialsUsed >= trialsAllowed);
 
   const [drillScope, setDrillScope] = useState<DrillScope>(defaultTopicId ? 'SINGLE' : 'SINGLE');
   const [selectedExamId, setSelectedExamId] = useState(defaultExamId || '');
@@ -40,18 +45,54 @@ export const CbtSetupModal: React.FC<CbtSetupModalProps> = ({
   const [selectedTopicId, setSelectedTopicId] = useState(defaultTopicId || '');
   
   // Year Selection: Single, Multiple, or All
-  const [selectedYears, setSelectedYears] = useState<number[]>([2025]);
+  const [selectedYears, setSelectedYears] = useState<number[]>([2024]);
   const [allYears, setAllYears] = useState(false);
+  const [shuffleOptions, setShuffleOptions] = useState(true);
 
   // Difficulty & Ordering
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('ALL');
   const [questionOrder, setQuestionOrder] = useState<'NORMAL' | 'SHUFFLE' | 'RANDOM'>('NORMAL');
 
-  // Mode: Practice, Study, Exam (Timed Mock)
-  const [mode, setMode] = useState<'TIMED_MOCK' | 'PRACTICE' | 'STUDY'>(defaultMode);
   const [durationMinutes, setDurationMinutes] = useState(30);
   const [questionCount, setQuestionCount] = useState(20);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Student Terms & Conditions Declaration State
+  const { data: termsStatus } = useTermsStatusQuery();
+
+  const [declaration, setDeclaration] = useState({
+    readAndUnderstood: false,
+    followInstructions: false,
+    antiCheating: false,
+    understandConsequences: false,
+    accurateInformation: false,
+    lawfulUse: false,
+  });
+
+  const isTermsAlreadyAccepted = Boolean(termsStatus?.hasAccepted);
+  const isAllDeclarationChecked =
+    declaration.readAndUnderstood &&
+    declaration.followInstructions &&
+    declaration.antiCheating &&
+    declaration.understandConsequences &&
+    declaration.accurateInformation &&
+    declaration.lawfulUse;
+
+  const handleToggleDeclarationItem = (key: keyof typeof declaration) => {
+    setDeclaration((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const handleSelectAllDeclaration = () => {
+    const nextVal = !isAllDeclarationChecked;
+    setDeclaration({
+      readAndUnderstood: nextVal,
+      followInstructions: nextVal,
+      antiCheating: nextVal,
+      understandConsequences: nextVal,
+      accurateInformation: nextVal,
+      lawfulUse: nextVal,
+    });
+  };
 
   // Sync default props when modal opens
   useEffect(() => {
@@ -62,10 +103,9 @@ export const CbtSetupModal: React.FC<CbtSetupModalProps> = ({
         setSelectedTopicId(defaultTopicId);
         setDrillScope('SINGLE');
       }
-      if (defaultMode) setMode(defaultMode);
       setErrorMessage(null);
     }
-  }, [isOpen, defaultExamId, defaultSubjectId, defaultTopicId, defaultMode]);
+  }, [isOpen, defaultExamId, defaultSubjectId, defaultTopicId]);
 
   // Keep selected exam valid
   useEffect(() => {
@@ -116,7 +156,15 @@ export const CbtSetupModal: React.FC<CbtSetupModalProps> = ({
   };
 
   const handleToggleYear = (year: number) => {
+    if (!isPro && year !== 2024) {
+      setErrorMessage(`Year ${year} is locked. Free Trial currently includes questions from 2024 only. Upgrade to Pro to unlock additional years (2015–2025).`);
+      return;
+    }
     setAllYears(false);
+    if (!isPro) {
+      setSelectedYears([2024]);
+      return;
+    }
     if (selectedYears.includes(year)) {
       if (selectedYears.length > 1) {
         setSelectedYears((prev) => prev.filter((y) => y !== year));
@@ -127,6 +175,10 @@ export const CbtSetupModal: React.FC<CbtSetupModalProps> = ({
   };
 
   const handleSelectAllYears = () => {
+    if (!isPro) {
+      setErrorMessage('Selecting all archive years requires MarkDriller Pro. Free accounts include 2024 past questions. Upgrade to Pro to pool all archive years (2015–2025).');
+      return;
+    }
     setAllYears((prev) => !prev);
     if (!allYears) {
       setSelectedYears(AVAILABLE_YEARS);
@@ -137,11 +189,10 @@ export const CbtSetupModal: React.FC<CbtSetupModalProps> = ({
     e.preventDefault();
     setErrorMessage(null);
 
-    if (!isPro) {
-      setErrorMessage('Exam Mode, Practice Mode, and Study Mode require an active MarkDriller Pro subscription. Upgrade to Pro to launch CBT sessions.');
+    if (isTrialExhausted) {
+      setErrorMessage('Your 3 free trials have been used. Upgrade to MarkDriller Pro to continue.');
       return;
     }
-
 
     if (!selectedExamId) {
       setErrorMessage('Please select an active examination board.');
@@ -158,14 +209,24 @@ export const CbtSetupModal: React.FC<CbtSetupModalProps> = ({
       return;
     }
 
+    if (!isTermsAlreadyAccepted && !isAllDeclarationChecked) {
+      setErrorMessage('Please review and check all items of the Student Declaration to agree to the Terms & Conditions before starting your test.');
+      return;
+    }
+
     try {
       const payload: any = {
         examId: selectedExamId,
-        mode,
         durationMinutes,
         questionCount,
         questionOrder,
+        shuffleOptions,
       };
+
+      if (!isTermsAlreadyAccepted) {
+        payload.declarationAccepted = true;
+        payload.declarationChecklist = declaration;
+      }
 
       if (drillScope === 'BOOKMARKS') {
         payload.onlyBookmarked = true;
@@ -175,7 +236,9 @@ export const CbtSetupModal: React.FC<CbtSetupModalProps> = ({
         payload.subjectId = selectedSubjectId;
         if (selectedTopicId) payload.topicId = selectedTopicId;
 
-        if (allYears) {
+        if (!isPro) {
+          payload.year = 2024;
+        } else if (allYears) {
           payload.allYears = true;
         } else if (selectedYears.length === 1) {
           payload.year = selectedYears[0];
@@ -275,7 +338,7 @@ export const CbtSetupModal: React.FC<CbtSetupModalProps> = ({
           Configure Examination Session
         </h2>
         <p style={{ fontSize: '13.5px', color: 'var(--ink-soft)', margin: '0 0 18px', lineHeight: 1.5 }}>
-          Launch a targeted topic drill, study mode with worked solutions, or full timed CBT simulation.
+          Official Computer-Based Testing simulation for Nigerian examinations (JAMB UTME, WAEC, NECO).
         </p>
 
         {errorMessage && (
@@ -298,133 +361,119 @@ export const CbtSetupModal: React.FC<CbtSetupModalProps> = ({
           </div>
         )}
 
-        {!isPro && (
+        {/* Free Trial / Pro Subscription Status Banner */}
+        {!isPro ? (
+          isTrialExhausted ? (
+            <div
+              style={{
+                padding: '16px 18px',
+                backgroundColor: 'var(--rust-soft, rgba(168, 86, 47, 0.12))',
+                border: '1.5px solid var(--rust, #a8562f)',
+                borderRadius: '8px',
+                marginBottom: '18px',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                    <span style={{ fontSize: '16px' }}>🔒</span>
+                    <strong style={{ color: 'var(--rust)', fontSize: '14px', fontFamily: 'var(--font-sans)', letterSpacing: '0.04em' }}>
+                      FREE TRIAL ENDED (3 OF 3 TRIALS USED)
+                    </strong>
+                  </div>
+                  <p style={{ margin: '0 0 6px', fontSize: '13.5px', color: 'var(--ink)', fontWeight: 600 }}>
+                    Your 3 free trials have been used. Upgrade to Pro to continue.
+                  </p>
+                  <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '12px', color: 'var(--ink-soft)', lineHeight: 1.5 }}>
+                    <li>Unlimited CBT examinations across JAMB, WAEC, NECO &amp; Post-UTME</li>
+                    <li>Full question archive across all years (2015–2025) fully unlocked</li>
+                    <li>Detailed step-by-step worked solutions on result slip</li>
+                  </ul>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    navigate('/portal/pricing');
+                  }}
+                  className="btn-custom btn-custom-primary"
+                  style={{ padding: '10px 18px', fontSize: '13px', fontWeight: 700 }}
+                >
+                  Upgrade to Pro Now ➔
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div
+              style={{
+                padding: '14px 18px',
+                backgroundColor: 'var(--paper)',
+                border: '1.5px solid var(--paper-line)',
+                borderRadius: '8px',
+                marginBottom: '18px',
+                boxShadow: 'var(--shadow)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                    <span
+                      style={{
+                        fontSize: '11px',
+                        fontFamily: 'var(--font-sans)',
+                        fontWeight: 800,
+                        backgroundColor: 'var(--rust-soft)',
+                        color: 'var(--rust)',
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        letterSpacing: '0.05em',
+                      }}
+                    >
+                      FREE TRIAL
+                    </span>
+                    <strong style={{ fontSize: '13px', color: 'var(--ink)' }}>
+                      {trialsRemaining === 1 ? '1 trial remaining' : `${trialsRemaining} of ${trialsAllowed} trials remaining`}
+                    </strong>
+                  </div>
+                  <p style={{ margin: 0, fontSize: '12px', color: 'var(--ink-soft)', lineHeight: 1.4 }}>
+                    Free Trial currently includes questions from 2024 only. Upgrade to Pro to unlock additional years and unlimited tests.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    navigate('/portal/pricing');
+                  }}
+                  className="btn-custom btn-custom-ghost"
+                  style={{ fontSize: '12px', padding: '6px 12px', color: 'var(--rust)', borderColor: 'var(--rust)' }}
+                >
+                  Upgrade to Pro →
+                </button>
+              </div>
+            </div>
+          )
+        ) : (
           <div
             style={{
-              padding: '12px 16px',
-              backgroundColor: 'rgba(168, 86, 47, 0.08)',
-              border: '1.5px solid var(--rust)',
-              borderRadius: '4px',
+              padding: '10px 14px',
+              backgroundColor: 'var(--forest-soft, rgba(34, 90, 56, 0.12))',
+              border: '1px solid var(--forest, #225a38)',
+              borderRadius: '6px',
               marginBottom: '16px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              flexWrap: 'wrap',
               gap: '10px',
             }}
           >
-            <div>
-              <strong style={{ color: 'var(--rust)', display: 'block', fontSize: '13px' }}>
-                🔒 Pro Subscription Required
-              </strong>
-              <span style={{ fontSize: '12px', color: 'var(--ink)' }}>
-                Exam Mode, Practice Mode, and Study Mode are locked for Free Trial users.
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                onClose();
-                navigate('/portal/pricing');
-              }}
-              className="btn-custom btn-custom-primary"
-              style={{ backgroundColor: 'var(--rust)', color: '#fff', fontSize: '12px', padding: '6px 14px' }}
-            >
-              Upgrade to Pro →
-            </button>
+            <span style={{ fontSize: '12.5px', color: 'var(--forest)', fontWeight: 600 }}>
+              ★ MarkDriller Pro Active: Unlimited examinations and all past question years (2015–2025) unlocked.
+            </span>
           </div>
         )}
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {/* 1. Mode Selection: Practice, Study, Exam */}
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-              <span style={{ fontSize: '11px', fontFamily: 'var(--font-sans)', color: 'var(--ink)', fontWeight: 700 }}>
-                LEARNING &amp; EXAMINATION MODE *
-              </span>
-              {!isPro && (
-                <span style={{ fontSize: '11px', color: 'var(--rust)', fontWeight: 700 }}>
-                  🔒 Pro Required
-                </span>
-              )}
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
-              <button
-                type="button"
-                onClick={() => setMode('PRACTICE')}
-                style={{
-                  padding: '10px 8px',
-                  borderRadius: '4px',
-                  border: mode === 'PRACTICE' ? '2px solid var(--steel)' : '1px solid var(--paper-line)',
-                  backgroundColor: mode === 'PRACTICE' ? 'var(--paper-dim)' : 'var(--paper)',
-                  color: mode === 'PRACTICE' ? 'var(--steel)' : 'var(--ink)',
-                  fontSize: '12.5px',
-                  fontWeight: 600,
-                  fontFamily: 'var(--font-sans)',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span>🎯 Practice</span>
-                  {!isPro && <span style={{ fontSize: '9.5px', color: 'var(--rust)', fontWeight: 700 }}>🔒 Pro</span>}
-                </div>
-                <div style={{ fontSize: '10.5px', color: 'var(--ink-soft)', fontWeight: 400, marginTop: '2px' }}>
-                  Self-paced questions
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setMode('STUDY')}
-                style={{
-                  padding: '10px 8px',
-                  borderRadius: '4px',
-                  border: mode === 'STUDY' ? '2px solid var(--forest)' : '1px solid var(--paper-line)',
-                  backgroundColor: mode === 'STUDY' ? 'var(--forest-soft)' : 'var(--paper)',
-                  color: mode === 'STUDY' ? 'var(--forest)' : 'var(--ink)',
-                  fontSize: '12.5px',
-                  fontWeight: 600,
-                  fontFamily: 'var(--font-sans)',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span>💡 Study</span>
-                  {!isPro && <span style={{ fontSize: '9.5px', color: 'var(--rust)', fontWeight: 700 }}>🔒 Pro</span>}
-                </div>
-                <div style={{ fontSize: '10.5px', color: 'var(--ink-soft)', fontWeight: 400, marginTop: '2px' }}>
-                  Immediate solutions
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setMode('TIMED_MOCK')}
-                style={{
-                  padding: '10px 8px',
-                  borderRadius: '4px',
-                  border: mode === 'TIMED_MOCK' ? '2px solid var(--rust)' : '1px solid var(--paper-line)',
-                  backgroundColor: mode === 'TIMED_MOCK' ? 'var(--rust-soft)' : 'var(--paper)',
-                  color: mode === 'TIMED_MOCK' ? 'var(--rust)' : 'var(--ink)',
-                  fontSize: '12.5px',
-                  fontWeight: 600,
-                  fontFamily: 'var(--font-sans)',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span>⏱️ Exam</span>
-                  {!isPro && <span style={{ fontSize: '9.5px', color: 'var(--rust)', fontWeight: 700 }}>🔒 Pro</span>}
-                </div>
-                <div style={{ fontSize: '10.5px', color: 'var(--ink-soft)', fontWeight: 400, marginTop: '2px' }}>
-                  Official timer &amp; test
-                </div>
-              </button>
-            </div>
-          </div>
 
 
           {/* 2. Scope Tabs: Single Subject vs Multi-Subject vs Bookmarks */}
@@ -607,60 +656,119 @@ export const CbtSetupModal: React.FC<CbtSetupModalProps> = ({
                 </div>
               </div>
 
-              {/* Multi-Year Selection (Section 13 & 14) */}
+              {/* Past Question Year Selection (Requirements 6 & 7) */}
               <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                   <span style={{ fontSize: '11px', fontFamily: 'var(--font-sans)', color: 'var(--ink)', fontWeight: 700 }}>
-                    PAST QUESTION YEAR(S) POOL
+                    EXAMINATION YEAR *
                   </span>
-                  <button
-                    type="button"
-                    onClick={handleSelectAllYears}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: allYears ? 'var(--rust)' : 'var(--ink-soft)',
-                      fontSize: '11px',
-                      fontWeight: 700,
-                      fontFamily: 'var(--font-sans)',
-                      cursor: 'pointer',
-                      textDecoration: 'underline',
-                    }}
-                  >
-                    {allYears ? '✓ All Archive Years Selected' : 'Select All Years'}
-                  </button>
+                  {isPro && (
+                    <button
+                      type="button"
+                      onClick={handleSelectAllYears}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: allYears ? 'var(--rust)' : 'var(--forest)',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        fontFamily: 'var(--font-sans)',
+                        cursor: 'pointer',
+                        textDecoration: 'underline',
+                      }}
+                    >
+                      {allYears ? '✓ All Archive Years Selected' : 'Select All Years'}
+                    </button>
+                  )}
                 </div>
 
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                  {AVAILABLE_YEARS.map((yr) => {
-                    const isSelected = allYears || selectedYears.includes(yr);
-                    return (
-                      <button
-                        key={yr}
-                        type="button"
-                        onClick={() => handleToggleYear(yr)}
+                {!isPro ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+                      {/* Available Year 2024 */}
+                      <div
                         style={{
-                          padding: '4px 10px',
-                          borderRadius: '14px',
-                          fontSize: '12px',
-                          fontFamily: 'var(--font-sans)',
-                          fontWeight: isSelected ? 700 : 500,
-                          backgroundColor: isSelected ? 'var(--rust)' : 'var(--paper)',
-                          color: isSelected ? 'var(--white)' : 'var(--ink)',
-                          border: isSelected ? '1px solid var(--rust)' : '1px solid var(--paper-line)',
-                          cursor: 'pointer',
-                          transition: 'all 0.15s ease',
+                          padding: '6px 14px',
+                          borderRadius: '20px',
+                          fontSize: '12.5px',
+                          fontWeight: 700,
+                          backgroundColor: 'var(--rust)',
+                          color: '#ffffff',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
                         }}
                       >
-                        {yr}
-                      </button>
-                    );
-                  })}
-                </div>
-                {!isPro && (selectedYears.length > 1 || allYears) && (
-                  <span style={{ display: 'block', fontSize: '11px', color: 'var(--rust)', marginTop: '4px' }}>
-                    ★ Free Trial is scoped to 1 syllabus year. Upgrade to Pro for multi-year pooling.
-                  </span>
+                        <span>2024</span>
+                        <span style={{ fontSize: '10.5px', backgroundColor: 'rgba(255,255,255,0.22)', padding: '1px 6px', borderRadius: '10px' }}>
+                          Available for Free Trial
+                        </span>
+                      </div>
+
+                      {/* Locked Years */}
+                      {AVAILABLE_YEARS.filter((yr) => yr !== 2024).map((yr) => (
+                        <button
+                          key={yr}
+                          type="button"
+                          onClick={() => handleToggleYear(yr)}
+                          title={`Year ${yr} is locked. Free Trial currently includes questions from 2024 only. Upgrade to Pro to unlock.`}
+                          style={{
+                            padding: '6px 12px',
+                            borderRadius: '20px',
+                            fontSize: '12px',
+                            fontFamily: 'var(--font-sans)',
+                            fontWeight: 500,
+                            backgroundColor: 'var(--paper)',
+                            color: 'var(--ink-soft)',
+                            border: '1px solid var(--paper-line)',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            opacity: 0.75,
+                            transition: 'all 0.15s ease',
+                          }}
+                        >
+                          <span>{yr}</span>
+                          <span style={{ fontSize: '11px' }}>🔒</span>
+                        </button>
+                      ))}
+                    </div>
+                    <span style={{ display: 'block', fontSize: '11.5px', color: 'var(--rust)', marginTop: '2px', lineHeight: 1.4 }}>
+                      Free Trial currently includes questions from 2024 only. Upgrade to Pro to unlock additional years (2015–2025).
+                    </span>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                    {AVAILABLE_YEARS.map((yr) => {
+                      const isSelected = allYears || selectedYears.includes(yr);
+                      return (
+                        <button
+                          key={yr}
+                          type="button"
+                          onClick={() => handleToggleYear(yr)}
+                          style={{
+                            padding: '5px 12px',
+                            borderRadius: '16px',
+                            fontSize: '12px',
+                            fontFamily: 'var(--font-sans)',
+                            fontWeight: isSelected ? 700 : 500,
+                            backgroundColor: isSelected ? 'var(--rust)' : 'var(--paper)',
+                            color: isSelected ? '#ffffff' : 'var(--ink)',
+                            border: isSelected ? '1px solid var(--rust)' : '1px solid var(--paper-line)',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            transition: 'all 0.15s ease',
+                          }}
+                        >
+                          <span>{yr}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 )}
               </div>
             </>
@@ -786,6 +894,20 @@ export const CbtSetupModal: React.FC<CbtSetupModalProps> = ({
                 <option value="RANDOM">Random Pool Distribution</option>
               </select>
             </div>
+
+            {/* Shuffling Options Toggle */}
+            <div style={{ gridColumn: 'span 2', display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: 'var(--paper)', borderRadius: '4px', border: '1px solid var(--paper-line)' }}>
+              <input
+                type="checkbox"
+                id="modalShuffleOptions"
+                checked={shuffleOptions}
+                onChange={(e) => setShuffleOptions(e.target.checked)}
+                style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+              />
+              <label htmlFor="modalShuffleOptions" style={{ fontSize: '12px', color: 'var(--ink)', cursor: 'pointer', fontFamily: 'var(--font-sans)', fontWeight: 600 }}>
+                🔀 Shuffle Options (Randomizes answer choices A, B, C, D order without changing correctness)
+              </label>
+            </div>
           </div>
 
           {/* Duration & Total Questions */}
@@ -883,7 +1005,7 @@ export const CbtSetupModal: React.FC<CbtSetupModalProps> = ({
           >
             <div>
               <strong style={{ color: 'var(--ink)', display: 'block' }}>Board:</strong>
-              {currentExamObj?.shortCode || 'UTME'}
+              {currentExamObj?.shortCode || 'JAMB / UTME'}
             </div>
             <div>
               <strong style={{ color: 'var(--ink)', display: 'block' }}>Subject:</strong>
@@ -898,8 +1020,8 @@ export const CbtSetupModal: React.FC<CbtSetupModalProps> = ({
               {allYears ? 'All Archive' : selectedYears.join(', ')}
             </div>
             <div>
-              <strong style={{ color: 'var(--ink)', display: 'block' }}>Mode:</strong>
-              {mode === 'TIMED_MOCK' ? 'Timed Exam' : mode === 'STUDY' ? 'Study Mode' : 'Practice'}
+              <strong style={{ color: 'var(--ink)', display: 'block' }}>Format:</strong>
+              Official CBT Simulation
             </div>
             <div>
               <strong style={{ color: 'var(--ink)', display: 'block' }}>Order / Count:</strong>
@@ -907,11 +1029,144 @@ export const CbtSetupModal: React.FC<CbtSetupModalProps> = ({
             </div>
           </div>
 
-          <div style={{ marginTop: '8px', display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+          {/* Section: Student Terms & Conditions Declaration */}
+          {!isTermsAlreadyAccepted ? (
+            <div
+              style={{
+                padding: '16px',
+                backgroundColor: 'var(--paper)',
+                border: '1.5px solid var(--forest)',
+                borderRadius: '6px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '16px' }}>📋</span>
+                  <strong style={{ fontSize: '13.5px', color: 'var(--ink)' }}>
+                    Student Terms &amp; Conditions Declaration (v1.0)
+                  </strong>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <a
+                    href="/terms"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ fontSize: '12px', color: 'var(--forest)', textDecoration: 'underline', fontWeight: 600 }}
+                  >
+                    Read Full Terms ↗
+                  </a>
+                  <button
+                    type="button"
+                    onClick={handleSelectAllDeclaration}
+                    style={{
+                      background: 'none',
+                      border: '1px solid var(--paper-line)',
+                      borderRadius: '4px',
+                      padding: '3px 8px',
+                      fontSize: '11px',
+                      color: 'var(--ink)',
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                    }}
+                  >
+                    {isAllDeclarationChecked ? 'Deselect All' : 'Select All'}
+                  </button>
+                </div>
+              </div>
+
+              <p style={{ margin: 0, fontSize: '12px', color: 'var(--ink-soft)', lineHeight: 1.5 }}>
+                Before starting a Computer-Based Test, every student must agree to follow the examination rules and platform terms:
+              </p>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {[
+                  {
+                    key: 'readAndUnderstood' as const,
+                    text: 'I have read and understood the Mark Driller CBT Terms & Conditions.',
+                  },
+                  {
+                    key: 'followInstructions' as const,
+                    text: 'I agree to follow all examination instructions and rules.',
+                  },
+                  {
+                    key: 'antiCheating' as const,
+                    text: 'I understand that cheating, impersonation, unauthorized assistance, and attempts to manipulate the CBT system are prohibited.',
+                  },
+                  {
+                    key: 'understandConsequences' as const,
+                    text: 'I understand that violation of these rules may result in cancellation of my test, withholding of my result, suspension of my account, or other appropriate action.',
+                  },
+                  {
+                    key: 'accurateInformation' as const,
+                    text: 'I confirm that the information provided by me is accurate.',
+                  },
+                  {
+                    key: 'lawfulUse' as const,
+                    text: 'I agree to use the Mark Driller CBT platform responsibly and lawfully.',
+                  },
+                ].map((item) => (
+                  <label
+                    key={item.key}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '10px',
+                      cursor: 'pointer',
+                      fontSize: '12.5px',
+                      color: 'var(--ink)',
+                      lineHeight: 1.45,
+                      padding: '6px 10px',
+                      borderRadius: '4px',
+                      backgroundColor: declaration[item.key] ? 'var(--forest-soft, rgba(34, 197, 94, 0.08))' : 'var(--white)',
+                      border: declaration[item.key] ? '1px solid var(--forest)' : '1px solid var(--paper-line)',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={declaration[item.key]}
+                      onChange={() => handleToggleDeclarationItem(item.key)}
+                      style={{ marginTop: '2px', accentColor: 'var(--forest)' }}
+                    />
+                    <span>{item.text}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '8px 14px',
+                backgroundColor: 'var(--forest-soft, rgba(34, 197, 94, 0.08))',
+                border: '1px solid var(--forest)',
+                borderRadius: '4px',
+                fontSize: '12px',
+                color: 'var(--forest)',
+              }}
+            >
+              <span>✓ Student Terms &amp; Conditions (v1.0) accepted</span>
+              <a
+                href="/terms"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: 'var(--forest)', textDecoration: 'underline', fontSize: '11.5px' }}
+              >
+                Review Terms ↗
+              </a>
+            </div>
+          )}
+
+          <div style={{ marginTop: '8px', display: 'flex', gap: '12px', justifyContent: 'flex-end', alignItems: 'center' }}>
             <button type="button" onClick={onClose} className="btn-custom btn-custom-ghost">
               Cancel
             </button>
-            {!isPro ? (
+            {isTrialExhausted ? (
               <button
                 type="button"
                 onClick={() => {
@@ -919,21 +1174,30 @@ export const CbtSetupModal: React.FC<CbtSetupModalProps> = ({
                   navigate('/portal/pricing');
                 }}
                 className="btn-custom btn-custom-primary"
-                style={{ padding: '10px 24px', fontSize: '13.5px', backgroundColor: 'var(--rust)', color: '#fff' }}
+                style={{ padding: '10px 24px', fontSize: '13.5px', fontWeight: 700 }}
               >
-                🔒 Upgrade to Pro to Start
+                Upgrade to Pro to Continue ➔
               </button>
             ) : (
               <button
                 type="submit"
-                disabled={startCbt.isPending || subjectsLoading}
+                disabled={
+                  startCbt.isPending ||
+                  subjectsLoading ||
+                  (!isTermsAlreadyAccepted && !isAllDeclarationChecked)
+                }
                 className="btn-custom btn-custom-primary"
                 style={{ padding: '10px 24px', fontSize: '13.5px' }}
               >
-                {startCbt.isPending ? 'Preparing Session...' : 'Start Session →'}
+                {startCbt.isPending
+                  ? 'Preparing Examination Room...'
+                  : !isTermsAlreadyAccepted && !isAllDeclarationChecked
+                  ? 'Accept Declaration to Start →'
+                  : !isPro
+                  ? `Start Free Trial (${trialsRemaining} of ${trialsAllowed} Left) →`
+                  : 'Start Examination →'}
               </button>
             )}
-
           </div>
         </form>
       </div>

@@ -45,13 +45,14 @@ export const SyllabusSubjectCard: React.FC<SyllabusSubjectCardProps> = ({
 
   return (
     <div
+      className="mk-card mk-card-hover"
       style={{
         backgroundColor: 'var(--white)',
-        border: isExpanded ? '1.5px solid var(--rust)' : '1.5px solid rgba(20,24,28,0.14)',
-        borderRadius: '3px',
+        border: isExpanded ? '1.5px solid var(--rust)' : '1px solid var(--paper-line)',
+        borderRadius: '12px',
         padding: '20px',
-        transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
-        boxShadow: isExpanded ? '0 4px 12px rgba(20,24,28,0.06)' : 'none',
+        transition: 'border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease',
+        boxShadow: isExpanded ? '0 8px 24px rgba(0,0,0,0.08)' : '0 2px 8px rgba(0,0,0,0.04)',
         alignSelf: 'start', // CRITICAL: Ensures card height matches only its own content
         display: 'flex',
         flexDirection: 'column',
@@ -60,18 +61,20 @@ export const SyllabusSubjectCard: React.FC<SyllabusSubjectCardProps> = ({
       }}
     >
       {/* Header: Subject Code, Title & Topic Count Badge */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
         <div style={{ flex: 1, minWidth: 0, paddingRight: '8px' }}>
           <span
             style={{
               fontFamily: "var(--font-sans)",
               fontSize: '11px',
-              backgroundColor: 'var(--paper-dim)',
-              color: 'var(--ink-soft)',
-              padding: '2px 6px',
-              borderRadius: '2px',
+              fontWeight: 800,
+              letterSpacing: '0.04em',
+              backgroundColor: 'var(--rust-soft)',
+              color: 'var(--rust)',
+              padding: '3px 8px',
+              borderRadius: '6px',
               display: 'inline-block',
-              marginBottom: '6px',
+              marginBottom: '8px',
             }}
           >
             {subject.code}
@@ -79,9 +82,11 @@ export const SyllabusSubjectCard: React.FC<SyllabusSubjectCardProps> = ({
           <h4
             style={{
               fontSize: '17px',
+              fontWeight: 700,
               margin: 0,
               color: 'var(--ink)',
               wordBreak: 'break-word',
+              lineHeight: 1.3,
             }}
           >
             {subject.name}
@@ -91,11 +96,11 @@ export const SyllabusSubjectCard: React.FC<SyllabusSubjectCardProps> = ({
           style={{
             fontFamily: "var(--font-sans)",
             fontSize: '11px',
-            color: 'var(--rust)',
-            backgroundColor: '#faede7',
-            padding: '3px 8px',
-            borderRadius: '12px',
-            fontWeight: 600,
+            color: 'var(--forest)',
+            backgroundColor: 'var(--forest-soft)',
+            padding: '4px 10px',
+            borderRadius: '999px',
+            fontWeight: 700,
             whiteSpace: 'nowrap',
             flexShrink: 0,
           }}
@@ -124,7 +129,7 @@ export const SyllabusSubjectCard: React.FC<SyllabusSubjectCardProps> = ({
           style={{
             background: 'none',
             border: 'none',
-            padding: 0,
+            padding: '4px 0',
             cursor: 'pointer',
             fontSize: '13px',
             fontFamily: "var(--font-sans)",
@@ -132,7 +137,7 @@ export const SyllabusSubjectCard: React.FC<SyllabusSubjectCardProps> = ({
             color: isExpanded ? 'var(--rust)' : 'var(--steel)',
             display: 'flex',
             alignItems: 'center',
-            gap: '4px',
+            gap: '5px',
             transition: 'color 0.15s ease',
           }}
         >
@@ -149,6 +154,9 @@ export const SyllabusSubjectCard: React.FC<SyllabusSubjectCardProps> = ({
                 fontWeight: 600,
                 color: 'var(--rust)',
                 textDecoration: 'none',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
               }}
             >
               Practice Drills →
@@ -160,13 +168,14 @@ export const SyllabusSubjectCard: React.FC<SyllabusSubjectCardProps> = ({
               type="button"
               onClick={() => onDeleteSubject(subject._id, subject.name)}
               style={{
-                padding: '3px 8px',
-                background: '#fdf0ed',
+                padding: '4px 9px',
+                background: 'var(--rust-soft)',
                 border: '1px solid var(--rust)',
                 color: 'var(--rust)',
                 fontSize: '11px',
                 cursor: 'pointer',
-                borderRadius: '2px',
+                borderRadius: '4px',
+                fontWeight: 600,
                 fontFamily: "var(--font-sans)",
               }}
             >
@@ -185,7 +194,7 @@ export const SyllabusSubjectCard: React.FC<SyllabusSubjectCardProps> = ({
           style={{
             marginTop: '16px',
             paddingTop: '16px',
-            borderTop: '1px solid rgba(20,24,28,0.08)',
+            borderTop: '1px solid var(--paper-line)',
           }}
         >
           <div
@@ -196,6 +205,7 @@ export const SyllabusSubjectCard: React.FC<SyllabusSubjectCardProps> = ({
               marginBottom: '10px',
               textTransform: 'uppercase',
               letterSpacing: '0.05em',
+              fontWeight: 700,
             }}
           >
             Official Exam Topics:
@@ -215,10 +225,12 @@ export const SyllabusSubjectCard: React.FC<SyllabusSubjectCardProps> = ({
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     fontSize: '13px',
-                    padding: '6px 8px',
-                    backgroundColor: 'var(--paper-dim)',
-                    borderRadius: '2px',
+                    padding: '8px 12px',
+                    backgroundColor: 'var(--paper)',
+                    border: '1px solid var(--paper-line)',
+                    borderRadius: '8px',
                     gap: '8px',
+                    transition: 'border-color 0.15s ease',
                   }}
                 >
                   <span style={{ color: 'var(--ink)', wordBreak: 'break-word', flex: 1 }}>
@@ -227,6 +239,7 @@ export const SyllabusSubjectCard: React.FC<SyllabusSubjectCardProps> = ({
                         color: 'var(--ink-soft)',
                         fontFamily: "var(--font-sans)",
                         marginRight: '8px',
+                        fontWeight: 600,
                       }}
                     >
                       {idx + 1}.
@@ -243,12 +256,12 @@ export const SyllabusSubjectCard: React.FC<SyllabusSubjectCardProps> = ({
                           fontSize: '11px',
                           fontFamily: "var(--font-sans)",
                           backgroundColor: 'var(--rust)',
-                          color: 'var(--white)',
+                          color: '#ffffff',
                           border: 'none',
-                          padding: '3px 8px',
-                          borderRadius: '2px',
+                          padding: '4px 10px',
+                          borderRadius: '4px',
                           cursor: 'pointer',
-                          fontWeight: 600,
+                          fontWeight: 700,
                           whiteSpace: 'nowrap',
                           transition: 'opacity 0.15s ease',
                         }}
@@ -267,7 +280,7 @@ export const SyllabusSubjectCard: React.FC<SyllabusSubjectCardProps> = ({
                           color: 'var(--ink-soft)',
                           textDecoration: 'none',
                           whiteSpace: 'nowrap',
-                          padding: '2px 4px',
+                          padding: '3px 6px',
                         }}
                       >
                         Browse →
@@ -282,9 +295,9 @@ export const SyllabusSubjectCard: React.FC<SyllabusSubjectCardProps> = ({
                           background: 'none',
                           border: 'none',
                           color: 'var(--rust)',
-                          fontSize: '11px',
+                          fontSize: '12px',
                           cursor: 'pointer',
-                          padding: '2px 4px',
+                          padding: '2px 6px',
                         }}
                         title="Delete topic"
                       >

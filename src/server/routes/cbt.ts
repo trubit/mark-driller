@@ -7,14 +7,31 @@ import { Question } from '../models/Question.js';
 import { Exam } from '../models/Exam.js';
 import { Subject } from '../models/Subject.js';
 import { Bookmark } from '../models/Bookmark.js';
-import { authenticateToken, requireVerified, requireCbtEntitlement, AuthenticatedRequest } from '../middleware/auth.js';
+import { authenticateToken, requireVerified, requireCbtEntitlement, checkStudentSubscription, FREE_PERMITTED_YEAR, AuthenticatedRequest } from '../middleware/auth.js';
 import { QuestionIngestionService } from '../services/questionIngestionService.js';
+import { FreeTrialService } from '../services/freeTrialService.js';
 import { randomizeQuestionOptions } from '../utils/optionRandomizer.js';
+import { TermsAcceptance } from '../models/TermsAcceptance.js';
+import { User } from '../models/User.js';
+import { CURRENT_TERMS_VERSION } from './terms.js';
 
 const router = Router();
 
-// All CBT routes require student authentication, verified email, and Pro entitlement
+// All CBT routes require student authentication, verified email, and CBT entitlement
 router.use(authenticateToken, requireVerified, requireCbtEntitlement());
+
+// GET /api/cbt/trial-status — Get current student Free Trial status (Strict 3-trial limit)
+router.get('/trial-status', async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const userId = req.user!._id;
+    const isAdmin = req.user!.role === 'ADMIN';
+    const { isPro } = isAdmin ? { isPro: true } : await checkStudentSubscription(userId);
+    const status = await FreeTrialService.getTrialStatus(userId, isPro);
+    res.status(200).json({ success: true, data: status });
+  } catch (error) {
+    next(error);
+  }
+});
 
 const startCbtSchema = z.object({
   examId: z.string().min(1, 'Exam ID is required'),
@@ -26,11 +43,22 @@ const startCbtSchema = z.object({
   allYears: z.boolean().optional(),
   difficulty: z.enum(['EASY', 'MEDIUM', 'HARD']).optional(),
   questionOrder: z.enum(['NORMAL', 'SHUFFLE', 'RANDOM']).default('NORMAL').optional(),
+  shuffleOptions: z.boolean().default(false).optional(),
   onlyBookmarked: z.boolean().optional(),
-  mode: z.enum(['PRACTICE', 'TIMED_MOCK', 'STUDY']).default('TIMED_MOCK'),
-  drillType: z.enum(['PAST_QUESTION', 'PRACTICE_MOCK', 'BOTH']).optional(),
+  drillType: z.enum(['PAST_QUESTION', 'PRACTICE_MOCK', 'BOTH']).default('PAST_QUESTION').optional(),
   durationMinutes: z.number().int().min(5).max(180).default(30),
   questionCount: z.number().int().min(1).max(100).default(10),
+  declarationAccepted: z.boolean().optional(),
+  declarationChecklist: z
+    .object({
+      readAndUnderstood: z.boolean().optional(),
+      followInstructions: z.boolean().optional(),
+      antiCheating: z.boolean().optional(),
+      understandConsequences: z.boolean().optional(),
+      accurateInformation: z.boolean().optional(),
+      lawfulUse: z.boolean().optional(),
+    })
+    .optional(),
 });
 
 const answerCbtSchema = z.object({
@@ -115,7 +143,6 @@ async function processAttemptSubmission(attempt: any, userId: Types.ObjectId) {
 
     if (ans.isSkipped) {
       skippedCount += 1;
-      unansweredCount += 1;
       ans.isCorrect = false;
     } else if (ans.selectedOption === null || ans.selectedOption === undefined) {
       unansweredCount += 1;
@@ -192,14 +219,146 @@ async function processAttemptSubmission(attempt: any, userId: Types.ObjectId) {
 
 // POST /api/cbt/start — Initialize a new server-timed CBT attempt (Enforces subscription quotas)
 router.post('/start', requireCbtEntitlement(), async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  let trialConsumed = false;
+  const userId = req.user!._id;
+
   try {
     const data = startCbtSchema.parse(req.body);
-    const userId = req.user!._id;
+
+    // Strict Backend Enforcement: Student Terms & Conditions Acceptance
+    let hasAcceptedTerms = req.user!.acceptedTermsVersion === CURRENT_TERMS_VERSION;
+    if (!hasAcceptedTerms) {
+      const existingAcceptance = await TermsAcceptance.findOne({
+        userId,
+        termsVersion: CURRENT_TERMS_VERSION,
+      });
+      if (existingAcceptance) {
+        hasAcceptedTerms = true;
+        await User.updateOne(
+          { _id: userId },
+          { $set: { acceptedTermsVersion: CURRENT_TERMS_VERSION, acceptedTermsAt: existingAcceptance.acceptedAt } }
+        );
+      }
+    }
+
+    // Process explicit inline declaration if submitted with start payload
+    if (!hasAcceptedTerms && data.declarationAccepted && data.declarationChecklist) {
+      const c = data.declarationChecklist;
+      const isComplete =
+        c.readAndUnderstood === true &&
+        c.followInstructions === true &&
+        c.antiCheating === true &&
+        c.understandConsequences === true &&
+        c.accurateInformation === true &&
+        c.lawfulUse === true;
+
+      if (isComplete) {
+        const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.ip || '127.0.0.1';
+        const userAgent = req.headers['user-agent']?.slice(0, 255) || 'Unknown';
+        const newRecord = await TermsAcceptance.findOneAndUpdate(
+          { userId, termsVersion: CURRENT_TERMS_VERSION },
+          {
+            $setOnInsert: {
+              userId,
+              termsVersion: CURRENT_TERMS_VERSION,
+              acceptedAt: new Date(),
+              ipAddress,
+              userAgent,
+              declarationDetails: c,
+            },
+          },
+          { upsert: true, new: true }
+        );
+        await User.updateOne(
+          { _id: userId },
+          { $set: { acceptedTermsVersion: CURRENT_TERMS_VERSION, acceptedTermsAt: newRecord.acceptedAt } }
+        );
+        hasAcceptedTerms = true;
+      }
+    }
+
+    if (!hasAcceptedTerms) {
+      res.status(403).json({
+        success: false,
+        error: {
+          code: 'TERMS_ACCEPTANCE_REQUIRED',
+          message: 'Student Terms & Conditions acceptance is required before starting a Computer-Based Test.',
+          termsVersion: CURRENT_TERMS_VERSION,
+          requiresAcceptance: true,
+        },
+      });
+      return;
+    }
 
     const exam = await Exam.findById(data.examId);
     if (!exam) {
       res.status(404).json({ success: false, error: { message: 'Exam board not found.' } });
       return;
+    }
+
+    const { isPro, plan } = req.user!.role === 'ADMIN'
+      ? { isPro: true, plan: 'ADMIN' }
+      : await checkStudentSubscription(userId);
+
+    // Enforce 3 Free Trials limit and single permitted Free Year (2024) rule
+    if (!isPro && req.user!.role !== 'ADMIN') {
+      // 1. Single Year enforcement: only FREE_PERMITTED_YEAR (2024) is accessible
+      if (data.year && data.year !== FREE_PERMITTED_YEAR) {
+        res.status(403).json({
+          success: false,
+          error: {
+            code: 'YEAR_LOCKED',
+            message: `Year ${data.year} is locked on the Free Trial. Free accounts include complete ${FREE_PERMITTED_YEAR} Past Questions across all subjects. Upgrade to MarkDriller Pro to unlock all examination years (2015–2025).`,
+            currentPlan: plan,
+            permittedFreeYear: FREE_PERMITTED_YEAR,
+          },
+        });
+        return;
+      }
+
+      if (data.years && (data.years.length > 1 || !data.years.includes(FREE_PERMITTED_YEAR))) {
+        res.status(403).json({
+          success: false,
+          error: {
+            code: 'YEAR_LOCKED',
+            message: `Multi-year past question pooling is locked on the Free Trial. Upgrade to MarkDriller Pro to unlock all years (2015–2025).`,
+            currentPlan: plan,
+            permittedFreeYear: FREE_PERMITTED_YEAR,
+          },
+        });
+        return;
+      }
+
+      if (data.allYears) {
+        res.status(403).json({
+          success: false,
+          error: {
+            code: 'YEAR_LOCKED',
+            message: 'All-years past question pooling requires MarkDriller Pro. Upgrade to unlock all examination years (2015–2025).',
+            currentPlan: plan,
+            permittedFreeYear: FREE_PERMITTED_YEAR,
+          },
+        });
+        return;
+      }
+
+      // 2. Strict 3 Free Trial limit enforcement (Atomic & concurrency-safe)
+      const trialResult = await FreeTrialService.consumeTrialAttempt(userId);
+      if (!trialResult.success) {
+        res.status(403).json({
+          success: false,
+          error: {
+            code: 'TRIAL_EXHAUSTED',
+            message: 'Your 3 free trials have been used. Upgrade to Pro to continue.',
+            status: 'PRO_REQUIRED',
+            allowed: trialResult.usage.allowed,
+            used: trialResult.usage.used,
+            remaining: 0,
+          },
+        });
+        return;
+      }
+      trialConsumed = true;
     }
 
     // Handle Practice Bookmarks Mode
@@ -219,6 +378,9 @@ router.post('/start', requireCbtEntitlement(), async (req: AuthenticatedRequest,
         .filter((q: any) => q && q.examId?.toString() === data.examId);
 
       if (candidateQuestions.length === 0) {
+        if (trialConsumed) {
+          await FreeTrialService.rollbackTrial(userId);
+        }
         res.status(400).json({
           success: false,
           error: { message: 'You have no saved bookmarked questions for this examination yet. Bookmark questions in the question bank first.' },
@@ -240,7 +402,7 @@ router.post('/start', requireCbtEntitlement(), async (req: AuthenticatedRequest,
       }));
 
       const questionSnapshot = sliceQuestions.map((q: any) => {
-        const rand = randomizeQuestionOptions(q);
+        const rand = data.shuffleOptions ? randomizeQuestionOptions(q) : q;
         return {
           questionId: q._id,
           year: q.year,
@@ -271,7 +433,7 @@ router.post('/start', requireCbtEntitlement(), async (req: AuthenticatedRequest,
         subjectId: firstSubjId,
         subjectIds: allSubjIds,
         isMultiSubject: allSubjIds.length > 1,
-        mode: data.mode,
+        mode: 'CBT',
         status: 'IN_PROGRESS',
         allocatedDurationSeconds,
         startTime,
@@ -283,6 +445,10 @@ router.post('/start', requireCbtEntitlement(), async (req: AuthenticatedRequest,
         maxScore: sliceQuestions.length,
         percentage: 0,
       });
+
+      if (trialConsumed) {
+        await FreeTrialService.recordAttemptId(userId, attempt._id);
+      }
 
       const cleansedQuestions = questionSnapshot.map((q: any) => ({
         _id: q.questionId,
@@ -299,9 +465,6 @@ router.post('/start', requireCbtEntitlement(), async (req: AuthenticatedRequest,
         subjectName: q.subjectName || 'Subject',
         subjectCode: q.subjectCode || 'SUB',
         imageUrl: q.imageUrl || '',
-        ...(data.mode === 'PRACTICE' || data.mode === 'STUDY'
-          ? { correctAnswer: q.correctAnswer, explanation: q.explanation }
-          : {}),
       }));
 
       res.status(201).json({
@@ -338,6 +501,9 @@ router.post('/start', requireCbtEntitlement(), async (req: AuthenticatedRequest,
 
     const subjects = await Subject.find({ _id: { $in: targetSubjectIds } });
     if (subjects.length === 0) {
+      if (trialConsumed) {
+        await FreeTrialService.rollbackTrial(userId);
+      }
       res.status(404).json({ success: false, error: { message: 'Selected subject(s) not found.' } });
       return;
     }
@@ -345,7 +511,7 @@ router.post('/start', requireCbtEntitlement(), async (req: AuthenticatedRequest,
     const perSubjectCount = Math.max(1, Math.ceil(data.questionCount / subjects.length));
     let questionsPool: any[] = [];
 
-    const targetDrillType = data.drillType || (data.mode === 'TIMED_MOCK' ? 'PRACTICE_MOCK' : 'PAST_QUESTION');
+    const targetDrillType = data.drillType || 'PAST_QUESTION';
 
     for (const sub of subjects) {
       const queryFilter: any = {
@@ -357,7 +523,9 @@ router.post('/start', requireCbtEntitlement(), async (req: AuthenticatedRequest,
       if (data.topicId && subjects.length === 1) {
         queryFilter.topicId = data.topicId;
       }
-      if (data.year) {
+      if (!isPro && req.user!.role !== 'ADMIN') {
+        queryFilter.year = FREE_PERMITTED_YEAR;
+      } else if (data.year) {
         queryFilter.year = data.year;
       } else if (data.years && data.years.length > 0) {
         queryFilter.year = { $in: data.years };
@@ -424,6 +592,9 @@ router.post('/start', requireCbtEntitlement(), async (req: AuthenticatedRequest,
 
     const questions = uniquePool.slice(0, data.questionCount);
     if (questions.length === 0) {
+      if (trialConsumed) {
+        await FreeTrialService.rollbackTrial(userId);
+      }
       res.status(400).json({
         success: false,
         error: { message: 'No questions currently match your criteria. Please adjust topic, year, or subject selection.' },
@@ -443,9 +614,9 @@ router.post('/start', requireCbtEntitlement(), async (req: AuthenticatedRequest,
       timeSpentSeconds: 0,
     }));
 
-    // Freeze immutable question snapshot for this attempt with randomized options
+    // Freeze immutable question snapshot for this attempt
     const questionSnapshot = questions.map((q) => {
-      const rand = randomizeQuestionOptions(q);
+      const rand = data.shuffleOptions ? randomizeQuestionOptions(q) : q;
       return {
         questionId: q._id,
         year: q.year,
@@ -476,7 +647,7 @@ router.post('/start', requireCbtEntitlement(), async (req: AuthenticatedRequest,
       subjectId: primarySubject._id,
       subjectIds: subjects.map((s) => s._id),
       isMultiSubject,
-      mode: data.mode,
+      mode: 'CBT',
       status: 'IN_PROGRESS',
       allocatedDurationSeconds,
       startTime,
@@ -489,7 +660,11 @@ router.post('/start', requireCbtEntitlement(), async (req: AuthenticatedRequest,
       percentage: 0,
     });
 
-    // Cleanse questions for mock mode (hide answers & explanations to prevent cheating)
+    if (trialConsumed) {
+      await FreeTrialService.recordAttemptId(userId, attempt._id);
+    }
+
+    // Cleanse questions for examination room (hide answers & explanations to prevent cheating)
     const cleansedQuestions = questionSnapshot.map((q) => ({
       _id: q.questionId,
       year: q.year,
@@ -505,9 +680,6 @@ router.post('/start', requireCbtEntitlement(), async (req: AuthenticatedRequest,
       subjectName: q.subjectName,
       subjectCode: q.subjectCode,
       imageUrl: q.imageUrl || '',
-      ...(data.mode === 'PRACTICE' || data.mode === 'STUDY'
-        ? { correctAnswer: q.correctAnswer, explanation: q.explanation }
-        : {}),
     }));
 
     res.status(201).json({
@@ -529,6 +701,9 @@ router.post('/start', requireCbtEntitlement(), async (req: AuthenticatedRequest,
       },
     });
   } catch (error) {
+    if (trialConsumed) {
+      await FreeTrialService.rollbackTrial(userId);
+    }
     if (error instanceof z.ZodError) {
       res.status(400).json({
         success: false,
@@ -597,7 +772,7 @@ router.get('/:attemptId', async (req: AuthenticatedRequest, res: Response, next:
             .populate('subjectId', 'name code')
             .lean();
 
-    const isMockRunning = attempt.mode === 'TIMED_MOCK' && attempt.status === 'IN_PROGRESS';
+    const isInProgress = attempt.status === 'IN_PROGRESS';
 
     const cleansedQuestions = sourceQuestions.map((q) => ({
       _id: q._id,
@@ -614,7 +789,7 @@ router.get('/:attemptId', async (req: AuthenticatedRequest, res: Response, next:
       subjectName: q.subjectName || (q.subjectId as any)?.name,
       subjectCode: q.subjectCode || (q.subjectId as any)?.code,
       imageUrl: q.imageUrl || '',
-      ...(!isMockRunning ? { correctAnswer: q.correctAnswer, explanation: q.explanation } : {}),
+      ...(!isInProgress ? { correctAnswer: q.correctAnswer, explanation: q.explanation } : {}),
     }));
 
     res.status(200).json({
@@ -768,6 +943,7 @@ router.post('/:attemptId/submit', async (req: AuthenticatedRequest, res: Respons
         correctCount: result.correctCount,
         incorrectCount: result.incorrectCount,
         unansweredCount: result.unansweredCount,
+        skippedCount: result.skippedCount || 0,
         timeSpentSeconds: result.timeSpentSeconds,
         topicBreakdown: result.topicBreakdown,
       },
@@ -848,6 +1024,7 @@ router.get('/:attemptId/result', async (req: AuthenticatedRequest, res: Response
         subjectCode: q.subjectCode || (q.subjectId as any)?.code,
         studentChoice: studentAns?.selectedOption || null,
         isCorrect: studentAns?.isCorrect || false,
+        isSkipped: !!studentAns?.isSkipped,
       };
     });
 

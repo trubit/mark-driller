@@ -576,128 +576,116 @@ export const BlogPortal: React.FC = () => {
 
   const handleShare = async (article: BlogPostItem, event?: React.MouseEvent) => {
     event?.stopPropagation();
-    const shareUrl = `${window.location.origin}/blog#${article.slug}`;
+    const shareUrl = `${window.location.origin}/blog?article=${encodeURIComponent(article.slug)}`;
     await navigator.clipboard?.writeText(shareUrl);
     notifySuccess('Article link copied.');
   };
 
   return (
     <div className="blog-page premium-portal-page premium-more-page">
-      <main className="blog-wrap">
-        <section className="blog-hero">
-          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-            <span
-              className="eyebrow"
-              style={{
-                fontSize: '11px',
-                fontWeight: 800,
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-                color: 'var(--rust)',
-                marginBottom: '4px',
-              }}
-            >
-              Academic Editorial
-            </span>
-            <h1
-              style={{
-                fontSize: 'clamp(20px, 2.5vw, 30px)',
-                fontWeight: 800,
-                letterSpacing: '-0.02em',
-                lineHeight: 1.25,
-                margin: '4px 0 10px',
-                color: 'var(--ink)',
-              }}
-            >
-              Official Exam Board Strategy &amp; Assessment Guides
-            </h1>
-            <p
-              style={{
-                fontSize: '14px',
-                lineHeight: 1.5,
-                color: 'var(--ink-soft)',
-                margin: 0,
-                maxWidth: '56ch',
-              }}
-            >
-              Forensic breakdowns of JAMB 8-key CBT pacing, WAEC Chief Examiners' theory mark deductions, NECO stanine grading, GCE private series combination rules, NABTEB modular trades, and Post-UTME composite models.
-            </p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '12px' }}>
-              {['JAMB UTME', 'WAEC WASSCE', 'NECO SSCE', 'GCE Series', 'NABTEB', 'Post-UTME'].map((b) => (
-                <span
-                  key={b}
-                  style={{
-                    fontSize: '10.5px',
-                    fontWeight: 700,
-                    padding: '2px 8px',
-                    borderRadius: '10px',
-                    backgroundColor: 'var(--paper-dim, #f1f5f9)',
-                    color: 'var(--ink-soft)',
-                    border: '1px solid var(--paper-line)',
-                  }}
+      {/* Edge-to-Edge Hero Section */}
+      <section className="blog-hero-edge">
+        <img
+          src="/assets/images/library-revision.jpg"
+          alt="Academic Revision & Exam Strategy Guides"
+          className="blog-hero-bg"
+          loading="eager"
+        />
+        <div className="blog-hero-overlay" />
+
+        <div className="blog-hero-content">
+          <div className="blog-hero-header-row">
+            <div className="blog-hero-text">
+              <span className="blog-hero-eyebrow">
+                Academic Editorial
+              </span>
+              <h1 className="blog-hero-title">
+                Official Exam Board Strategy &amp; Assessment Guides
+              </h1>
+              <p className="blog-hero-desc">
+                Forensic breakdowns of JAMB 8-key CBT pacing, WAEC Chief Examiners' theory mark deductions, NECO stanine grading, GCE private series combination rules, NABTEB modular trades, and Post-UTME composite models.
+              </p>
+
+              <div className="blog-hero-pills">
+                {['JAMB UTME', 'WAEC WASSCE', 'NECO SSCE', 'GCE Series', 'NABTEB', 'Post-UTME'].map((b) => (
+                  <span key={b} className="blog-hero-pill">
+                    {b}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {featuredArticle && (
+              <button
+                type="button"
+                className="blog-featured-card-edge"
+                onClick={() => setSelectedArticle(featuredArticle)}
+              >
+                <ExamBoardVisualCard article={featuredArticle} isFeatured height={130} />
+                <div className="blog-featured-body-edge">
+                  <span className="blog-featured-tag">Featured • {CATEGORY_LABELS[featuredArticle.category] || featuredArticle.category}</span>
+                  <strong className="blog-featured-headline">{featuredArticle.title}</strong>
+                  <div className="blog-featured-meta">
+                    {featuredArticle.readTime && <span>{featuredArticle.readTime}</span>}
+                    {featuredArticle.publishedDate && (
+                      <>
+                        <span>•</span>
+                        <span>{featuredArticle.publishedDate}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </button>
+            )}
+          </div>
+
+          {/* Interactive Search Bar & Navigation Tabs ON TOP OF HERO */}
+          <div className="blog-hero-controls">
+            <div className="blog-hero-search-wrap">
+              <span className="blog-hero-search-icon" aria-hidden="true" style={{ color: '#64748b' }}>🔍</span>
+              <input
+                type="search"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search publication by topic, exam board (JAMB, WAEC, NECO, GCE, NABTEB)..."
+                aria-label="Search publication"
+                className="blog-hero-search-input"
+                style={{
+                  background: '#ffffff',
+                  color: '#0f172a',
+                  border: '1.5px solid rgba(255, 255, 255, 0.4)',
+                }}
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="blog-hero-search-clear"
+                  aria-label="Clear search"
+                  style={{ color: '#64748b' }}
                 >
-                  {b}
-                </span>
+                  ✕
+                </button>
+              )}
+            </div>
+
+            <div className="blog-hero-tabs" role="tablist" aria-label="Blog categories">
+              {(Object.keys(CATEGORY_LABELS) as BlogCategory[]).map((category) => (
+                <button
+                  key={category}
+                  type="button"
+                  className={`blog-hero-tab-btn ${selectedCategory === category ? 'active' : ''}`}
+                  onClick={() => setSelectedCategory(category)}
+                >
+                  {CATEGORY_LABELS[category]}
+                </button>
               ))}
             </div>
           </div>
-          {featuredArticle && (
-            <button
-              type="button"
-              className="blog-featured"
-              onClick={() => setSelectedArticle(featuredArticle)}
-            >
-              <ExamBoardVisualCard article={featuredArticle} isFeatured height={140} />
-              <div className="blog-featured-body">
-                <span>Featured • {CATEGORY_LABELS[featuredArticle.category] || featuredArticle.category}</span>
-                <strong>{featuredArticle.title}</strong>
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    marginTop: '6px',
-                    fontSize: '11.5px',
-                    color: 'var(--ink-soft)',
-                  }}
-                >
-                  {featuredArticle.readTime && <span>{featuredArticle.readTime}</span>}
-                  {featuredArticle.publishedDate && (
-                    <>
-                      <span>•</span>
-                      <span>{featuredArticle.publishedDate}</span>
-                    </>
-                  )}
-                </div>
-              </div>
-            </button>
-          )}
-        </section>
+        </div>
+      </section>
 
-        <section className="blog-toolbar" aria-label="Blog filters">
-          <label>
-            <span>Search publication</span>
-            <input
-              type="search"
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Search by topic, exam board (JAMB, WAEC, NECO, GCE, NABTEB)..."
-            />
-          </label>
-          <div className="blog-tabs" role="tablist" aria-label="Blog categories">
-            {(Object.keys(CATEGORY_LABELS) as BlogCategory[]).map((category) => (
-              <button
-                key={category}
-                type="button"
-                className={selectedCategory === category ? 'active' : ''}
-                onClick={() => setSelectedCategory(category)}
-              >
-                {CATEGORY_LABELS[category]}
-              </button>
-            ))}
-          </div>
-        </section>
-
+      <main className="blog-wrap">
         <div className="blog-results-head">
           <h2>{CATEGORY_LABELS[selectedCategory]} ({filteredArticles.length})</h2>
           {isLoading && <span>Checking for new articles...</span>}

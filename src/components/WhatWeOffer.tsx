@@ -4,7 +4,7 @@ import { useTelemetryQuery } from '../api/exams.js';
 
 type CapabilityAction =
   | { type: 'link'; label: string; to: string }
-  | { type: 'anchor'; label: string; href: string };
+  | { type: 'scroll'; label: string; targetId: string };
 
 interface CapabilityItem {
   id: string;
@@ -17,6 +17,13 @@ interface CapabilityItem {
 
 export const WhatWeOffer: React.FC = () => {
   const { data: telemetry } = useTelemetryQuery();
+
+  const scrollToSection = (targetId: string) => {
+    const el = document.getElementById(targetId);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
 
   const questionsCount = telemetry?.totalQuestions
     ? `${telemetry.totalQuestions.toLocaleString()}+`
@@ -36,7 +43,7 @@ export const WhatWeOffer: React.FC = () => {
       icon: '💻',
       title: 'CBT Practice Engine',
       description: 'Official 8-key keyboard navigation, on-screen scientific calculator, and standard countdown timers matching real exam halls.',
-      action: { type: 'anchor', label: 'See Simulator →', href: '#experience' },
+      action: { type: 'scroll', label: 'See Simulator →', targetId: 'experience' },
       tag: 'Real Hall Conditions',
     },
     {
@@ -44,7 +51,7 @@ export const WhatWeOffer: React.FC = () => {
       icon: '⏱️',
       title: 'Full-Length Mock Exams',
       description: 'Timed 4-subject UTME mock sessions and SSCE papers with instant auto-grading, speed analysis, and lost-mark audits.',
-      action: { type: 'anchor', label: 'View Mock Suite →', href: '#experience' },
+      action: { type: 'scroll', label: 'View Mock Suite →', targetId: 'experience' },
       tag: 'Standard Timing',
     },
     {
@@ -60,7 +67,7 @@ export const WhatWeOffer: React.FC = () => {
       icon: '📊',
       title: 'Diagnostic Analytics',
       description: 'Detailed score breakdown per subject, average response speed per question, and targeted topic weakness identification.',
-      action: { type: 'anchor', label: 'Inspect Analytics →', href: '#performance' },
+      action: { type: 'scroll', label: 'Inspect Analytics →', targetId: 'performance' },
       tag: 'Weakness Tracking',
     },
     {
@@ -95,17 +102,17 @@ export const WhatWeOffer: React.FC = () => {
           {capabilities.map((cap) => (
             <div
               key={cap.id}
-              className="capability-card"
+              className="capability-card mk-card mk-card-hover"
               style={{
                 backgroundColor: 'var(--white)',
-                border: '1.5px solid var(--paper-line)',
-                borderRadius: '10px',
+                border: '1px solid var(--paper-line)',
+                borderRadius: '12px',
                 padding: '28px 24px',
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
-                boxShadow: 'var(--card-shadow)',
-                transition: 'transform 0.2s ease, border-color 0.2s ease',
+                boxShadow: '0 2px 10px rgba(0, 0, 0, 0.04)',
+                transition: 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease',
               }}
             >
               <div>
@@ -138,33 +145,45 @@ export const WhatWeOffer: React.FC = () => {
               </div>
 
               <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid var(--paper-line)' }}>
-                {cap.action.type === 'link' ? (
-                  <Link
-                    to={cap.action.to}
-                    style={{
-                      fontFamily: 'var(--font-sans)',
-                      fontSize: '13px',
-                      fontWeight: 700,
-                      color: 'var(--rust)',
-                      textDecoration: 'none',
-                    }}
-                  >
-                    {cap.action.label}
-                  </Link>
-                ) : (
-                  <a
-                    href={cap.action.href}
-                    style={{
-                      fontFamily: 'var(--font-sans)',
-                      fontSize: '13px',
-                      fontWeight: 700,
-                      color: 'var(--rust)',
-                      textDecoration: 'none',
-                    }}
-                  >
-                    {cap.action.label}
-                  </a>
-                )}
+                {(() => {
+                  const action = cap.action;
+                  if (action.type === 'link') {
+                    return (
+                      <Link
+                        to={action.to}
+                        style={{
+                          fontFamily: 'var(--font-sans)',
+                          fontSize: '13px',
+                          fontWeight: 700,
+                          color: 'var(--rust)',
+                          textDecoration: 'none',
+                        }}
+                      >
+                        {action.label}
+                      </Link>
+                    );
+                  }
+                  const targetId = action.targetId;
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => scrollToSection(targetId)}
+                      style={{
+                        fontFamily: 'var(--font-sans)',
+                        fontSize: '13px',
+                        fontWeight: 700,
+                        color: 'var(--rust)',
+                        background: 'none',
+                        border: 'none',
+                        padding: 0,
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                      }}
+                    >
+                      {action.label}
+                    </button>
+                  );
+                })()}
               </div>
             </div>
           ))}

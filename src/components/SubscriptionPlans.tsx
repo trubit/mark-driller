@@ -301,7 +301,7 @@ export const SubscriptionPlans: React.FC = () => {
                   type="button"
                   onClick={() => {
                     setManualPlan('PRO_ANNUAL');
-                    setAmountPaid('15000');
+                    setAmountPaid('25000');
                     setShowManualModal(true);
                   }}
                   className="btn-custom btn-custom-ghost"
@@ -314,8 +314,8 @@ export const SubscriptionPlans: React.FC = () => {
 
             {/* Subscription Metrics & Entitlements Grid */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '20px' }}>
-              <div style={{ padding: '14px', background: 'var(--paper)', border: '1px solid var(--paper-line)' }}>
-                <div style={{ fontSize: '11px', fontFamily: "var(--font-sans)", color: 'var(--slate)' }}>
+              <div className="mk-card mk-card-stat" style={{ padding: '16px', background: 'var(--paper)', border: '1px solid var(--paper-line)', borderRadius: '12px' }}>
+                <div style={{ fontSize: '11px', fontFamily: "var(--font-sans)", color: 'var(--slate)', textTransform: 'uppercase' }}>
                   EXPIRATION DATE
                 </div>
                 <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--ink)', marginTop: '4px' }}>
@@ -328,8 +328,8 @@ export const SubscriptionPlans: React.FC = () => {
                 </div>
               </div>
 
-              <div style={{ padding: '14px', background: 'var(--paper)', border: '1px solid var(--paper-line)' }}>
-                <div style={{ fontSize: '11px', fontFamily: "var(--font-sans)", color: 'var(--slate)' }}>
+              <div className="mk-card mk-card-stat" style={{ padding: '16px', background: 'var(--paper)', border: '1px solid var(--paper-line)', borderRadius: '12px' }}>
+                <div style={{ fontSize: '11px', fontFamily: "var(--font-sans)", color: 'var(--slate)', textTransform: 'uppercase' }}>
                   CBT MOCK SIMULATOR
                 </div>
                 <div style={{ fontSize: '15px', fontWeight: 700, color: currentSub?.isPro ? 'var(--forest)' : 'var(--rust)', marginTop: '4px' }}>
@@ -340,8 +340,8 @@ export const SubscriptionPlans: React.FC = () => {
                 </div>
               </div>
 
-              <div style={{ padding: '14px', background: 'var(--paper)', border: '1px solid var(--paper-line)' }}>
-                <div style={{ fontSize: '11px', fontFamily: "var(--font-sans)", color: 'var(--slate)' }}>
+              <div className="mk-card mk-card-stat" style={{ padding: '16px', background: 'var(--paper)', border: '1px solid var(--paper-line)', borderRadius: '12px' }}>
+                <div style={{ fontSize: '11px', fontFamily: "var(--font-sans)", color: 'var(--slate)', textTransform: 'uppercase' }}>
                   SOLUTIONS & WORKINGS
                 </div>
                 <div style={{ fontSize: '15px', fontWeight: 700, color: currentSub?.isPro ? 'var(--forest)' : 'var(--rust)', marginTop: '4px' }}>
@@ -361,21 +361,24 @@ export const SubscriptionPlans: React.FC = () => {
             Loading subscription tiers...
           </div>
         ) : plans && plans.length > 0 ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '24px', alignItems: 'stretch' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '28px', alignItems: 'stretch', paddingTop: '18px' }}>
             {plans.map((plan: PlanTier) => {
               const isCurrent = currentSub?.plan === plan.id && currentSub?.status === 'ACTIVE';
               return (
                 <div
                   key={plan.id}
+                  className={`mk-card ${plan.isPopular ? 'mk-card-featured' : 'mk-card-hover'}`}
                   style={{
                     background: 'var(--white)',
-                    border: plan.isPopular ? '2px solid var(--rust)' : '1px solid var(--ink)',
+                    border: plan.isPopular ? '2px solid var(--rust)' : '1.5px solid var(--paper-line)',
+                    borderRadius: '12px',
                     padding: '32px 24px',
-                    boxShadow: plan.isPopular ? '5px 5px 0 var(--rust)' : '3px 3px 0 var(--ink)',
+                    boxShadow: plan.isPopular ? '0 12px 32px rgba(168, 86, 47, 0.16)' : 'var(--card-shadow)',
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'space-between',
                     position: 'relative',
+                    overflow: 'visible',
                   }}
                 >
                   {plan.isPopular && (
@@ -386,13 +389,17 @@ export const SubscriptionPlans: React.FC = () => {
                         left: '50%',
                         transform: 'translateX(-50%)',
                         background: 'var(--rust)',
-                        color: 'var(--white)',
+                        color: '#ffffff',
                         fontSize: '10px',
                         fontWeight: 700,
                         fontFamily: "var(--font-sans)",
-                        padding: '3px 12px',
+                        padding: '4px 14px',
+                        borderRadius: '20px',
                         letterSpacing: '1px',
                         textTransform: 'uppercase',
+                        boxShadow: '0 4px 12px rgba(200, 75, 38, 0.35)',
+                        zIndex: 2,
+                        whiteSpace: 'nowrap',
                       }}
                     >
                       Most Popular

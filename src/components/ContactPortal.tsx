@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNotificationStore } from '../store/useNotificationStore.js';
 import { useAuthStore } from '../store/useAuthStore.js';
-import { useSupportContactQuery, buildWhatsAppLink, buildTelLink, buildMailtoLink, isWhatsAppNumberValid } from '../api/supportContact.js';
+import { useSupportContactQuery, buildWhatsAppWebLink, buildTelLink, buildMailtoLink, isWhatsAppNumberValid } from '../api/supportContact.js';
 import { useSubmitSupportTicketMutation } from '../api/support.js';
 
 export const ContactPortal: React.FC = () => {
@@ -110,7 +110,7 @@ export const ContactPortal: React.FC = () => {
             </div>
             {isWhatsAppEnabled && isWhatsAppNumberValid(whatsappNum) ? (
               <a
-                href={buildWhatsAppLink(whatsappNum, 'Hello MarkDriller Support, I need assistance')}
+                href={buildWhatsAppWebLink(whatsappNum, 'Hello MarkDriller Support, I need assistance')}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn-custom btn-custom-primary"
@@ -119,13 +119,14 @@ export const ContactPortal: React.FC = () => {
                 Chat on WhatsApp ({support?.whatsappDisplay || whatsappNum}) ➔
               </a>
             ) : (
-              <a
-                href="#message-form"
+              <button
+                type="button"
+                onClick={() => document.getElementById('message-form')?.scrollIntoView({ behavior: 'smooth' })}
                 className="btn-custom btn-custom-primary"
-                style={{ backgroundColor: '#22c55e', color: '#ffffff', border: 'none', justifyContent: 'center', fontSize: '13.5px' }}
+                style={{ backgroundColor: '#22c55e', color: '#ffffff', border: 'none', justifyContent: 'center', fontSize: '13.5px', cursor: 'pointer' }}
               >
                 Submit Ticket Below ➔
-              </a>
+              </button>
             )}
           </div>
 

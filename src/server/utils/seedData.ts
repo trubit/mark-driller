@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { env } from '../config/env.js';
+import { getAllAuthorizedAdminEmails } from '../config/adminConfig.js';
 import { Exam } from '../models/Exam.js';
 import { Subject } from '../models/Subject.js';
 import { Topic } from '../models/Topic.js';
@@ -735,47 +736,50 @@ export async function seedInitialData(): Promise<void> {
       }
     }
 
-    // Seed or synchronize initial administrator based strictly on env.ADMIN_EMAIL
-    const configuredAdminEmail = env.ADMIN_EMAIL.trim().toLowerCase();
-    let adminUser = await User.findOne({ email: configuredAdminEmail });
+    // Seed or synchronize authorized administrators idempotently
+    const authorizedAdminEmails = getAllAuthorizedAdminEmails();
+    for (const adminEmail of authorizedAdminEmails) {
+      let adminUser = await User.findOne({ email: adminEmail });
 
-    if (!adminUser) {
-      const salt = await bcrypt.genSalt(12);
-      const adminInitialPassword =
-        process.env.ADMIN_INITIAL_PASSWORD ||
-        process.env.ADMIN_PASSWORD ||
-        crypto.randomBytes(16).toString('hex') + '!Aa1';
-      const passwordHash = await bcrypt.hash(adminInitialPassword, salt);
+      if (!adminUser) {
+        const salt = await bcrypt.genSalt(12);
+        const adminInitialPassword =
+          process.env.ADMIN_INITIAL_PASSWORD ||
+          process.env.ADMIN_PASSWORD ||
+          crypto.randomBytes(16).toString('hex') + '!Aa1';
+        const passwordHash = await bcrypt.hash(adminInitialPassword, salt);
 
-      adminUser = await User.create({
-        fullName: 'MarkDriller Platform Administrator',
-        email: configuredAdminEmail,
-        passwordHash,
-        role: 'ADMIN',
-        isVerified: true,
-      });
+        adminUser = await User.create({
+          fullName: adminEmail.includes('mark') ? 'Mark Driller Administrator' : 'MarkDriller Platform Administrator',
+          email: adminEmail,
+          passwordHash,
+          role: 'ADMIN',
+          isVerified: true,
+        });
 
-      await Profile.create({
-        userId: adminUser._id,
-        phone: '+2348000000000',
-        educationLevel: 'Platform Administrator',
-        state: 'Lagos',
-        country: 'Nigeria',
-      });
+        await Profile.create({
+          userId: adminUser._id,
+          phone: adminEmail.includes('mark') ? '08160133154' : '+2348000000000',
+          educationLevel: 'Platform Administrator',
+          state: 'Lagos',
+          country: 'Nigeria',
+        });
 
-      console.log('🛡️ Initial Administrator initialized via ADMIN_EMAIL configuration');
-    } else {
-      let changed = false;
-      if (adminUser.role !== 'ADMIN') {
-        adminUser.role = 'ADMIN';
-        changed = true;
-      }
-      if (!adminUser.isVerified) {
-        adminUser.isVerified = true;
-        changed = true;
-      }
-      if (changed) {
-        await adminUser.save();
+        console.log(`🛡️ Administrator initialized for ${adminEmail}`);
+      } else {
+        let changed = false;
+        if (adminUser.role !== 'ADMIN') {
+          adminUser.role = 'ADMIN';
+          changed = true;
+        }
+        if (!adminUser.isVerified) {
+          adminUser.isVerified = true;
+          changed = true;
+        }
+        if (changed) {
+          await adminUser.save();
+          console.log(`🛡️ Account privileges synchronized for ${adminEmail}`);
+        }
       }
     }
 

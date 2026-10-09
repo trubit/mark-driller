@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   useCbtAttemptQuery,
@@ -53,26 +53,38 @@ export const CbtExamRoom: React.FC = () => {
     }
   }, [attemptData, attemptId, navigate]);
 
-  // Countdown timer hook
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-
+  // Authoritative server timer synchronization
   useEffect(() => {
-    if (remainingSeconds === null || remainingSeconds <= 0) return;
+    if (!attemptData?.endTime || attemptData.status !== 'IN_PROGRESS') return;
 
-    timerRef.current = setInterval(() => {
-      setRemainingSeconds((prev) => {
-        if (prev === null || prev <= 1) {
-          clearInterval(timerRef.current!);
-          return 0;
-        }
-        return prev - 1;
-      });
+    const calculateRemaining = () => {
+      const endMs = new Date(attemptData.endTime).getTime();
+      return Math.max(0, Math.floor((endMs - Date.now()) / 1000));
+    };
+
+    setRemainingSeconds(calculateRemaining());
+
+    const timer = setInterval(() => {
+      const diff = calculateRemaining();
+      setRemainingSeconds(diff);
+      if (diff <= 0) {
+        clearInterval(timer);
+      }
     }, 1000);
 
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
+    const handleSync = () => {
+      setRemainingSeconds(calculateRemaining());
     };
-  }, [remainingSeconds !== null]);
+
+    window.addEventListener('focus', handleSync);
+    document.addEventListener('visibilitychange', handleSync);
+
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('focus', handleSync);
+      document.removeEventListener('visibilitychange', handleSync);
+    };
+  }, [attemptData?.endTime, attemptData?.status]);
 
   // Auto-submit when countdown hits zero
   useEffect(() => {
@@ -256,7 +268,7 @@ export const CbtExamRoom: React.FC = () => {
       markedForReview: updated.markedForReview,
     });
 
-    if (currentIndex < totalQuestions - 1) {
+    if (currentIndex < questions.length - 1) {
       setCurrentIndex((prev) => prev + 1);
     }
   };
@@ -272,6 +284,38 @@ export const CbtExamRoom: React.FC = () => {
       markedForReview: updated.markedForReview,
     });
   };
+
+  // JAMB Standard 8-Key Keyboard Shortcuts (A, B, C, D to answer; P for Previous; N for Next; S for Skip; R for Review)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (showSubmitModal || isCalculatorOpen) return;
+      const target = e.target as HTMLElement;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+        return;
+      }
+
+      const key = e.key.toUpperCase();
+      if (['A', 'B', 'C', 'D'].includes(key)) {
+        e.preventDefault();
+        handleSelectOption(key as 'A' | 'B' | 'C' | 'D');
+      } else if (key === 'S') {
+        e.preventDefault();
+        handleSkipQuestion();
+      } else if (key === 'P') {
+        e.preventDefault();
+        setCurrentIndex((prev) => Math.max(0, prev - 1));
+      } else if (key === 'N') {
+        e.preventDefault();
+        setCurrentIndex((prev) => Math.min(questions.length - 1, prev + 1));
+      } else if (key === 'R') {
+        e.preventDefault();
+        handleToggleReview();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showSubmitModal, isCalculatorOpen, currentQuestion, currentAnswer, questions.length]);
 
   const handleFinalSubmit = async () => {
     setSubmitError(null);
@@ -335,15 +379,17 @@ export const CbtExamRoom: React.FC = () => {
             </span>
             <span
               style={{
-                fontSize: '10px',
+                fontSize: '10.5px',
                 fontFamily: "var(--font-sans)",
-                backgroundColor: 'rgba(255,255,255,0.12)',
-                padding: '2px 6px',
-                borderRadius: '2px',
+                fontWeight: 700,
+                backgroundColor: 'rgba(255,255,255,0.15)',
+                padding: '2px 8px',
+                borderRadius: '3px',
                 color: 'var(--white)',
+                letterSpacing: '0.04em',
               }}
             >
-              {attemptData.mode}
+              CBT SIMULATION
             </span>
           </div>
 
@@ -714,62 +760,64 @@ export const CbtExamRoom: React.FC = () => {
             })}
           </div>
 
-          {/* Practice and Study mode hint/explanation (Req 8) */}
-          {(attemptData.mode === 'PRACTICE' || attemptData.mode === 'STUDY') && (
-            <div style={{ padding: '14px 18px', backgroundColor: 'var(--paper)', borderRadius: '3px', borderLeft: '4px solid var(--steel)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                <strong style={{ fontSize: '13px', fontFamily: "var(--font-sans)", color: 'var(--steel-deep)' }}>
-                  {attemptData.mode === 'STUDY' ? '💡 STUDY MODE LEARNING FEEDBACK' : 'CORRECT ANSWER'}: {currentQuestion.correctAnswer || 'Displayed upon submission'}
-                </strong>
-                {attemptData.mode === 'STUDY' && currentAnswer.selectedOption && (
-                  <span
-                    style={{
-                      fontSize: '11px',
-                      fontWeight: 700,
-                      padding: '2px 8px',
-                      borderRadius: '12px',
-                      backgroundColor: currentAnswer.selectedOption === currentQuestion.correctAnswer ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                      color: currentAnswer.selectedOption === currentQuestion.correctAnswer ? '#16a34a' : '#dc2626',
-                    }}
-                  >
-                    {currentAnswer.selectedOption === currentQuestion.correctAnswer ? '✓ Correct Choice' : '✗ Incorrect Choice'}
-                  </span>
-                )}
-              </div>
-              {currentQuestion.explanation && (
-                <p style={{ margin: '6px 0 0', fontSize: '14px', color: 'var(--ink)', lineHeight: 1.5 }}>
-                  {currentQuestion.explanation}
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Bottom Navigation Buttons */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '12px', borderTop: '1px solid var(--paper-line)', flexWrap: 'wrap', gap: '10px' }}>
+          {/* Bottom Action Bar: Previous, Skip, Save Status, Next */}
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              paddingTop: '16px',
+              borderTop: '1px solid var(--paper-line)',
+              flexWrap: 'wrap',
+              gap: '12px',
+            }}
+          >
             <button
               type="button"
               disabled={currentIndex === 0}
               onClick={() => setCurrentIndex((prev) => Math.max(0, prev - 1))}
               className="btn-custom btn-custom-ghost"
-              style={{ opacity: currentIndex === 0 ? 0.4 : 1 }}
+              style={{
+                opacity: currentIndex === 0 ? 0.35 : 1,
+                fontSize: '13px',
+                fontWeight: 600,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+              title="Previous Question (Keyboard: P)"
             >
-              ← Previous Question
+              <span>← Previous</span>
+              <kbd style={{ fontSize: '10px', backgroundColor: 'var(--paper)', border: '1px solid var(--paper-line)', padding: '1px 5px', borderRadius: '3px' }}>P</kbd>
             </button>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            {/* MANDATORY SKIP BUTTON & STATUS (Requirement 9) */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
               <button
                 type="button"
+                id="skip-question-button"
                 onClick={handleSkipQuestion}
-                className="btn-custom btn-custom-ghost"
+                className="btn-custom"
                 style={{
-                  color: 'var(--rust)',
-                  borderColor: 'rgba(194, 65, 12, 0.3)',
-                  backgroundColor: currentAnswer.isSkipped ? 'var(--rust-soft)' : 'transparent',
-                  fontWeight: 600,
+                  color: currentAnswer.isSkipped ? '#ffffff' : 'var(--rust)',
+                  backgroundColor: currentAnswer.isSkipped ? 'var(--rust)' : 'var(--rust-soft)',
+                  border: '1.5px solid var(--rust)',
+                  padding: '9px 18px',
+                  borderRadius: '6px',
+                  fontWeight: 700,
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  transition: 'all 0.15s ease',
+                  boxShadow: currentAnswer.isSkipped ? '0 1px 3px rgba(0,0,0,0.15)' : 'none',
                 }}
-                title="Skip this question without answering. It will be recorded as Skipped."
+                title="Skip this question without answering. It will be recorded as Skipped. (Keyboard: S)"
               >
-                ⏭ Skip Question
+                <span>⏭ Skip</span>
+                <kbd style={{ fontSize: '10.5px', backgroundColor: currentAnswer.isSkipped ? 'rgba(255,255,255,0.25)' : 'var(--white)', color: currentAnswer.isSkipped ? '#ffffff' : 'var(--rust)', border: '1px solid rgba(0,0,0,0.1)', padding: '1px 5px', borderRadius: '3px' }}>S</kbd>
+                {currentAnswer.isSkipped && <span style={{ fontSize: '11px', fontWeight: 600 }}>[Skipped]</span>}
               </button>
 
               <span style={{ fontSize: '12px', fontFamily: "var(--font-sans)", color: 'var(--ink-soft)' }}>
@@ -782,9 +830,18 @@ export const CbtExamRoom: React.FC = () => {
               disabled={currentIndex === totalQuestions - 1}
               onClick={() => setCurrentIndex((prev) => Math.min(totalQuestions - 1, prev + 1))}
               className="btn-custom btn-custom-ghost"
-              style={{ opacity: currentIndex === totalQuestions - 1 ? 0.4 : 1 }}
+              style={{
+                opacity: currentIndex === totalQuestions - 1 ? 0.35 : 1,
+                fontSize: '13px',
+                fontWeight: 600,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+              title="Next Question (Keyboard: N)"
             >
-              Next Question →
+              <span>Next →</span>
+              <kbd style={{ fontSize: '10px', backgroundColor: 'var(--paper)', border: '1px solid var(--paper-line)', padding: '1px 5px', borderRadius: '3px' }}>N</kbd>
             </button>
           </div>
         </div>

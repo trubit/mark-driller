@@ -25,6 +25,14 @@ export interface UserSubscription {
     remaining: number;
     isLimitReached: boolean;
   };
+  freeTrial?: {
+    isPro: boolean;
+    allowed: number;
+    used: number;
+    remaining: number;
+    isExhausted: boolean;
+    permittedYear: number;
+  };
 }
 
 

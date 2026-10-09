@@ -6,7 +6,7 @@ import { Bookmark } from '../models/Bookmark.js';
 import { Exam } from '../models/Exam.js';
 import { Subject } from '../models/Subject.js';
 import { Topic } from '../models/Topic.js';
-import { authenticateToken, requireRole, requireVerified, checkStudentSubscription, AuthenticatedRequest } from '../middleware/auth.js';
+import { authenticateToken, requireRole, requireVerified, checkStudentSubscription, FREE_PERMITTED_YEAR, AuthenticatedRequest } from '../middleware/auth.js';
 import { QuestionIngestionService } from '../services/questionIngestionService.js';
 import { FreeTrialService } from '../services/freeTrialService.js';
 import { randomizeQuestionOptions } from '../utils/optionRandomizer.js';
@@ -237,6 +237,25 @@ router.get(
         limit: limitNum,
       } = parseResult.data;
 
+      const userId = req.user!._id;
+      const isAdmin = req.user!.role === 'ADMIN';
+      const { isPro } = isAdmin ? { isPro: true } : await checkStudentSubscription(userId);
+
+      // Enforce single permitted Free Year rule (Req 12, 13, 14, 15, 20)
+      if (!isPro) {
+        if (year && year !== FREE_PERMITTED_YEAR) {
+          res.status(403).json({
+            success: false,
+            error: {
+              code: 'SUBSCRIPTION_REQUIRED',
+              message: `Past Questions for ${year} are locked on the Free Starter plan. Free accounts include complete ${FREE_PERMITTED_YEAR} Past Questions. Upgrade to MarkDriller Pro to unlock all examination years (2015–2025).`,
+              permittedFreeYear: FREE_PERMITTED_YEAR,
+            },
+          });
+          return;
+        }
+      }
+
       const skip = (pageNum - 1) * limitNum;
 
       const filter: Record<string, any> = { published: true, reviewStatus: 'PUBLISHED' };
@@ -244,7 +263,11 @@ router.get(
       if (examId) filter.examId = new mongoose.Types.ObjectId(examId);
       if (subjectId) filter.subjectId = new mongoose.Types.ObjectId(subjectId);
       if (topicId) filter.topicId = new mongoose.Types.ObjectId(topicId);
-      if (year) filter.year = year;
+      if (!isPro) {
+        filter.year = FREE_PERMITTED_YEAR;
+      } else if (year) {
+        filter.year = year;
+      }
       if (difficulty) filter.difficulty = difficulty;
       if (drillType) filter.drillType = { $in: [drillType, 'BOTH'] };
       if (questionType) filter.questionType = questionType;
@@ -309,10 +332,6 @@ router.get(
           console.error('[Questions Route] Dynamic acquisition error:', ingestErr);
         }
       }
-
-      const userId = req.user!._id;
-      const isAdmin = req.user!.role === 'ADMIN';
-      const { isPro } = isAdmin ? { isPro: true } : await checkStudentSubscription(userId);
 
       // Handle Free Trial 200 past questions entitlement restriction
       if (!isPro) {

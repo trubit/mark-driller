@@ -14,6 +14,7 @@ import fs from 'fs';
 import { Bookmark } from '../models/Bookmark.js';
 import { avatarUpload, validateAvatarFileSignature, AVATARS_DIR_ABSOLUTE } from '../middleware/upload.js';
 import { env } from '../config/env.js';
+import { isAuthorizedAdminEmail } from '../config/adminConfig.js';
 
 const router = Router();
 
@@ -202,9 +203,8 @@ router.post(
         return;
       }
 
-      // Ensure admin email automatically has ADMIN role and verified status
-      const normalizedAdminEmail = (env.ADMIN_EMAIL || '').trim().toLowerCase();
-      if (normalizedAdminEmail && user.email.toLowerCase() === normalizedAdminEmail && user.role !== 'ADMIN') {
+      // Ensure authorized admin emails automatically have ADMIN role and verified status
+      if (isAuthorizedAdminEmail(user.email) && user.role !== 'ADMIN') {
         user.role = 'ADMIN';
         user.isVerified = true;
         await user.save();
@@ -686,8 +686,7 @@ router.get(
         .populate('targetExam', 'name shortCode description')
         .populate('selectedSubjects', 'name code');
 
-      const normalizedAdminEmail = (env.ADMIN_EMAIL || '').trim().toLowerCase();
-      if (user && normalizedAdminEmail && user.email.toLowerCase() === normalizedAdminEmail && user.role !== 'ADMIN') {
+      if (user && isAuthorizedAdminEmail(user.email) && user.role !== 'ADMIN') {
         user.role = 'ADMIN';
         user.isVerified = true;
         await user.save();

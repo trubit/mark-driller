@@ -416,9 +416,9 @@ export const ExamExperience: React.FC = () => {
                   type="button"
                   onClick={handleStartExam}
                   className="btn-custom btn-custom-primary"
-                  style={{ fontSize: '12.5px', padding: '7px 16px' }}
+                  style={{ fontSize: '12.5px', padding: '7px 16px', borderRadius: '6px' }}
                 >
-                  [S] Full Mock Test →
+                  Launch Full CBT Test →
                 </button>
               </div>
             </div>
@@ -430,7 +430,7 @@ export const ExamExperience: React.FC = () => {
                   marginTop: '18px',
                   padding: '16px 20px',
                   backgroundColor: 'var(--paper)',
-                  borderRadius: '6px',
+                  borderRadius: '8px',
                   borderLeft: '4px solid var(--rust)',
                 }}
               >
@@ -454,35 +454,35 @@ export const ExamExperience: React.FC = () => {
             marginTop: '32px',
           }}
         >
-          <div style={{ padding: '20px', backgroundColor: 'var(--white)', border: '1px solid var(--paper-line)', borderRadius: '8px' }}>
-            <div style={{ fontSize: '18px', marginBottom: '8px' }}>⌨️</div>
-            <h4 style={{ fontSize: '14px', margin: '0 0 6px 0', color: 'var(--ink)' }}>8-Key Keyboard Navigation</h4>
-            <p style={{ fontSize: '12.5px', color: 'var(--ink-soft)', margin: 0, lineHeight: 1.5 }}>
-              Use official keys A, B, C, D to answer, P for previous, N for next, S to submit, and R to reverse.
+          <div className="mk-card mk-card-hover" style={{ padding: '22px', backgroundColor: 'var(--white)', border: '1px solid var(--paper-line)', borderRadius: '12px' }}>
+            <div style={{ fontSize: '22px', marginBottom: '10px' }}>⌨️</div>
+            <h4 style={{ fontSize: '15px', fontWeight: 700, margin: '0 0 6px 0', color: 'var(--ink)' }}>8-Key Keyboard Navigation</h4>
+            <p style={{ fontSize: '13px', color: 'var(--ink-soft)', margin: 0, lineHeight: 1.55 }}>
+              Use official keys A, B, C, D to answer, P for previous, N for next, S to skip questions, and R to review.
             </p>
           </div>
 
-          <div style={{ padding: '20px', backgroundColor: 'var(--white)', border: '1px solid var(--paper-line)', borderRadius: '8px' }}>
-            <div style={{ fontSize: '18px', marginBottom: '8px' }}>⏱️</div>
-            <h4 style={{ fontSize: '14px', margin: '0 0 6px 0', color: 'var(--ink)' }}>Countdown Clock &amp; Auto-Submit</h4>
-            <p style={{ fontSize: '12.5px', color: 'var(--ink-soft)', margin: 0, lineHeight: 1.5 }}>
+          <div className="mk-card mk-card-hover" style={{ padding: '22px', backgroundColor: 'var(--white)', border: '1px solid var(--paper-line)', borderRadius: '12px' }}>
+            <div style={{ fontSize: '22px', marginBottom: '10px' }}>⏱️</div>
+            <h4 style={{ fontSize: '15px', fontWeight: 700, margin: '0 0 6px 0', color: 'var(--ink)' }}>Countdown Clock &amp; Auto-Submit</h4>
+            <p style={{ fontSize: '13px', color: 'var(--ink-soft)', margin: 0, lineHeight: 1.55 }}>
               Simulates real hall pacing so candidates learn time budgeting across 4 UTME subjects.
             </p>
           </div>
 
-          <div style={{ padding: '20px', backgroundColor: 'var(--white)', border: '1px solid var(--paper-line)', borderRadius: '8px' }}>
-            <div style={{ fontSize: '18px', marginBottom: '8px' }}>🧮</div>
-            <h4 style={{ fontSize: '14px', margin: '0 0 6px 0', color: 'var(--ink)' }}>On-Screen Calculator</h4>
-            <p style={{ fontSize: '12.5px', color: 'var(--ink-soft)', margin: 0, lineHeight: 1.5 }}>
+          <div className="mk-card mk-card-hover" style={{ padding: '22px', backgroundColor: 'var(--white)', border: '1px solid var(--paper-line)', borderRadius: '12px' }}>
+            <div style={{ fontSize: '22px', marginBottom: '10px' }}>🧮</div>
+            <h4 style={{ fontSize: '15px', fontWeight: 700, margin: '0 0 6px 0', color: 'var(--ink)' }}>On-Screen Calculator</h4>
+            <p style={{ fontSize: '13px', color: 'var(--ink-soft)', margin: 0, lineHeight: 1.55 }}>
               Integrated standard arithmetic calculator replicating the official JAMB on-screen utility.
             </p>
           </div>
 
-          <div style={{ padding: '20px', backgroundColor: 'var(--white)', border: '1px solid var(--paper-line)', borderRadius: '8px' }}>
-            <div style={{ fontSize: '18px', marginBottom: '8px' }}>💡</div>
-            <h4 style={{ fontSize: '14px', margin: '0 0 6px 0', color: 'var(--ink)' }}>Instant Worked Solutions</h4>
-            <p style={{ fontSize: '12.5px', color: 'var(--ink-soft)', margin: 0, lineHeight: 1.5 }}>
-              Immediately see where mistakes were made with step-by-step working and syllabus references.
+          <div className="mk-card mk-card-hover" style={{ padding: '22px', backgroundColor: 'var(--white)', border: '1px solid var(--paper-line)', borderRadius: '12px' }}>
+            <div style={{ fontSize: '22px', marginBottom: '10px' }}>📊</div>
+            <h4 style={{ fontSize: '15px', fontWeight: 700, margin: '0 0 6px 0', color: 'var(--ink)' }}>Diagnostic Score Slips</h4>
+            <p style={{ fontSize: '13px', color: 'var(--ink-soft)', margin: 0, lineHeight: 1.55 }}>
+              Receive instant objective score tallies, subject breakdown, and worked solutions.
             </p>
           </div>
         </div>

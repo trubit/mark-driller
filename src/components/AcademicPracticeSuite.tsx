@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { CbtPracticeSection } from './CbtPracticeSection.js';
 import { PastQuestionsExplorer } from './PastQuestionsExplorer.js';
 import { MockExamSection } from './MockExamSection.js';
@@ -12,7 +12,6 @@ interface TabDefinition {
   badge: string;
   icon: string;
   description: string;
-  hashTarget: string;
 }
 
 const TABS: TabDefinition[] = [
@@ -22,7 +21,6 @@ const TABS: TabDefinition[] = [
     badge: '8-Key Navigation',
     icon: '💻',
     description: 'Authentic JAMB CBT terminal with on-screen calculator and exam timer',
-    hashTarget: '#cbt',
   },
   {
     id: 'questions',
@@ -30,7 +28,6 @@ const TABS: TabDefinition[] = [
     badge: 'Chief Examiner Notes',
     icon: '📖',
     description: 'Topic-by-topic worked solutions spanning 1978 – 2026 examination series',
-    hashTarget: '#past-questions',
   },
   {
     id: 'mocks',
@@ -38,7 +35,6 @@ const TABS: TabDefinition[] = [
     badge: 'Full-Length',
     icon: '⏱️',
     description: 'Strictly timed simulation rooms with standard JAMB & WAEC exam conditions',
-    hashTarget: '#mock-exams',
   },
   {
     id: 'materials',
@@ -46,39 +42,14 @@ const TABS: TabDefinition[] = [
     badge: 'Syllabus Aligned',
     icon: '📚',
     description: 'Comprehensive study notes, key formulas, and prescribed literature texts',
-    hashTarget: '#study-materials',
   },
 ];
 
 export const AcademicPracticeSuite: React.FC = () => {
   const [activeTab, setActiveTab] = useState<PracticeTab>('cbt');
 
-  // Sync tab with URL hash if visitor navigates via external anchor link
-  useEffect(() => {
-    const handleHashChange = () => {
-      const hash = window.location.hash.toLowerCase();
-      if (hash.includes('cbt')) {
-        setActiveTab('cbt');
-      } else if (hash.includes('question') || hash.includes('past')) {
-        setActiveTab('questions');
-      } else if (hash.includes('mock')) {
-        setActiveTab('mocks');
-      } else if (hash.includes('material') || hash.includes('novel')) {
-        setActiveTab('materials');
-      }
-    };
-
-    handleHashChange();
-    window.addEventListener('hashchange', handleHashChange);
-    return () => window.removeEventListener('hashchange', handleHashChange);
-  }, []);
-
   const handleTabSelect = (tab: PracticeTab) => {
     setActiveTab(tab);
-    const targetHash = TABS.find((t) => t.id === tab)?.hashTarget;
-    if (targetHash && window.history.replaceState) {
-      window.history.replaceState(null, '', targetHash);
-    }
   };
 
   return (

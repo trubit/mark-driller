@@ -31,7 +31,7 @@ export interface CbtAnswer {
 export interface CbtAttemptState {
   attemptId: string;
   status: 'IN_PROGRESS' | 'COMPLETED' | 'EXPIRED';
-  mode: 'PRACTICE' | 'TIMED_MOCK' | 'STUDY';
+  mode?: string;
   allocatedDurationSeconds: number;
   remainingSeconds: number;
   startTime: string;
@@ -49,6 +49,15 @@ export interface CbtAttemptState {
   percentage?: number;
 }
 
+export interface CbtTrialStatus {
+  isPro: boolean;
+  allowed: number;
+  used: number;
+  remaining: number;
+  isExhausted: boolean;
+  permittedYear: number;
+}
+
 export interface StartCbtPayload {
   examId: string;
   subjectId?: string;
@@ -59,8 +68,9 @@ export interface StartCbtPayload {
   allYears?: boolean;
   difficulty?: 'EASY' | 'MEDIUM' | 'HARD';
   questionOrder?: 'NORMAL' | 'SHUFFLE' | 'RANDOM';
+  shuffleOptions?: boolean;
   onlyBookmarked?: boolean;
-  mode?: 'PRACTICE' | 'TIMED_MOCK' | 'STUDY';
+  drillType?: 'PAST_QUESTION' | 'PRACTICE_MOCK' | 'BOTH';
   durationMinutes?: number;
   questionCount?: number;
 }
@@ -118,7 +128,18 @@ export interface CbtResultResponse {
   reviewedQuestions: (CbtQuestion & {
     studentChoice: 'A' | 'B' | 'C' | 'D' | null;
     isCorrect: boolean;
+    isSkipped?: boolean;
   })[];
+}
+
+export function useCbtTrialStatusQuery() {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('md_token') : null;
+  return useQuery<CbtTrialStatus>({
+    queryKey: ['cbt', 'trial-status'],
+    queryFn: () => apiClient<CbtTrialStatus>('/api/cbt/trial-status'),
+    enabled: Boolean(token),
+    staleTime: 30000,
+  });
 }
 
 export function useStartCbtMutation() {
@@ -131,6 +152,8 @@ export function useStartCbtMutation() {
         body: JSON.stringify(payload),
       }),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cbt', 'trial-status'] });
+      queryClient.invalidateQueries({ queryKey: ['subscription', 'my-subscription'] });
       queryClient.invalidateQueries({ queryKey: ['dashboardStats'] });
     },
   });

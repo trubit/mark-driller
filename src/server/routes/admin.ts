@@ -20,6 +20,7 @@ import { BlogPost } from '../models/BlogPost.js';
 import { Testimonial } from '../models/Testimonial.js';
 import { VideoLesson } from '../models/VideoLesson.js';
 import { SupportTicket } from '../models/SupportTicket.js';
+import { Notification } from '../models/Notification.js';
 import { authenticateToken, requireAdmin, AuthenticatedRequest } from '../middleware/auth.js';
 import { STORAGE_DIR_ABSOLUTE, RECEIPTS_DIR_ABSOLUTE } from '../middleware/upload.js';
 import { QuestionIngestionService } from '../services/questionIngestionService.js';
@@ -266,6 +267,10 @@ router.post('/exams', async (req: AuthenticatedRequest, res: Response, next: Nex
   try {
     const data = examSchema.parse(req.body);
     const slug = data.slug || data.shortCode.toLowerCase().replace(/[^a-z0-9]/g, '-');
+    if (data.shortCode.trim().toUpperCase() === 'UTME') {
+      res.status(400).json({ success: false, error: { message: 'UTME is unified under canonical "JAMB / UTME". Standalone "UTME" board is not permitted.' } });
+      return;
+    }
     const existing = await Exam.findOne({ $or: [{ shortCode: data.shortCode }, { slug }] });
     if (existing) {
       res.status(409).json({ success: false, error: { message: `Exam with shortCode ${data.shortCode} or slug ${slug} already exists.` } });
@@ -1837,6 +1842,112 @@ router.post('/support/tickets/:id/resend', async (req: AuthenticatedRequest, res
         emailRecipient: ticket.emailRecipient,
         error: dispatchResult.error,
       },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ----------------------------------------------------
+// 12. BROADCAST NOTIFICATIONS MANAGEMENT (ADMIN)
+// ----------------------------------------------------
+const adminNotificationSchema = z.object({
+  title: z.string().trim().min(3, 'Title must be at least 3 characters').max(150),
+  message: z.string().trim().min(5, 'Message must be at least 5 characters').max(1000),
+  audience: z.enum(['ALL', 'PREMIUM', 'FREE', 'JAMB', 'WAEC', 'NECO', 'POST_UTME']).default('ALL'),
+  type: z.enum(['ANNOUNCEMENT', 'SYSTEM', 'EXAM_ALERT', 'ACADEMIC', 'PAYMENT', 'SUBSCRIPTION']).default('ANNOUNCEMENT'),
+  priority: z.enum(['LOW', 'NORMAL', 'HIGH', 'URGENT']).default('NORMAL'),
+  actionText: z.string().trim().max(50).optional(),
+  actionLink: z.string().trim().max(200).optional(),
+  expiresAt: z.string().optional().nullable(),
+});
+
+// GET /api/admin/notifications — List all broadcast notifications
+router.get('/notifications', async (_req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const list = await Notification.find().sort({ createdAt: -1 }).limit(100).lean();
+    const mapped = list.map((n) => ({
+      _id: n._id,
+      title: n.title,
+      message: n.message,
+      audience: n.audience,
+      type: n.type,
+      priority: n.priority,
+      status: n.status,
+      actionText: n.actionText,
+      actionLink: n.actionLink,
+      expiresAt: n.expiresAt,
+      readCount: Array.isArray(n.readBy) ? n.readBy.length : 0,
+      createdAt: n.createdAt,
+    }));
+    res.status(200).json({ success: true, data: mapped });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/admin/notifications — Create new broadcast notification
+router.post('/notifications', async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const data = adminNotificationSchema.parse(req.body);
+    const adminUserId = req.user!._id;
+
+    const notif = await Notification.create({
+      title: data.title,
+      message: data.message,
+      audience: data.audience,
+      type: data.type,
+      priority: data.priority,
+      actionText: data.actionText || '',
+      actionLink: data.actionLink || '',
+      expiresAt: data.expiresAt ? new Date(data.expiresAt) : undefined,
+      status: 'ACTIVE',
+      createdBy: adminUserId,
+      readBy: [],
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Broadcast notification created successfully.',
+      data: notif,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({
+        success: false,
+        error: { message: 'Validation failed', details: error.flatten().fieldErrors },
+      });
+      return;
+    }
+    next(error);
+  }
+});
+
+// DELETE /api/admin/notifications/:id — Archive/Deactivate broadcast notification
+router.delete('/notifications/:id', async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const rawId = req.params.id;
+    const notifId = Array.isArray(rawId) ? rawId[0] : rawId;
+    if (!mongoose.Types.ObjectId.isValid(notifId)) {
+      res.status(400).json({ success: false, error: { message: 'Invalid notification ID' } });
+      return;
+    }
+
+    const updated = await Notification.findByIdAndUpdate(
+      notifId,
+      { status: 'ARCHIVED' },
+      { new: true }
+    );
+
+    if (!updated) {
+      res.status(404).json({ success: false, error: { message: 'Notification not found' } });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Notification archived successfully.',
+      data: updated,
     });
   } catch (error) {
     next(error);

@@ -196,10 +196,11 @@ export const LiteratureNovelsView: React.FC = () => {
         >
           {/* Left Sidebar: Chapter List */}
           <div
+            className="mk-card"
             style={{
               backgroundColor: 'var(--white)',
               border: '1px solid var(--paper-line)',
-              borderRadius: '8px',
+              borderRadius: '12px',
               padding: '20px',
               boxShadow: 'var(--card-shadow)',
             }}
@@ -236,10 +237,11 @@ export const LiteratureNovelsView: React.FC = () => {
 
           {/* Right Column: Active Chapter Detailed Analysis */}
           <div
+            className="mk-card"
             style={{
               backgroundColor: 'var(--white)',
               border: '1px solid var(--paper-line)',
-              borderRadius: '8px',
+              borderRadius: '12px',
               padding: '32px',
               boxShadow: 'var(--card-shadow)',
             }}
@@ -301,10 +303,11 @@ export const LiteratureNovelsView: React.FC = () => {
             {likelyQuestions.map((q, idx) => (
               <div
                 key={q.id}
+                className="mk-card mk-card-hover"
                 style={{
                   backgroundColor: 'var(--white)',
                   border: '1px solid var(--paper-line)',
-                  borderRadius: '6px',
+                  borderRadius: '12px',
                   padding: '24px',
                   boxShadow: 'var(--card-shadow)',
                 }}

@@ -21,6 +21,18 @@ export const Navbar: React.FC = () => {
     navigate('/');
   };
 
+  const scrollToSection = (sectionId: string) => {
+    const el = document.getElementById(sectionId);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const handleMobileNavScroll = (sectionId: string) => {
+    setMobileMenuOpen(false);
+    scrollToSection(sectionId);
+  };
+
   return (
     <header className="site-header">
       <nav className="wrap nav-container">
@@ -34,11 +46,11 @@ export const Navbar: React.FC = () => {
               📊 Dashboard
             </Link>
           )}
-          <a href="#offers">What We Offer</a>
-          <a href="#exam-boards">Examinations</a>
-          <a href="#how-it-works">How It Works</a>
-          <a href="#experience">Exam Simulator</a>
-          <a href="#performance">Analytics</a>
+          <button type="button" className="nav-link-btn" onClick={() => scrollToSection('offers')}>What We Offer</button>
+          <button type="button" className="nav-link-btn" onClick={() => scrollToSection('exam-boards')}>Examinations</button>
+          <button type="button" className="nav-link-btn" onClick={() => scrollToSection('how-it-works')}>How It Works</button>
+          <button type="button" className="nav-link-btn" onClick={() => scrollToSection('experience')}>Exam Simulator</button>
+          <button type="button" className="nav-link-btn" onClick={() => scrollToSection('performance')}>Analytics</button>
         </div>
 
         <div className="nav-cta" style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
@@ -131,11 +143,11 @@ export const Navbar: React.FC = () => {
                 🛡️ Admin Portal
               </Link>
             )}
-            <a href="#offers" onClick={handleNavClick}>🎯 What We Offer</a>
-            <a href="#exam-boards" onClick={handleNavClick}>🏛️ Examination Boards</a>
-            <a href="#how-it-works" onClick={handleNavClick}>⚡ How It Works</a>
-            <a href="#experience" onClick={handleNavClick}>💻 CBT Exam Simulator</a>
-            <a href="#performance" onClick={handleNavClick}>📊 Diagnostic Analytics</a>
+            <button type="button" className="mobile-nav-link-btn" onClick={() => handleMobileNavScroll('offers')}>🎯 What We Offer</button>
+            <button type="button" className="mobile-nav-link-btn" onClick={() => handleMobileNavScroll('exam-boards')}>🏛️ Examination Boards</button>
+            <button type="button" className="mobile-nav-link-btn" onClick={() => handleMobileNavScroll('how-it-works')}>⚡ How It Works</button>
+            <button type="button" className="mobile-nav-link-btn" onClick={() => handleMobileNavScroll('experience')}>💻 CBT Exam Simulator</button>
+            <button type="button" className="mobile-nav-link-btn" onClick={() => handleMobileNavScroll('performance')}>📊 Diagnostic Analytics</button>
           </div>
           <div style={{ marginTop: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {isAuthenticated ? (

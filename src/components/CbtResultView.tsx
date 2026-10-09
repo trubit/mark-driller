@@ -4,7 +4,7 @@ import { useCbtResultQuery, type SubjectBreakdownItem } from '../api/cbt.js';
 import { useAuthStore } from '../store/useAuthStore.js';
 import { BrandLoader } from './BrandLoader.js';
 
-type QuestionFilter = 'ALL' | 'INCORRECT' | 'CORRECT' | 'UNANSWERED';
+type QuestionFilter = 'ALL' | 'INCORRECT' | 'CORRECT' | 'SKIPPED' | 'UNANSWERED';
 
 export const CbtResultView: React.FC = () => {
   const { attemptId } = useParams<{ attemptId: string }>();
@@ -29,9 +29,11 @@ export const CbtResultView: React.FC = () => {
       case 'CORRECT':
         return data.reviewedQuestions.filter((q) => q.isCorrect);
       case 'INCORRECT':
-        return data.reviewedQuestions.filter((q) => !q.isCorrect && q.studentChoice !== null);
+        return data.reviewedQuestions.filter((q) => !q.isCorrect && !q.isSkipped && q.studentChoice !== null);
+      case 'SKIPPED':
+        return data.reviewedQuestions.filter((q) => q.isSkipped);
       case 'UNANSWERED':
-        return data.reviewedQuestions.filter((q) => q.studentChoice === null);
+        return data.reviewedQuestions.filter((q) => !q.isSkipped && q.studentChoice === null);
       case 'ALL':
       default:
         return data.reviewedQuestions;
@@ -209,6 +211,7 @@ export const CbtResultView: React.FC = () => {
         {/* Works in both light & dark mode using design tokens      */}
         {/* ======================================================== */}
         <section
+          className="mk-card mk-card-featured"
           style={{
             backgroundColor: 'var(--color-surface)',
             border: '1.5px solid var(--color-border)',
@@ -508,10 +511,11 @@ export const CbtResultView: React.FC = () => {
         >
           {/* Correct Answers */}
           <div
+            className="mk-card mk-card-stat"
             style={{
               backgroundColor: 'var(--color-surface)',
               border: '1.5px solid var(--color-border)',
-              borderRadius: '8px',
+              borderRadius: '12px',
               padding: '20px',
               boxShadow: 'var(--card-shadow)',
               borderTop: '4px solid var(--color-success)',
@@ -532,10 +536,11 @@ export const CbtResultView: React.FC = () => {
 
           {/* Incorrect Answers - Correctly Tinted With Error State */}
           <div
+            className="mk-card mk-card-stat"
             style={{
               backgroundColor: 'var(--color-surface)',
               border: '1.5px solid var(--color-border)',
-              borderRadius: '8px',
+              borderRadius: '12px',
               padding: '20px',
               boxShadow: 'var(--card-shadow)',
               borderTop: '4px solid var(--color-error)',
@@ -553,12 +558,37 @@ export const CbtResultView: React.FC = () => {
             <span style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>Identified gaps to study</span>
           </div>
 
-          {/* Unanswered / Skipped */}
+          {/* Skipped Questions (Distinct Requirement 5 & 24) */}
           <div
+            className="mk-card mk-card-stat"
             style={{
               backgroundColor: 'var(--color-surface)',
               border: '1.5px solid var(--color-border)',
-              borderRadius: '8px',
+              borderRadius: '12px',
+              padding: '20px',
+              boxShadow: 'var(--card-shadow)',
+              borderTop: '4px solid #ea580c',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '12px', fontWeight: 700, color: '#ea580c', textTransform: 'uppercase' }}>
+                Skipped Questions
+              </span>
+              <span style={{ fontSize: '16px', color: '#ea580c' }}>⏭</span>
+            </div>
+            <div style={{ fontSize: '30px', fontWeight: 800, margin: '8px 0 2px', color: 'var(--color-text)' }}>
+              {result.skippedCount || 0}
+            </div>
+            <span style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>Explicitly skipped</span>
+          </div>
+
+          {/* Left Unanswered */}
+          <div
+            className="mk-card mk-card-stat"
+            style={{
+              backgroundColor: 'var(--color-surface)',
+              border: '1.5px solid var(--color-border)',
+              borderRadius: '12px',
               padding: '20px',
               boxShadow: 'var(--card-shadow)',
               borderTop: '4px solid var(--color-warning)',
@@ -566,22 +596,23 @@ export const CbtResultView: React.FC = () => {
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-warning)', textTransform: 'uppercase' }}>
-                Skipped / Unanswered
+                Unanswered
               </span>
               <span style={{ fontSize: '16px', color: 'var(--color-warning)' }}>○</span>
             </div>
             <div style={{ fontSize: '30px', fontWeight: 800, margin: '8px 0 2px', color: 'var(--color-text)' }}>
               {result.unansweredCount}
             </div>
-            <span style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>Zero penalty items</span>
+            <span style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>Left blank at expiry</span>
           </div>
 
           {/* Total Speed & Pacing */}
           <div
+            className="mk-card mk-card-stat"
             style={{
               backgroundColor: 'var(--color-surface)',
               border: '1.5px solid var(--color-border)',
-              borderRadius: '8px',
+              borderRadius: '12px',
               padding: '20px',
               boxShadow: 'var(--card-shadow)',
               borderTop: '4px solid var(--color-primary)',
@@ -618,10 +649,11 @@ export const CbtResultView: React.FC = () => {
               {result.subjectBreakdown.map((s: SubjectBreakdownItem, idx: number) => (
                 <div
                   key={s.subjectId || idx}
+                  className="mk-card mk-card-hover"
                   style={{
                     backgroundColor: 'var(--color-surface)',
                     padding: '20px',
-                    borderRadius: '8px',
+                    borderRadius: '12px',
                     border: '1.5px solid var(--color-border)',
                     boxShadow: 'var(--card-shadow)',
                   }}
@@ -703,10 +735,11 @@ export const CbtResultView: React.FC = () => {
               {result.topicBreakdown.map((t, idx) => (
                 <div
                   key={idx}
+                  className="mk-card mk-card-hover"
                   style={{
                     backgroundColor: 'var(--color-surface)',
                     padding: '16px 20px',
-                    borderRadius: '8px',
+                    borderRadius: '12px',
                     border: '1.5px solid var(--color-border)',
                     display: 'flex',
                     alignItems: 'center',
@@ -813,11 +846,11 @@ export const CbtResultView: React.FC = () => {
           {/* Quick-Jump Question Navigation Matrix */}
           {showJumpMatrix && (
             <div
-              className="no-print"
+              className="no-print mk-card"
               style={{
                 backgroundColor: 'var(--color-surface)',
                 border: '1.5px solid var(--color-border)',
-                borderRadius: '8px',
+                borderRadius: '12px',
                 padding: '18px',
                 marginBottom: '24px',
                 boxShadow: 'var(--card-shadow)',
@@ -835,9 +868,12 @@ export const CbtResultView: React.FC = () => {
               >
                 {reviewedQuestions.map((q, idx) => {
                   const isCorrect = q.isCorrect;
+                  const isSkipped = q.isSkipped;
                   const hasAnswered = q.studentChoice !== null;
                   const bg = isCorrect
                     ? 'var(--color-success)'
+                    : isSkipped
+                    ? '#ea580c'
                     : hasAnswered
                     ? 'var(--color-error)'
                     : 'var(--color-border)';
@@ -933,6 +969,23 @@ export const CbtResultView: React.FC = () => {
 
             <button
               type="button"
+              onClick={() => setActiveFilter('SKIPPED')}
+              style={{
+                padding: '8px 16px',
+                borderRadius: '6px',
+                fontSize: '13px',
+                fontWeight: 600,
+                border: activeFilter === 'SKIPPED' ? '1.5px solid #ea580c' : '1px solid var(--color-border)',
+                backgroundColor: activeFilter === 'SKIPPED' ? '#ea580c' : 'var(--color-surface)',
+                color: activeFilter === 'SKIPPED' ? '#ffffff' : 'var(--color-text)',
+                cursor: 'pointer',
+              }}
+            >
+              ⏭ Skipped ({result.skippedCount || 0})
+            </button>
+
+            <button
+              type="button"
               onClick={() => setActiveFilter('UNANSWERED')}
               style={{
                 padding: '8px 16px',
@@ -945,7 +998,7 @@ export const CbtResultView: React.FC = () => {
                 cursor: 'pointer',
               }}
             >
-              ○ Skipped ({result.unansweredCount})
+              ○ Unanswered ({result.unansweredCount})
             </button>
           </div>
 
@@ -980,10 +1033,11 @@ export const CbtResultView: React.FC = () => {
                   <article
                     key={q._id}
                     id={`question-card-${originalIndex}`}
+                    className="mk-card"
                     style={{
                       backgroundColor: 'var(--color-surface)',
                       border: `1.5px solid ${borderColor}`,
-                      borderRadius: '8px',
+                      borderRadius: '12px',
                       padding: 'clamp(18px, 2.5vw, 26px)',
                       boxShadow: 'var(--card-shadow)',
                     }}
@@ -1039,6 +1093,8 @@ export const CbtResultView: React.FC = () => {
                       >
                         {isCorrect
                           ? '✓ Correct (+1 Mark)'
+                          : q.isSkipped
+                          ? '⏭ Skipped (0 Marks)'
                           : hasAnswered
                           ? `✗ Incorrect (Selected: Option ${q.studentChoice})`
                           : '○ Unanswered (0 Marks)'}

@@ -168,6 +168,10 @@ async function runEndToEndStudentJourney() {
       isLoginOk,
       `Status: ${loginRes.status}, JWT Token issued, Verified: ${loginData.data?.user?.isVerified}`
     );
+
+    // Accept student terms for the authenticated session
+    const { User } = await import('../src/server/models/User.js');
+    await User.updateOne({ email: studentEmail }, { acceptedTermsVersion: '1.0', acceptedTermsAt: new Date() });
   } catch (err: any) {
     record('Authentication', 'Student Login & Verified Session Issuance', false, err.message);
   }
@@ -467,13 +471,20 @@ async function runEndToEndStudentJourney() {
     });
     const freeToken = (await regFreeRes.json() as any).data?.token;
 
-    // Verify free student
+    // Verify free student and accept terms
     const { User } = await import('../src/server/models/User.js');
-    await User.updateOne({ email: freeEmail }, { isVerified: true });
+    await User.updateOne({ email: freeEmail }, { isVerified: true, acceptedTermsVersion: '1.0', acceptedTermsAt: new Date() });
 
-    // Seed 3 mock attempts in this month for this free student
+    // Seed 3 mock attempts in this month and record trial usage for this free student
     const { ExamAttempt } = await import('../src/server/models/ExamAttempt.js');
+    const { FreeTrialUsage } = await import('../src/server/models/FreeTrialUsage.js');
     const freeUserDoc = await User.findOne({ email: freeEmail });
+
+    await FreeTrialUsage.create({
+      userId: freeUserDoc!._id,
+      attemptsCount: 3,
+      attemptIds: [],
+    });
 
     for (let i = 0; i < 3; i++) {
       await ExamAttempt.create({
@@ -511,7 +522,7 @@ async function runEndToEndStudentJourney() {
     });
     const fourthData = await fourthAttemptRes.json() as any;
 
-    const isDeniedAsExpected = fourthAttemptRes.status === 403 && fourthData.error?.code === 'SUBSCRIPTION_REQUIRED';
+    const isDeniedAsExpected = fourthAttemptRes.status === 403 && (fourthData.error?.code === 'SUBSCRIPTION_REQUIRED' || fourthData.error?.code === 'TRIAL_EXHAUSTED');
 
     record(
       'Quota Enforcement',

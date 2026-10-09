@@ -102,17 +102,28 @@ async function runAudit() {
     );
   }
 
-  // Verify anchor links for the 5 landing sections exist
-  const expectedNavAnchors = ['#offers', '#exam-boards', '#how-it-works', '#experience', '#performance'];
-  for (const anchor of expectedNavAnchors) {
-    const hasAnchor = navbarContent.includes(`href="${anchor}"`);
+  // Verify clean programmatic section scrolling without # hash links
+  const expectedNavSections = ['offers', 'exam-boards', 'how-it-works', 'experience', 'performance'];
+  for (const section of expectedNavSections) {
+    const hasSectionTrigger =
+      navbarContent.includes(`scrollToSection('${section}')`) ||
+      navbarContent.includes(`handleMobileNavScroll('${section}')`);
     assertCheck(
-      `NAV_ANCHOR_${anchor.replace('#', '').toUpperCase()}`,
-      `Navbar links to section ${anchor}`,
-      hasAnchor,
-      `Navbar includes smooth section anchor ${anchor}`
+      `NAV_SCROLL_${section.toUpperCase().replace(/-/g, '_')}`,
+      `Navbar provides programmatic navigation to section ${section}`,
+      hasSectionTrigger,
+      `Navbar smoothly scrolls to section '${section}' without exposing '#' hash URLs`
     );
   }
+
+  // Verify zero href="#" anchors exist in Navbar
+  const hasNavbarHashLinks = /href=["']#[^"']*["']/.test(navbarContent);
+  assertCheck(
+    'NAV_ZERO_HASH_LINKS',
+    'Navbar contains zero "#" hash links',
+    !hasNavbarHashLinks,
+    'All navbar navigation uses clean programmatic scroll without URL bar hash pollution'
+  );
 
   // =========================================================================
   // 3. FOOTER AUDIT (Footer.tsx)
@@ -131,6 +142,15 @@ async function runAudit() {
     );
   }
 
+  // Verify zero href="#" anchors exist in Footer
+  const hasFooterHashLinks = /href=["']#[^"']*["']/.test(footerContent);
+  assertCheck(
+    'FOOTER_ZERO_HASH_LINKS',
+    'Footer contains zero "#" hash links',
+    !hasFooterHashLinks,
+    'All footer navigation uses clean programmatic scroll and verified paths without "#"'
+  );
+
   assertCheck(
     'FOOTER_EXAMS_TOOLS_CREATE_ACCOUNT',
     'Footer Examinations & Learning Tools redirect to create account',
@@ -139,6 +159,28 @@ async function runAudit() {
       footerContent.includes('JAMB / UTME CBT') &&
       footerContent.includes('CBT Exam Simulator'),
     'Examinations and Learning Tools options redirect unauthenticated visitors to create account'
+  );
+
+  assertCheck(
+    'FOOTER_DYNAMIC_SUPPORT_EMAIL',
+    'Footer consumes dynamic admin support email via query hook',
+    footerContent.includes('useSupportContactQuery') &&
+      footerContent.includes('buildMailtoLink') &&
+      !footerContent.includes('href="mailto:support@markdriller.com"'),
+    'Footer dynamically synchronizes with admin support email settings without hardcoded fallback'
+  );
+
+  // Verify FloatingWhatsApp dynamic synchronization
+  const floatingWhatsAppPath = path.join(srcDir, 'components', 'FloatingWhatsApp.tsx');
+  const floatingWhatsAppContent = fs.readFileSync(floatingWhatsAppPath, 'utf8');
+  assertCheck(
+    'FLOATING_SUPPORT_DYNAMIC_EMAIL',
+    'Floating Help Desk consumes dynamic email and operational hours',
+    floatingWhatsAppContent.includes('buildMailtoLink') &&
+      floatingWhatsAppContent.includes('emailDisplay') &&
+      floatingWhatsAppContent.includes('workingHours') &&
+      !floatingWhatsAppContent.includes('href="mailto:support@markdriller.com'),
+    'Floating Help Desk dynamically displays email and working hours configured in admin panel'
   );
 
   // =========================================================================

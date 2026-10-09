@@ -19,4 +19,6 @@ export * from './Testimonial.js';
 export * from './VideoLesson.js';
 export * from './SupportTicket.js';
 export * from './FreeTrialUsage.js';
+export * from './Notification.js';
+export * from './TermsAcceptance.js';
 

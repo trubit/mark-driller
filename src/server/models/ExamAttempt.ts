@@ -1,7 +1,7 @@
 import mongoose, { Schema, Document, Model, Types } from 'mongoose';
 
 export type AttemptStatus = 'IN_PROGRESS' | 'COMPLETED' | 'EXPIRED';
-export type AttemptMode = 'PRACTICE' | 'TIMED_MOCK' | 'STUDY';
+export type AttemptMode = 'CBT';
 
 export interface IAttemptAnswer {
   questionId: Types.ObjectId;
@@ -40,7 +40,7 @@ export interface IExamAttempt extends Document {
   subjectId: Types.ObjectId;
   subjectIds?: Types.ObjectId[];
   isMultiSubject?: boolean;
-  mode: AttemptMode;
+  mode: string;
   status: AttemptStatus;
   allocatedDurationSeconds: number;
   startTime: Date;
@@ -198,8 +198,7 @@ const ExamAttemptSchema = new Schema<IExamAttempt>(
     },
     mode: {
       type: String,
-      enum: ['PRACTICE', 'TIMED_MOCK', 'STUDY'],
-      default: 'TIMED_MOCK',
+      default: 'CBT',
     },
     status: {
       type: String,

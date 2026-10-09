@@ -28,6 +28,8 @@ export interface IUser extends Document {
   previousResetPasswordOtp?: string;
   previousResetPasswordOtpExpires?: Date;
   accountStatus: AccountStatus;
+  acceptedTermsVersion?: string;
+  acceptedTermsAt?: Date;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -139,6 +141,13 @@ const UserSchema = new Schema<IUser>(
       enum: ['ACTIVE', 'SUSPENDED', 'LOCKED'],
       default: 'ACTIVE',
       index: true,
+    },
+    acceptedTermsVersion: {
+      type: String,
+      index: true,
+    },
+    acceptedTermsAt: {
+      type: Date,
     },
   },
   {

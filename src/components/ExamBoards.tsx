@@ -249,16 +249,17 @@ export const ExamBoards: React.FC = () => {
             return (
               <div
                 key={card.id}
-                className="exam-board-suite-card"
+                className="exam-board-suite-card mk-card mk-card-hover"
                 style={{
                   background: 'var(--white)',
-                  border: '1.5px solid var(--paper-line)',
-                  borderRadius: '10px',
+                  border: isExpanded ? '1.5px solid var(--rust)' : '1px solid var(--paper-line)',
+                  borderRadius: '12px',
                   overflow: 'hidden',
                   display: 'flex',
                   flexDirection: 'column',
-                  boxShadow: 'var(--card-shadow, 0 4px 16px rgba(0, 0, 0, 0.05))',
-                  transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                  padding: 0,
+                  boxShadow: isExpanded ? '0 10px 30px rgba(0, 0, 0, 0.08)' : '0 2px 10px rgba(0, 0, 0, 0.04)',
+                  transition: 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease',
                   alignSelf: 'start',
                 }}
               >
@@ -534,13 +535,14 @@ export const ExamBoards: React.FC = () => {
                               padding: '8px 10px',
                               textAlign: 'center',
                               justifyContent: 'center',
+                              borderRadius: '6px',
                             }}
                             title={`Practice ${card.shortCode} questions topic-by-topic`}
                           >
-                            🎯 Practice Topics
+                            🎯 Subject Topics
                           </button>
 
-                          {/* 2. Mock Examination Option */}
+                          {/* 2. CBT Examination Option */}
                           <button
                             type="button"
                             onClick={() => handleMockOption(card.shortCode)}
@@ -550,10 +552,11 @@ export const ExamBoards: React.FC = () => {
                               padding: '8px 10px',
                               textAlign: 'center',
                               justifyContent: 'center',
+                              borderRadius: '6px',
                             }}
-                            title={`Simulate official ${card.shortCode} timed CBT mock exam`}
+                            title={`Simulate official ${card.shortCode} timed CBT exam`}
                           >
-                            ⏱️ Mock Exam
+                            ⏱️ Start CBT
                           </button>
                         </div>
 
@@ -563,19 +566,19 @@ export const ExamBoards: React.FC = () => {
                           onClick={() => handlePastQuestionOption(card.shortCode)}
                           style={{
                             width: '100%',
-                            padding: '7px 12px',
+                            padding: '8px 12px',
                             backgroundColor: 'var(--paper)',
                             border: '1px solid var(--paper-line)',
-                            borderRadius: '4px',
+                            borderRadius: '6px',
                             color: 'var(--ink)',
                             fontSize: '11.5px',
                             fontFamily: "var(--font-sans)",
                             fontWeight: 600,
                             cursor: 'pointer',
                             textAlign: 'center',
-                            transition: 'background 0.15s ease',
+                            transition: 'all 0.15s ease',
                           }}
-                          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--paper-soft, #eceee6)')}
+                          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--paper-dim)')}
                           onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'var(--paper)')}
                           title={`Browse complete ${card.shortCode} past questions archive`}
                         >

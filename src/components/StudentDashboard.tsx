@@ -86,18 +86,21 @@ export const StudentDashboard: React.FC = () => {
   const metrics = [
     {
       label: 'Curriculum Target',
+      icon: '🎯',
       value: currentExamObj?.shortCode || 'JAMB / UTME',
       detail: `Session: ${currentExamObj?.syllabusYear || '2025/2026'}`,
       tone: 'steel',
     },
     {
       label: 'CBT Mocks Completed',
+      icon: '⏱️',
       value: statsLoading ? '...' : `${statsData?.totalAttempts ?? 0}`,
       detail: 'Official timed simulations',
       tone: 'rust',
     },
     {
       label: 'Average Performance',
+      icon: '📈',
       value: statsLoading ? '...' : `${statsData?.averageScore ?? 0}%`,
       detail: 'Server-calculated accuracy',
       tone: 'amber',
@@ -106,18 +109,20 @@ export const StudentDashboard: React.FC = () => {
     },
     {
       label: 'Syllabus Subjects',
+      icon: '📚',
       value: subjectsLoading ? '...' : `${subjects?.length ?? 0}`,
       detail: 'Accredited exam papers',
       tone: 'forest',
     },
     {
       label: 'Subscription Tier',
+      icon: '⭐',
       value: currentSub?.isPro ? 'Pro Scholar Pass' : 'Free Trial',
       detail: currentSub?.isPro && currentSub.endDate
         ? `Active until ${new Date(currentSub.endDate).toLocaleDateString()}`
-        : currentSub?.trialUsage
-        ? `${currentSub.trialUsage.used} / ${currentSub.trialUsage.limit} Past Questions used`
-        : '200 Past Questions free trial limit',
+        : currentSub?.freeTrial
+        ? `${currentSub.freeTrial.used} of ${currentSub.freeTrial.allowed} Free Trials used (${currentSub.freeTrial.remaining} left)`
+        : '3 Free CBT Trials (2024 past questions)',
       tone: currentSub?.isPro ? 'forest' : 'rust',
       badge: subscriptionLabel,
       href: '/portal/pricing',
@@ -128,17 +133,13 @@ export const StudentDashboard: React.FC = () => {
   const quickActions = [
     {
       eyebrow: 'CBT Simulator',
-      title: 'Practice Mock Exam',
+      title: 'Full CBT Simulation',
       body: currentSub?.isPro
-        ? 'Launch a focused, timed exam room with auto-submission, official pacing, and instant scoring.'
-        : 'Exam Mode, Practice Mode, and Study Mode require an active Pro subscription.',
-      action: currentSub?.isPro ? (
+        ? 'Launch an official timed examination room with auto-submission, official pacing, and instant scoring.'
+        : 'Practice official examination questions under timed CBT conditions. Includes 3 Free Trials.',
+      action: (
         <button type="button" className="btn-custom btn-custom-primary" onClick={() => setIsCbtModalOpen(true)}>
-          Start timed CBT mock
-        </button>
-      ) : (
-        <button type="button" className="btn-custom btn-custom-ghost" onClick={() => setIsCbtModalOpen(true)}>
-          🔒 Locked (Pro Required)
+          Start CBT Simulation
         </button>
       ),
       featured: true,
@@ -250,12 +251,19 @@ export const StudentDashboard: React.FC = () => {
           {metrics.map((metric) => (
             <article key={metric.label} className={`portal-metric-card tone-${metric.tone}`}>
               <div className="portal-card-head">
-                <span className="eyebrow">{metric.label}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontSize: '15px' }}>{metric.icon}</span>
+                  <span className="eyebrow" style={{ margin: 0 }}>{metric.label}</span>
+                </div>
                 {metric.badge && <span className="portal-pill">{metric.badge}</span>}
               </div>
-              <strong>{metric.value}</strong>
-              <p>{metric.detail}</p>
-              {metric.href && metric.cta && <Link to={metric.href}>{metric.cta}</Link>}
+              <strong style={{ margin: '4px 0' }}>{metric.value}</strong>
+              <p style={{ fontSize: '12px', lineHeight: 1.4 }}>{metric.detail}</p>
+              {metric.href && metric.cta && (
+                <Link to={metric.href} style={{ marginTop: 'auto', paddingTop: '8px', fontSize: '12px' }}>
+                  {metric.cta} →
+                </Link>
+              )}
             </article>
           ))}
         </section>
@@ -270,8 +278,8 @@ export const StudentDashboard: React.FC = () => {
             {quickActions.map((item) => (
               <article key={item.title} className={`portal-action-card${item.featured ? ' is-featured' : ''}${item.accent ? ' is-accent' : ''}`}>
                 <span className="eyebrow">{item.eyebrow}</span>
-                <h3>{item.title}</h3>
-                <p>{item.body}</p>
+                <h3 style={{ fontSize: '19px', fontWeight: 700 }}>{item.title}</h3>
+                <p style={{ fontSize: '13px', lineHeight: 1.55 }}>{item.body}</p>
                 <div className="portal-card-action">{item.action}</div>
               </article>
             ))}
@@ -286,11 +294,11 @@ export const StudentDashboard: React.FC = () => {
           </div>
           <div className="portal-tool-grid">
             {tools.map(([eyebrow, title, body, path]) => (
-              <Link key={title} to={path} className="portal-tool-card">
+              <Link key={title} to={path} className="portal-tool-card" style={{ borderRadius: '12px' }}>
                 <span>{eyebrow}</span>
-                <strong>{title}</strong>
-                <p>{body}</p>
-                <em>Open tool</em>
+                <strong style={{ fontSize: '15px' }}>{title}</strong>
+                <p style={{ fontSize: '12.5px', lineHeight: 1.5 }}>{body}</p>
+                <em>Open tool →</em>
               </Link>
             ))}
           </div>

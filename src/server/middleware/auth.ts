@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyToken, TokenPayload } from '../utils/jwt.js';
 import { User, IUser, UserRole } from '../models/User.js';
-import { env } from '../config/env.js';
+import { isAuthorizedAdminEmail } from '../config/adminConfig.js';
 
 export interface AuthenticatedRequest extends Request {
   user?: IUser;
@@ -65,9 +65,7 @@ export function requireRole(allowedRoles: UserRole[]) {
       return;
     }
 
-    const normalizedUserEmail = (req.user.email || '').trim().toLowerCase();
-    const normalizedAdminEmail = (env.ADMIN_EMAIL || '').trim().toLowerCase();
-    const isConfiguredAdmin = Boolean(normalizedAdminEmail) && normalizedUserEmail === normalizedAdminEmail;
+    const isConfiguredAdmin = isAuthorizedAdminEmail(req.user.email);
 
     if (isConfiguredAdmin && allowedRoles.includes('ADMIN')) {
       return next();
@@ -116,7 +114,7 @@ export function requireVerified(
  *
  * Grants administrative privileges if:
  * 1. User holds ADMIN role, OR
- * 2. User email matches the configured ADMIN_EMAIL
+ * 2. User email matches an authorized administrator email
  */
 export function requireAdmin(
   req: AuthenticatedRequest,
@@ -131,12 +129,9 @@ export function requireAdmin(
     return;
   }
 
-  const normalizedUserEmail = (req.user.email || '').trim().toLowerCase();
-  const normalizedAdminEmail = (env.ADMIN_EMAIL || '').trim().toLowerCase();
-
   const hasAdminPrivilege =
     req.user.role === 'ADMIN' ||
-    (Boolean(normalizedAdminEmail) && normalizedUserEmail === normalizedAdminEmail);
+    isAuthorizedAdminEmail(req.user.email);
 
   if (!hasAdminPrivilege) {
     res.status(403).json({
@@ -172,40 +167,33 @@ export async function checkStudentSubscription(userId: any) {
   return { isPro: sub.plan !== 'FREE', plan: sub.plan, status: sub.status };
 }
 
+export const FREE_PERMITTED_YEAR = 2024;
+
 /**
- * Enforce subscription entitlement for CBT examinations and study modes:
- * - Free Trial: Exam Mode, Practice Mode, and Study Mode are LOCKED (Pro required).
- * - Pro: Full unrestricted access across Exam, Practice, and Study modes.
+ * Enforce authentication and verification for CBT examinations:
+ * - Free Students: Allowed access to CBT suite strictly restricted to 3 free trials and the permitted Free Year (2024).
+ * - Pro Students: Full unrestricted access across all years (2015–2025), all subjects, and unlimited attempts.
  * - Admin: Unrestricted administrative access.
  */
 export function requireCbtEntitlement() {
   return async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
     if (!req.user) {
-      res.status(401).json({ success: false, error: { message: 'Authentication required.' } });
+      res.status(401).json({ success: false, error: { message: 'Authentication required. Please sign in to access CBT examination.' } });
       return;
     }
 
-    // Admins have unrestricted examination access
-    if (req.user.role === 'ADMIN') {
-      next();
+    if (!req.user.isVerified) {
+      res.status(403).json({
+        success: false,
+        error: {
+          message: 'Email verification required before accessing CBT examination.',
+          needsVerification: true,
+        },
+      });
       return;
     }
 
-    const { isPro, plan } = await checkStudentSubscription(req.user._id);
-
-    if (isPro) {
-      next();
-      return;
-    }
-
-    res.status(403).json({
-      success: false,
-      error: {
-        code: 'SUBSCRIPTION_REQUIRED',
-        message: 'Exam Mode, Practice Mode, and Study Mode require an active MarkDriller Pro subscription. Upgrade to unlock full access.',
-        currentPlan: plan,
-      },
-    });
+    next();
   };
 }
 

@@ -2,6 +2,17 @@ import { Types } from 'mongoose';
 import { FreeTrialUsage } from '../models/FreeTrialUsage.js';
 
 export const FREE_TRIAL_QUESTION_LIMIT = 200;
+export const MAX_FREE_TRIALS = 3;
+export const FREE_PERMITTED_YEAR = 2024;
+
+export interface FreeTrialStatus {
+  isPro: boolean;
+  allowed: number;
+  used: number;
+  remaining: number;
+  isExhausted: boolean;
+  permittedYear: number;
+}
 
 export interface FreeTrialUsageInfo {
   used: number;
@@ -11,6 +22,137 @@ export interface FreeTrialUsageInfo {
 }
 
 export class FreeTrialService {
+  /**
+   * Get the current CBT Free Trial status for a student account.
+   * Pro/Admin users receive full unlimited status.
+   * Free users are strictly checked against MAX_FREE_TRIALS (3).
+   */
+  static async getTrialStatus(
+    userId: string | Types.ObjectId,
+    isPro = false
+  ): Promise<FreeTrialStatus> {
+    if (isPro) {
+      return {
+        isPro: true,
+        allowed: MAX_FREE_TRIALS,
+        used: 0,
+        remaining: MAX_FREE_TRIALS,
+        isExhausted: false,
+        permittedYear: FREE_PERMITTED_YEAR,
+      };
+    }
+
+    const userObjectId = typeof userId === 'string' ? new Types.ObjectId(userId) : userId;
+    const record = await FreeTrialUsage.findOne({ userId: userObjectId }).lean();
+
+    const used = Math.min(MAX_FREE_TRIALS, record?.attemptsCount ?? 0);
+    const remaining = Math.max(0, MAX_FREE_TRIALS - used);
+    const isExhausted = used >= MAX_FREE_TRIALS;
+
+    return {
+      isPro: false,
+      allowed: MAX_FREE_TRIALS,
+      used,
+      remaining,
+      isExhausted,
+      permittedYear: FREE_PERMITTED_YEAR,
+    };
+  }
+
+  /**
+   * Concurrency-safe atomic attempt consumption for Free Trial users.
+   * Ensures that exactly 3 free trial attempts can ever be consumed.
+   * If the user has already reached 3 attempts, returns success: false.
+   */
+  static async consumeTrialAttempt(
+    userId: string | Types.ObjectId
+  ): Promise<{ success: boolean; usage: FreeTrialStatus }> {
+    const userObjectId = typeof userId === 'string' ? new Types.ObjectId(userId) : userId;
+
+    // Ensure the document exists
+    await FreeTrialUsage.updateOne(
+      { userId: userObjectId },
+      {
+        $setOnInsert: {
+          userId: userObjectId,
+          attemptsCount: 0,
+          attemptIds: [],
+          accessedQuestionIds: [],
+          count: 0,
+        },
+      },
+      { upsert: true }
+    );
+
+    // Atomically increment ONLY if strictly less than MAX_FREE_TRIALS (3)
+    const updated = await FreeTrialUsage.findOneAndUpdate(
+      {
+        userId: userObjectId,
+        attemptsCount: { $lt: MAX_FREE_TRIALS },
+      },
+      {
+        $inc: { attemptsCount: 1 },
+      },
+      { new: true }
+    );
+
+    if (!updated) {
+      // Limit already reached or concurrent race condition prevented over-consumption
+      return {
+        success: false,
+        usage: {
+          isPro: false,
+          allowed: MAX_FREE_TRIALS,
+          used: MAX_FREE_TRIALS,
+          remaining: 0,
+          isExhausted: true,
+          permittedYear: FREE_PERMITTED_YEAR,
+        },
+      };
+    }
+
+    const used = updated.attemptsCount;
+    const remaining = Math.max(0, MAX_FREE_TRIALS - used);
+
+    return {
+      success: true,
+      usage: {
+        isPro: false,
+        allowed: MAX_FREE_TRIALS,
+        used,
+        remaining,
+        isExhausted: used >= MAX_FREE_TRIALS,
+        permittedYear: FREE_PERMITTED_YEAR,
+      },
+    };
+  }
+
+  /**
+   * Rollback trial count if attempt initialization failed after consumption.
+   */
+  static async rollbackTrial(userId: string | Types.ObjectId): Promise<void> {
+    const userObjectId = typeof userId === 'string' ? new Types.ObjectId(userId) : userId;
+    await FreeTrialUsage.updateOne(
+      { userId: userObjectId, attemptsCount: { $gt: 0 } },
+      { $inc: { attemptsCount: -1 } }
+    );
+  }
+
+  /**
+   * Record the created attempt ObjectId into the user's trial history.
+   */
+  static async recordAttemptId(
+    userId: string | Types.ObjectId,
+    attemptId: string | Types.ObjectId
+  ): Promise<void> {
+    const userObjectId = typeof userId === 'string' ? new Types.ObjectId(userId) : userId;
+    const attObjectId = typeof attemptId === 'string' ? new Types.ObjectId(attemptId) : attemptId;
+    await FreeTrialUsage.updateOne(
+      { userId: userObjectId },
+      { $addToSet: { attemptIds: attObjectId } }
+    );
+  }
+
   /**
    * Get the current Free Trial usage for an authenticated user.
    */

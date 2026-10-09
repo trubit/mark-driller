@@ -3,6 +3,8 @@ import mongoose, { Schema, Document, Model, Types } from 'mongoose';
 export interface IFreeTrialUsage extends Document {
   _id: Types.ObjectId;
   userId: Types.ObjectId;
+  attemptsCount: number;
+  attemptIds: Types.ObjectId[];
   accessedQuestionIds: Types.ObjectId[];
   count: number;
   createdAt: Date;
@@ -18,6 +20,17 @@ const FreeTrialUsageSchema = new Schema<IFreeTrialUsage>(
       unique: true,
       index: true,
     },
+    attemptsCount: {
+      type: Number,
+      default: 0,
+      index: true,
+    },
+    attemptIds: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: 'ExamAttempt',
+      },
+    ],
     accessedQuestionIds: [
       {
         type: Schema.Types.ObjectId,
@@ -38,3 +51,4 @@ const FreeTrialUsageSchema = new Schema<IFreeTrialUsage>(
 export const FreeTrialUsage: Model<IFreeTrialUsage> =
   mongoose.models.FreeTrialUsage ||
   mongoose.model<IFreeTrialUsage>('FreeTrialUsage', FreeTrialUsageSchema);
+

@@ -348,14 +348,14 @@ export const UserSettingsView: React.FC<UserSettingsViewProps> = ({ defaultTab =
         >
           {/* Navigation Sidebar / Tabs */}
           <nav
-            className="settings-nav-sidebar"
+            className="settings-nav-sidebar mk-card"
             aria-label="Account Settings Navigation"
             style={{
               backgroundColor: 'var(--white)',
               border: '1.5px solid var(--paper-line)',
-              borderRadius: '10px',
+              borderRadius: '12px',
               padding: '12px',
-              boxShadow: 'var(--shadow)',
+              boxShadow: 'var(--card-shadow)',
               display: 'flex',
               flexDirection: 'column',
               gap: '4px',
@@ -414,11 +414,12 @@ export const UserSettingsView: React.FC<UserSettingsViewProps> = ({ defaultTab =
 
           {/* Main Content Area */}
           <div
+            className="mk-card"
             style={{
               gridColumn: 'span 2',
               backgroundColor: 'var(--white)',
               border: '1.5px solid var(--paper-line)',
-              borderRadius: '10px',
+              borderRadius: '12px',
               padding: 'clamp(20px, 3.5vw, 36px)',
               boxShadow: 'var(--card-shadow)',
               minHeight: '520px',

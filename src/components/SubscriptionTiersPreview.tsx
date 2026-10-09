@@ -54,10 +54,11 @@ export const SubscriptionTiersPreview: React.FC = () => {
         >
           {/* Tier 1: Free Starter */}
           <div
+            className="mk-card mk-card-hover"
             style={{
               background: 'var(--white)',
               border: '1.5px solid var(--paper-line)',
-              borderRadius: '10px',
+              borderRadius: '12px',
               padding: '28px',
               display: 'flex',
               flexDirection: 'column',
@@ -104,7 +105,7 @@ export const SubscriptionTiersPreview: React.FC = () => {
               }}
             >
               <li>Access to 500+ verified sample past questions</li>
-              <li>Standard CBT practice mode</li>
+              <li>3 Free CBT examination trials (2024 questions)</li>
               <li>Official JAMB &amp; WAEC syllabus outlines</li>
               <li>School &amp; course eligibility checker</li>
             </ul>
@@ -121,15 +122,17 @@ export const SubscriptionTiersPreview: React.FC = () => {
 
           {/* Tier 2: Pro Annual Pass (Featured) */}
           <div
+            className="mk-card mk-card-featured"
             style={{
               background: 'var(--white)',
               border: '2px solid var(--rust)',
-              borderRadius: '10px',
+              borderRadius: '12px',
               padding: '28px',
               display: 'flex',
               flexDirection: 'column',
               boxShadow: '0 8px 28px rgba(168, 86, 47, 0.15)',
               position: 'relative',
+              overflow: 'visible',
             }}
           >
             <div
@@ -209,10 +212,11 @@ export const SubscriptionTiersPreview: React.FC = () => {
 
           {/* Tier 3: School & Centre LAN Server */}
           <div
+            className="mk-card mk-card-hover"
             style={{
               background: 'var(--white)',
               border: '1.5px solid var(--paper-line)',
-              borderRadius: '10px',
+              borderRadius: '12px',
               padding: '28px',
               display: 'flex',
               flexDirection: 'column',
