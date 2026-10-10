@@ -78,7 +78,7 @@ export const BrandLoader: React.FC<BrandLoaderProps> = ({
           style={{
             width: isFullscreen ? '180px' : '120px',
             height: '3px',
-            backgroundColor: 'rgba(20, 24, 28, 0.08)',
+            backgroundColor: 'var(--color-border, rgba(140, 150, 170, 0.2))',
             borderRadius: '2px',
             overflow: 'hidden',
             marginTop: '8px',
@@ -88,7 +88,7 @@ export const BrandLoader: React.FC<BrandLoaderProps> = ({
             className="brand-loader-bar-fill"
             style={{
               height: '100%',
-              backgroundColor: 'var(--rust, #a8562f)',
+              backgroundColor: 'var(--brand-drill, var(--rust, #a8562f))',
               borderRadius: '2px',
             }}
           />
@@ -99,8 +99,9 @@ export const BrandLoader: React.FC<BrandLoaderProps> = ({
             style={{
               fontFamily: "var(--font-sans)",
               fontSize: isFullscreen ? '13px' : '12px',
-              color: 'var(--slate, #666)',
-              letterSpacing: '0.5px',
+              fontWeight: 500,
+              color: 'var(--ink-soft, var(--color-text-muted, #64748b))',
+              letterSpacing: '0.3px',
               marginTop: '4px',
               textAlign: 'center',
             }}

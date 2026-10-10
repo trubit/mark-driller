@@ -27,16 +27,32 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
   showTagline = false,
   className = '',
   style = {},
-  theme = 'light',
+  theme = 'auto',
 }) => {
   const config = sizeConfig[size] || sizeConfig.md;
   const isStacked = variant === 'stacked';
   const isIconOnly = variant === 'icon-only';
 
-  const isDark = theme === 'dark';
-  const baseColor = isDark ? '#ffffff' : (style?.color || 'var(--ink, #14181c)');
-  const drillColor = isDark ? '#fb923c' : 'var(--rust, #a8562f)';
-  const innerRingColor = isDark ? '#fb923c' : 'var(--rust, #a8562f)';
+  const baseColor =
+    theme === 'dark'
+      ? '#ffffff'
+      : theme === 'light'
+      ? (style?.color || '#121826')
+      : (style?.color || 'var(--brand-mark, var(--ink, #121826))');
+
+  const drillColor =
+    theme === 'dark'
+      ? '#fb923c'
+      : theme === 'light'
+      ? '#a8562f'
+      : 'var(--brand-drill, var(--rust, #a8562f))';
+
+  const innerRingColor =
+    theme === 'dark'
+      ? '#fb923c'
+      : theme === 'light'
+      ? '#a8562f'
+      : 'var(--brand-drill, var(--rust, #a8562f))';
 
   const iconSvg = (
     <svg
@@ -96,7 +112,12 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
             style={{
               fontSize: '11px',
               fontFamily: "var(--font-sans)",
-              color: isDark ? 'rgba(255, 255, 255, 0.75)' : 'var(--slate, #666)',
+              color:
+                theme === 'dark'
+                  ? 'rgba(255, 255, 255, 0.75)'
+                  : theme === 'light'
+                  ? '#4b5563'
+                  : 'var(--ink-soft, var(--color-text-muted, #666))',
               fontWeight: 500,
               letterSpacing: '0.5px',
               marginTop: '4px',
