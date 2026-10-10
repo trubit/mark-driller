@@ -49,10 +49,19 @@ export const Navbar: React.FC = () => {
               </Link>
             )}
             <button type="button" className="nav-link-btn" onClick={() => scrollToSection('offers')}>What We Offer</button>
-            <button type="button" className="nav-link-btn" onClick={() => scrollToSection('exam-boards')}>Examinations</button>
+            <button type="button" className="nav-link-btn" onClick={() => scrollToSection('exam-boards')}>Examination</button>
             <button type="button" className="nav-link-btn" onClick={() => scrollToSection('how-it-works')}>How It Works</button>
             <button type="button" className="nav-link-btn" onClick={() => scrollToSection('experience')}>Exam Simulator</button>
             <button type="button" className="nav-link-btn" onClick={() => scrollToSection('performance')}>Analytics</button>
+            {!isAuthenticated && (
+              <button
+                type="button"
+                className="nav-link-btn"
+                onClick={() => openAuthModal('login')}
+              >
+                Log In
+              </button>
+            )}
           </div>
 
           <div className="nav-auth-group">
@@ -85,13 +94,6 @@ export const Navbar: React.FC = () => {
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <button
                   type="button"
-                  className="nav-login"
-                  onClick={() => openAuthModal('login')}
-                >
-                  Log in
-                </button>
-                <button
-                  type="button"
                   className="btn-custom btn-custom-primary nav-btn-compact"
                   onClick={() => openAuthModal('signup')}
                 >
@@ -109,6 +111,15 @@ export const Navbar: React.FC = () => {
 
         {/* Mobile & Tablet Controls */}
         <div className="nav-mobile-controls">
+          {!isAuthenticated && (
+            <button
+              type="button"
+              className="btn-custom btn-custom-primary nav-btn-compact nav-mobile-cta"
+              onClick={() => openAuthModal('signup')}
+            >
+              Get started
+            </button>
+          )}
           <ThemeToggle />
           <button
             type="button"
@@ -148,6 +159,22 @@ export const Navbar: React.FC = () => {
             <ThemeToggle showLabel />
           </div>
 
+          {!isAuthenticated && (
+            <div style={{ marginBottom: '16px' }}>
+              <button
+                type="button"
+                className="btn-custom btn-custom-primary"
+                style={{ width: '100%', justifyContent: 'center' }}
+                onClick={() => {
+                  handleNavClick();
+                  openAuthModal('signup');
+                }}
+              >
+                Get started
+              </button>
+            </div>
+          )}
+
           <div className="mobile-nav-links">
             {isAuthenticated && (
               <Link to="/dashboard" onClick={handleNavClick} style={{ color: 'var(--rust)', fontWeight: 700 }}>
@@ -159,13 +186,25 @@ export const Navbar: React.FC = () => {
                 🛡️ Admin Portal
               </Link>
             )}
-            <button type="button" className="mobile-nav-link-btn" onClick={() => handleMobileNavScroll('offers')}>🎯 What We Offer</button>
-            <button type="button" className="mobile-nav-link-btn" onClick={() => handleMobileNavScroll('exam-boards')}>🏛️ Examination Boards</button>
-            <button type="button" className="mobile-nav-link-btn" onClick={() => handleMobileNavScroll('how-it-works')}>⚡ How It Works</button>
-            <button type="button" className="mobile-nav-link-btn" onClick={() => handleMobileNavScroll('experience')}>💻 CBT Exam Simulator</button>
-            <button type="button" className="mobile-nav-link-btn" onClick={() => handleMobileNavScroll('performance')}>📊 Diagnostic Analytics</button>
+            <button type="button" className="mobile-nav-link-btn" onClick={() => handleMobileNavScroll('offers')}>What We Offer</button>
+            <button type="button" className="mobile-nav-link-btn" onClick={() => handleMobileNavScroll('exam-boards')}>Examination</button>
+            <button type="button" className="mobile-nav-link-btn" onClick={() => handleMobileNavScroll('how-it-works')}>How It Works</button>
+            <button type="button" className="mobile-nav-link-btn" onClick={() => handleMobileNavScroll('experience')}>Exam Simulator</button>
+            <button type="button" className="mobile-nav-link-btn" onClick={() => handleMobileNavScroll('performance')}>Analytics</button>
+            {!isAuthenticated && (
+              <button
+                type="button"
+                className="mobile-nav-link-btn"
+                onClick={() => {
+                  handleNavClick();
+                  openAuthModal('login');
+                }}
+              >
+                Log In
+              </button>
+            )}
           </div>
-          <div style={{ marginTop: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {isAuthenticated ? (
               <button
                 type="button"
@@ -176,30 +215,17 @@ export const Navbar: React.FC = () => {
                 Log out
               </button>
             ) : (
-              <>
-                <button
-                  type="button"
-                  className="btn-custom btn-custom-primary"
-                  style={{ width: '100%', justifyContent: 'center' }}
-                  onClick={() => {
-                    handleNavClick();
-                    openAuthModal('signup');
-                  }}
-                >
-                  Get started
-                </button>
-                <button
-                  type="button"
-                  className="btn-custom btn-custom-ghost"
-                  style={{ width: '100%', justifyContent: 'center' }}
-                  onClick={() => {
-                    handleNavClick();
-                    openAuthModal('login');
-                  }}
-                >
-                  Log in
-                </button>
-              </>
+              <button
+                type="button"
+                className="btn-custom btn-custom-ghost"
+                style={{ width: '100%', justifyContent: 'center' }}
+                onClick={() => {
+                  handleNavClick();
+                  openAuthModal('login');
+                }}
+              >
+                Log In
+              </button>
             )}
           </div>
         </Offcanvas.Body>

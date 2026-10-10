@@ -31,7 +31,7 @@ export const CtaBanner: React.FC = () => {
           </button>
           <button
             type="button"
-            className="btn-custom btn-custom-ghost-light btn-custom-lg"
+            className="btn-custom btn-custom-ghost btn-custom-lg"
             onClick={handleExploreQuestionsClick}
             aria-label="Log in to explore past questions"
           >
