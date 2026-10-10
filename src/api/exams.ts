@@ -82,11 +82,13 @@ export function useSubjectTopicsQuery(subjectId?: string) {
   });
 }
 
-export function useDashboardStatsQuery() {
+export function useDashboardStatsQuery(examId?: string) {
   return useQuery<DashboardStats>({
-    queryKey: ['dashboardStats'],
-    queryFn: () => apiClient<DashboardStats>('/api/exams/dashboard/stats'),
-    staleTime: 1000 * 60 * 2,
+    queryKey: ['dashboardStats', examId || 'active'],
+    queryFn: () => apiClient<DashboardStats>(`/api/exams/dashboard/stats${examId ? `?examId=${encodeURIComponent(examId)}` : ''}`),
+    staleTime: 1000 * 15,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
   });
 }
 

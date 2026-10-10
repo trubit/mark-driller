@@ -53,7 +53,7 @@ export const Footer: React.FC = () => {
           {/* Col 1: Brand Info */}
           <div className="foot-col" style={{ gridColumn: 'span 1.5' }}>
             <div className="foot-logo" style={{ marginBottom: '14px' }}>
-              <BrandLogo size="md" />
+              <BrandLogo size="md" theme="dark" />
             </div>
             <p style={{ fontSize: '13.5px', color: 'rgba(248, 247, 242, 0.75)', lineHeight: 1.6, maxWidth: '320px' }}>
               High-fidelity CBT simulations, curriculum past questions, and academic intelligence for Nigerian secondary and tertiary candidates.

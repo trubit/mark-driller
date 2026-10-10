@@ -20,7 +20,13 @@ export const StudentDashboard: React.FC = () => {
   const { user, isAuthenticated } = useAuthStore();
   const { data: userData } = useCurrentUserQuery();
   const { data: exams, isLoading: examsLoading } = useExamsQuery();
-  const { data: statsData, isLoading: statsLoading } = useDashboardStatsQuery();
+
+  const currentUser = userData?.user || user;
+  const currentTargetExamId = (currentUser?.targetExam as any)?._id || (currentUser?.targetExam as any);
+  const currentExamObj = exams?.find((ex) => ex._id === currentTargetExamId) || (exams && exams[0]);
+  const activeExamId = currentExamObj?._id || '';
+
+  const { data: statsData, isLoading: statsLoading } = useDashboardStatsQuery(activeExamId);
   const { data: currentSub } = useMySubscriptionQuery();
   const updateTargetExam = useUpdateTargetExamMutation();
   const navigate = useNavigate();
@@ -42,10 +48,6 @@ export const StudentDashboard: React.FC = () => {
     }
   }, [isAuthenticated, navigate]);
 
-  const currentUser = userData?.user || user;
-  const currentTargetExamId = (currentUser?.targetExam as any)?._id || (currentUser?.targetExam as any);
-  const currentExamObj = exams?.find((ex) => ex._id === currentTargetExamId) || (exams && exams[0]);
-  const activeExamId = currentExamObj?._id || '';
   const { data: subjects, isLoading: subjectsLoading } = useExamSubjectsQuery(activeExamId);
   const { notifySuccess, notifyError } = useNotificationStore();
 

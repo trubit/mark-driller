@@ -194,6 +194,9 @@ export function useSubmitCbtMutation(attemptId?: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cbtAttempt', attemptId] });
       queryClient.invalidateQueries({ queryKey: ['dashboardStats'] });
+      queryClient.invalidateQueries({ queryKey: ['analyticsOverview'] });
+      queryClient.invalidateQueries({ queryKey: ['resultsHistory'] });
+      queryClient.invalidateQueries({ queryKey: ['subscription', 'my-subscription'] });
     },
   });
 }

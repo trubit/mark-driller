@@ -1,4 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
+import { Types } from 'mongoose';
 import { z } from 'zod';
 import { Exam } from '../models/Exam.js';
 import { Subject } from '../models/Subject.js';
@@ -211,17 +212,30 @@ router.get(
       // Fetch user with target exam
       const user = await User.findById(userId).populate('targetExam', 'name shortCode syllabusYear description');
 
-      // Fetch student's attempt statistics
-      const attempts = await ExamAttempt.find({ userId })
+      // Determine active target examination (from query param or user's targetExam)
+      const rawExamId = req.query.examId;
+      const paramExamId = typeof rawExamId === 'string' && Types.ObjectId.isValid(rawExamId) ? new Types.ObjectId(rawExamId) : null;
+      const targetExamId = paramExamId || (user?.targetExam ? ((user.targetExam as any)._id || user.targetExam) : null);
+
+      const scopedFilter: Record<string, any> = {
+        userId,
+        status: 'COMPLETED',
+      };
+      if (targetExamId) {
+        scopedFilter.examId = targetExamId;
+      }
+
+      // Fetch student's attempt statistics (scoped by target exam if available)
+      const attempts = await ExamAttempt.find({ userId, ...(targetExamId ? { examId: targetExamId } : {}) })
         .sort({ createdAt: -1 })
         .limit(5)
-        .populate('examId', 'shortCode')
+        .populate('examId', 'name shortCode')
         .populate('subjectId', 'name code');
 
-      const totalAttempts = await ExamAttempt.countDocuments({ userId, status: 'COMPLETED' });
+      const totalAttempts = await ExamAttempt.countDocuments(scopedFilter);
 
-      // Calculate score average
-      const completedAttempts = await ExamAttempt.find({ userId, status: 'COMPLETED' });
+      // Calculate score average strictly for the scoped completed attempts
+      const completedAttempts = await ExamAttempt.find(scopedFilter).select('percentage');
       const averageScore =
         completedAttempts.length > 0
           ? Math.round(completedAttempts.reduce((acc, curr) => acc + (curr.percentage || 0), 0) / completedAttempts.length)
@@ -229,8 +243,9 @@ router.get(
 
       // Available subjects for target exam
       let availableSubjects: any[] = [];
-      if (user?.targetExam) {
-        availableSubjects = await Subject.find({ examId: (user.targetExam as any)._id }).sort({ order: 1 });
+      const examForSubjects = targetExamId || (user?.targetExam as any)?._id;
+      if (examForSubjects) {
+        availableSubjects = await Subject.find({ examId: examForSubjects }).sort({ order: 1 });
       }
 
       res.status(200).json({

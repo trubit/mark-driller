@@ -11,12 +11,54 @@ import { BrandLogo } from './BrandLogo.js';
 import { BrandLoader } from './BrandLoader.js';
 import { CbtCalculatorModal } from './CbtCalculatorModal.js';
 
+// Safe string extraction utility to prevent 'Objects are not valid as a React child' errors
+const toText = (val: unknown, fallback = ''): string => {
+  if (val === null || val === undefined) return fallback;
+  if (typeof val === 'string') return val;
+  if (typeof val === 'number') return String(val);
+  if (typeof val === 'object') {
+    const obj = val as Record<string, any>;
+    if (typeof obj.name === 'string') return obj.name;
+    if (typeof obj.title === 'string') return obj.title;
+    if (typeof obj.shortCode === 'string') return obj.shortCode;
+    if (typeof obj.code === 'string') return obj.code;
+    if (typeof obj._id === 'string') return obj._id;
+    if (typeof obj.id === 'string') return obj.id;
+    try {
+      return JSON.stringify(val);
+    } catch {
+      return fallback;
+    }
+  }
+  return String(val);
+};
+
+// Safe formatted text renderer that preserves HTML markup (underline, super/sub, math, breaks) while preventing XSS
+const renderRichText = (val: unknown): React.ReactNode => {
+  const content = toText(val);
+  if (!content) return null;
+
+  // Check if content contains HTML tags or HTML character entities
+  const hasHtml = /<\/?([a-z][a-z0-9]*)\b[^>]*>/i.test(content) || /&[a-z0-9#]+;/i.test(content);
+  if (hasHtml) {
+    const sanitized = content
+      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+      .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+      .replace(/\s*on\w+="[^"]*"/gi, '')
+      .replace(/\s*on\w+='[^']*'/gi, '');
+    return <span dangerouslySetInnerHTML={{ __html: sanitized }} />;
+  }
+
+  return <span>{content}</span>;
+};
+
+
 export const CbtExamRoom: React.FC = () => {
   const { attemptId } = useParams<{ attemptId: string }>();
   const navigate = useNavigate();
   const { notifySuccess, notifyError, notifyWarning } = useNotificationStore();
 
-  const { data: attemptData, isLoading, isError } = useCbtAttemptQuery(attemptId);
+  const { data: attemptData, isLoading, isError, refetch } = useCbtAttemptQuery(attemptId);
   const saveAnswer = useSaveCbtAnswerMutation(attemptId);
   const submitCbt = useSubmitCbtMutation(attemptId);
   const { data: bookmarksData } = useMyBookmarksQuery();
@@ -42,12 +84,16 @@ export const CbtExamRoom: React.FC = () => {
       setRemainingSeconds(attemptData.remainingSeconds);
 
       const map: Record<string, { selectedOption: 'A' | 'B' | 'C' | 'D' | null; isSkipped?: boolean; markedForReview: boolean }> = {};
-      attemptData.answers.forEach((ans) => {
-        map[ans.questionId] = {
-          selectedOption: ans.selectedOption,
-          isSkipped: !!ans.isSkipped,
-          markedForReview: !!ans.markedForReview,
-        };
+      const safeAnswers = Array.isArray(attemptData.answers) ? attemptData.answers : [];
+      safeAnswers.forEach((ans) => {
+        const qId = toText(ans?.questionId);
+        if (qId) {
+          map[qId] = {
+            selectedOption: ans?.selectedOption ?? null,
+            isSkipped: Boolean(ans?.isSkipped),
+            markedForReview: Boolean(ans?.markedForReview),
+          };
+        }
       });
       setAnswersMap(map);
     }
@@ -120,9 +166,9 @@ export const CbtExamRoom: React.FC = () => {
     const map = new Map<string, number>();
 
     questions.forEach((q, idx) => {
-      const sId = q.subjectId || attemptData?.subjectId || 'default';
-      const sName = q.subjectName || attemptData?.subjectName || 'Subject';
-      const sCode = q.subjectCode || attemptData?.subjectCode || 'SUB';
+      const sId = toText(q.subjectId || attemptData?.subjectId, 'default');
+      const sName = toText(q.subjectName || attemptData?.subjectName, 'Subject');
+      const sCode = toText(q.subjectCode || attemptData?.subjectCode, 'SUB');
 
       if (!map.has(sId)) {
         map.set(sId, groups.length);
@@ -153,53 +199,46 @@ export const CbtExamRoom: React.FC = () => {
   }, [subjectGroups, currentIndex]);
 
   const currentQuestion = questions[currentIndex] ?? null;
+  const currentQId = currentQuestion ? toText(currentQuestion._id) : '';
 
   const isCurrentBookmarked = useMemo(() => {
     if (!bookmarksData || !currentQuestion) return false;
     return bookmarksData.some(
-      (b) => b.question?._id === currentQuestion._id || b.bookmarkId === currentQuestion._id
+      (b) => toText(b.question?._id || b.bookmarkId) === currentQId
     );
-  }, [bookmarksData, currentQuestion]);
+  }, [bookmarksData, currentQuestion, currentQId]);
 
   // Stop audio whenever question changes or on unmount
   useEffect(() => {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
+    try {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+    } catch {
+      // Ignore mobile WebKit audio policy errors
     }
     setIsSpeaking(false);
   }, [currentIndex]);
 
   useEffect(() => {
     return () => {
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
+      try {
+        if (typeof window !== 'undefined' && 'speechSynthesis' in window && window.speechSynthesis) {
+          window.speechSynthesis.cancel();
+        }
+      } catch {
+        // Ignore mobile WebKit audio policy errors
       }
     };
   }, []);
 
-  if (isLoading) {
-    return <BrandLoader message="Loading examination room and synchronizing timer with server..." mode="fullscreen" />;
-  }
-
-  if (isError || !attemptData) {
-    return (
-      <div style={{ minHeight: '100vh', backgroundColor: 'var(--paper)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px' }}>
-        <h2 style={{ fontFamily: "var(--font-sans)" }}>Unable to load examination</h2>
-        <p style={{ color: 'var(--ink-soft)' }}>The examination attempt may have expired or does not exist.</p>
-        <Link to="/dashboard" className="btn-custom btn-custom-primary">
-          ← Return to Dashboard
-        </Link>
-      </div>
-    );
-  }
-
-  if (!currentQuestion) return null;
-
-  const currentAnswer = answersMap[currentQuestion._id] || { selectedOption: null, markedForReview: false };
+  const currentAnswer = (currentQId && answersMap[currentQId])
+    ? answersMap[currentQId]
+    : { selectedOption: null, markedForReview: false };
 
   const handleBookmarkToggle = () => {
-    if (!currentQuestion) return;
-    toggleBookmark.mutate(currentQuestion._id, {
+    if (!currentQuestion || !currentQId) return;
+    toggleBookmark.mutate(currentQId, {
       onSuccess: (res) => {
         if (res.isBookmarked) {
           notifySuccess('Question saved to bookmarks.');
@@ -214,42 +253,49 @@ export const CbtExamRoom: React.FC = () => {
   };
 
   const handleToggleAudio = () => {
-    if (!('speechSynthesis' in window)) {
-      notifyWarning('Audio text-to-speech is not supported by your current browser.');
-      return;
-    }
+    try {
+      if (typeof window === 'undefined' || !('speechSynthesis' in window) || !window.speechSynthesis) {
+        notifyWarning('Audio text-to-speech is not supported by your current browser.');
+        return;
+      }
 
-    if (isSpeaking) {
+      if (isSpeaking) {
+        window.speechSynthesis.cancel();
+        setIsSpeaking(false);
+        return;
+      }
+
       window.speechSynthesis.cancel();
+      const cleanStem = toText(currentQuestion?.questionText).replace(/<[^>]*>/g, '').replace(/[\n\r]+/g, ' ');
+      const optA = toText((currentQuestion as any)?.optionA).replace(/<[^>]*>/g, '');
+      const optB = toText((currentQuestion as any)?.optionB).replace(/<[^>]*>/g, '');
+      const optC = toText((currentQuestion as any)?.optionC).replace(/<[^>]*>/g, '');
+      const optD = toText((currentQuestion as any)?.optionD).replace(/<[^>]*>/g, '');
+
+      const speechText = `Question ${currentIndex + 1}. ${cleanStem}. Option A: ${optA}. Option B: ${optB}. Option C: ${optC}. Option D: ${optD}.`;
+
+      const utterance = new SpeechSynthesisUtterance(speechText);
+      utterance.rate = 0.95;
+      utterance.pitch = 1.0;
+      utterance.onend = () => setIsSpeaking(false);
+      utterance.onerror = () => setIsSpeaking(false);
+
+      setIsSpeaking(true);
+      window.speechSynthesis.speak(utterance);
+    } catch (audioErr) {
+      console.warn('SpeechSynthesis error:', audioErr);
       setIsSpeaking(false);
-      return;
+      notifyWarning('Audio playback is restricted by your current device settings.');
     }
-
-    window.speechSynthesis.cancel();
-    const cleanStem = currentQuestion.questionText.replace(/[\n\r]+/g, ' ');
-    const optA = (currentQuestion as any).optionA || '';
-    const optB = (currentQuestion as any).optionB || '';
-    const optC = (currentQuestion as any).optionC || '';
-    const optD = (currentQuestion as any).optionD || '';
-
-    const speechText = `Question ${currentIndex + 1}. ${cleanStem}. Option A: ${optA}. Option B: ${optB}. Option C: ${optC}. Option D: ${optD}.`;
-
-    const utterance = new SpeechSynthesisUtterance(speechText);
-    utterance.rate = 0.95;
-    utterance.pitch = 1.0;
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
-
-    setIsSpeaking(true);
-    window.speechSynthesis.speak(utterance);
   };
 
   const handleSelectOption = (opt: 'A' | 'B' | 'C' | 'D') => {
+    if (!currentQId) return;
     const updated = { ...currentAnswer, selectedOption: opt, isSkipped: false };
-    setAnswersMap((prev) => ({ ...prev, [currentQuestion._id]: updated }));
+    setAnswersMap((prev) => ({ ...prev, [currentQId]: updated }));
 
     saveAnswer.mutate({
-      questionId: currentQuestion._id,
+      questionId: currentQId,
       selectedOption: opt,
       isSkipped: false,
       markedForReview: updated.markedForReview,
@@ -257,12 +303,12 @@ export const CbtExamRoom: React.FC = () => {
   };
 
   const handleSkipQuestion = () => {
-    if (!currentQuestion) return;
+    if (!currentQuestion || !currentQId) return;
     const updated = { ...currentAnswer, selectedOption: null, isSkipped: true };
-    setAnswersMap((prev) => ({ ...prev, [currentQuestion._id]: updated }));
+    setAnswersMap((prev) => ({ ...prev, [currentQId]: updated }));
 
     saveAnswer.mutate({
-      questionId: currentQuestion._id,
+      questionId: currentQId,
       selectedOption: null,
       isSkipped: true,
       markedForReview: updated.markedForReview,
@@ -274,11 +320,12 @@ export const CbtExamRoom: React.FC = () => {
   };
 
   const handleToggleReview = () => {
+    if (!currentQId) return;
     const updated = { ...currentAnswer, markedForReview: !currentAnswer.markedForReview };
-    setAnswersMap((prev) => ({ ...prev, [currentQuestion._id]: updated }));
+    setAnswersMap((prev) => ({ ...prev, [currentQId]: updated }));
 
     saveAnswer.mutate({
-      questionId: currentQuestion._id,
+      questionId: currentQId,
       selectedOption: currentAnswer.selectedOption,
       isSkipped: !!currentAnswer.isSkipped,
       markedForReview: updated.markedForReview,
@@ -286,8 +333,10 @@ export const CbtExamRoom: React.FC = () => {
   };
 
   // JAMB Standard 8-Key Keyboard Shortcuts (A, B, C, D to answer; P for Previous; N for Next; S for Skip; R for Review)
+  // Must execute unconditionally at top level to strictly satisfy React Rules of Hooks
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (isLoading || isError || !attemptData || questions.length === 0 || !currentQuestion) return;
       if (showSubmitModal || isCalculatorOpen) return;
       const target = e.target as HTMLElement;
       if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
@@ -315,7 +364,7 @@ export const CbtExamRoom: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showSubmitModal, isCalculatorOpen, currentQuestion, currentAnswer, questions.length]);
+  }, [isLoading, isError, attemptData, showSubmitModal, isCalculatorOpen, currentQuestion, currentAnswer, questions.length]);
 
   const handleFinalSubmit = async () => {
     setSubmitError(null);
@@ -324,11 +373,155 @@ export const CbtExamRoom: React.FC = () => {
       notifySuccess('Your examination has been submitted successfully. Your result is now available.');
       navigate(`/cbt/${attemptId}/result`, { replace: true });
     } catch (err: any) {
-      const msg = err.message || 'We encountered an issue submitting your examination. Your answers are saved locally. Please try submitting again.';
+      const msg = err.message || 'We encountered an issue submitting your examination to the server. Please check your network and try submitting again.';
       setSubmitError(msg);
       notifyError(msg);
     }
   };
+
+  if (isLoading) {
+    return <BrandLoader message="Loading examination room and synchronizing timer with server..." mode="fullscreen" />;
+  }
+
+  if (isError || !attemptData) {
+    return (
+      <div
+        role="alert"
+        style={{
+          minHeight: '100dvh',
+          backgroundColor: 'var(--paper, #fdfbf7)',
+          color: 'var(--ink, #14181c)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '24px',
+          textAlign: 'center',
+        }}
+      >
+        <div
+          style={{
+            maxWidth: '520px',
+            width: '100%',
+            backgroundColor: 'var(--white, #ffffff)',
+            border: '2px solid var(--paper-line, #e2ded5)',
+            borderRadius: '8px',
+            padding: 'clamp(24px, 5vw, 40px)',
+            boxShadow: '0 12px 32px rgba(0, 0, 0, 0.12)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '16px',
+          }}
+        >
+          <div
+            style={{
+              width: '64px',
+              height: '64px',
+              borderRadius: '50%',
+              backgroundColor: 'rgba(194, 65, 12, 0.12)',
+              color: 'var(--rust, #c2410c)',
+              fontSize: '32px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            ✕
+          </div>
+          <h2 style={{ fontFamily: 'var(--font-sans)', fontSize: '22px', fontWeight: 700, margin: 0, color: 'var(--ink, #14181c)' }}>
+            Unable to Load Examination
+          </h2>
+          <p style={{ color: 'var(--ink-soft, #5a6472)', fontSize: '14.5px', lineHeight: 1.6, margin: 0 }}>
+            This examination session could not be retrieved. It may have expired, belonged to another account session, or does not exist.
+          </p>
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center', width: '100%', marginTop: '8px' }}>
+            <button
+              type="button"
+              onClick={() => refetch()}
+              className="btn-custom btn-custom-primary"
+              style={{ cursor: 'pointer' }}
+            >
+              🔄 Refresh Session
+            </button>
+            <Link to="/portal/cbt" className="btn-custom btn-custom-secondary" style={{ textDecoration: 'none' }}>
+              Launch New Exam
+            </Link>
+            <Link to="/dashboard" className="btn-custom btn-custom-ghost" style={{ textDecoration: 'none' }}>
+              ← Dashboard
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Fail-safe protection: Never render a silent blank screen if question pool is empty
+  if (questions.length === 0 || !currentQuestion) {
+    return (
+      <div
+        role="alert"
+        style={{
+          minHeight: '100dvh',
+          backgroundColor: 'var(--paper, #fdfbf7)',
+          color: 'var(--ink, #14181c)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '24px',
+          textAlign: 'center',
+        }}
+      >
+        <div
+          style={{
+            maxWidth: '520px',
+            width: '100%',
+            backgroundColor: 'var(--white, #ffffff)',
+            border: '2px solid var(--paper-line, #e2ded5)',
+            borderRadius: '8px',
+            padding: 'clamp(24px, 5vw, 40px)',
+            boxShadow: '0 12px 32px rgba(0, 0, 0, 0.12)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '16px',
+          }}
+        >
+          <div
+            style={{
+              width: '64px',
+              height: '64px',
+              borderRadius: '50%',
+              backgroundColor: 'rgba(217, 119, 6, 0.15)',
+              color: 'var(--amber, #d97706)',
+              fontSize: '32px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            📋
+          </div>
+          <h2 style={{ fontFamily: 'var(--font-sans)', fontSize: '22px', fontWeight: 700, margin: 0, color: 'var(--ink, #14181c)' }}>
+            No Questions Found for this Session
+          </h2>
+          <p style={{ color: 'var(--ink-soft, #5a6472)', fontSize: '14.5px', lineHeight: 1.6, margin: 0 }}>
+            This examination session was created without matching questions or has already been concluded. You can return to your portal or configure a new CBT mock test.
+          </p>
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center', width: '100%', marginTop: '8px' }}>
+            <Link to="/portal/cbt" className="btn-custom btn-custom-primary" style={{ textDecoration: 'none' }}>
+              Launch New CBT Mock
+            </Link>
+            <Link to="/dashboard" className="btn-custom btn-custom-secondary" style={{ textDecoration: 'none' }}>
+              ← Return to Dashboard
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
 
   // Format timer MM:SS
   const mins = Math.floor((remainingSeconds || 0) / 60);
@@ -338,9 +531,9 @@ export const CbtExamRoom: React.FC = () => {
 
   // Tally answered questions
   const totalQuestions = questions.length;
-  const answeredCount = Object.values(answersMap).filter((a) => a.selectedOption !== null).length;
-  const flaggedCount = Object.values(answersMap).filter((a) => a.markedForReview).length;
-  const unansweredCount = totalQuestions - answeredCount;
+  const answeredCount = Object.values(answersMap).filter((a) => Boolean(a?.selectedOption)).length;
+  const flaggedCount = Object.values(answersMap).filter((a) => Boolean(a?.markedForReview)).length;
+  const unansweredCount = Math.max(0, totalQuestions - answeredCount);
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: 'var(--paper)', display: 'flex', flexDirection: 'column' }}>
@@ -359,7 +552,7 @@ export const CbtExamRoom: React.FC = () => {
         <div className="wrap" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', padding: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <BrandLogo size="sm" />
+              <BrandLogo size="sm" theme="dark" />
             </div>
             <span
               style={{
@@ -369,13 +562,13 @@ export const CbtExamRoom: React.FC = () => {
                 color: 'var(--amber)',
               }}
             >
-              {attemptData.examShortCode}
+              {toText(attemptData?.examShortCode || attemptData?.examName, 'EXAM')}
             </span>
             <span style={{ color: 'rgba(255,255,255,0.4)' }}>|</span>
             <span style={{ fontSize: '15px', color: 'var(--white)', fontWeight: 600, fontFamily: "var(--font-sans)" }}>
               {subjectGroups.length > 1
                 ? `Combined Mock (${subjectGroups.length} Subjects)`
-                : `${attemptData.subjectName} (${attemptData.subjectCode})`}
+                : `${toText(attemptData?.subjectName, 'Subject')} (${toText(attemptData?.subjectCode, 'SUB')})`}
             </span>
             <span
               style={{
@@ -407,7 +600,22 @@ export const CbtExamRoom: React.FC = () => {
                 transition: 'background-color 0.3s ease',
               }}
             >
-              <span style={{ fontSize: '13px' }}>⏱️</span>
+              <svg
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+                style={{ flexShrink: 0, color: isUrgentTimer ? '#fecaca' : 'var(--amber)' }}
+              >
+                <circle cx="12" cy="14" r="8" />
+                <line x1="12" y1="2" x2="12" y2="5" />
+                <line x1="12" y1="14" x2="15" y2="11" />
+              </svg>
               <span
                 style={{
                   fontFamily: "var(--font-sans)",
@@ -428,7 +636,7 @@ export const CbtExamRoom: React.FC = () => {
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '6px',
+                gap: '7px',
                 backgroundColor: isCalculatorOpen ? 'var(--rust)' : 'rgba(255,255,255,0.08)',
                 border: isCalculatorOpen ? '1px solid var(--rust)' : '1px solid rgba(255,255,255,0.2)',
                 padding: '6px 12px',
@@ -442,7 +650,30 @@ export const CbtExamRoom: React.FC = () => {
               }}
               title="Toggle On-Screen Scientific Calculator"
             >
-              <span>🖩</span>
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+                style={{ flexShrink: 0 }}
+              >
+                <rect x="4" y="2" width="16" height="20" rx="2" />
+                <line x1="8" y1="6" x2="16" y2="6" />
+                <line x1="16" y1="14" x2="16" y2="14.01" />
+                <line x1="16" y1="18" x2="16" y2="18.01" />
+                <line x1="12" y1="14" x2="12" y2="14.01" />
+                <line x1="12" y1="18" x2="12" y2="18.01" />
+                <line x1="8" y1="14" x2="8" y2="14.01" />
+                <line x1="8" y1="18" x2="8" y2="18.01" />
+                <line x1="8" y1="10" x2="8" y2="10.01" />
+                <line x1="12" y1="10" x2="12" y2="10.01" />
+                <line x1="16" y1="10" x2="16" y2="10.01" />
+              </svg>
               <span>Calculator</span>
             </button>
 
@@ -498,7 +729,7 @@ export const CbtExamRoom: React.FC = () => {
             {subjectGroups.map((g) => {
               const isActive = currentSubjectGroup?.id === g.id;
               const subQuestions = questions.slice(g.startIndex, g.startIndex + g.count);
-              const subAnswered = subQuestions.filter((q) => answersMap[q._id]?.selectedOption !== null).length;
+              const subAnswered = subQuestions.filter((q) => Boolean(answersMap[q._id]?.selectedOption)).length;
 
               return (
                 <button
@@ -522,7 +753,7 @@ export const CbtExamRoom: React.FC = () => {
                     transition: 'all 0.15s ease',
                   }}
                 >
-                  <span>{g.name}</span>
+                  <span>{toText(g.name, 'Subject')}</span>
                   <span
                     style={{
                       fontSize: '11px',
@@ -585,7 +816,7 @@ export const CbtExamRoom: React.FC = () => {
                     border: '1px solid rgba(194, 65, 12, 0.2)',
                   }}
                 >
-                  {currentQuestion.subjectName}
+                  {toText(currentQuestion.subjectName)}
                 </span>
               )}
 
@@ -601,7 +832,7 @@ export const CbtExamRoom: React.FC = () => {
                     border: '1px solid var(--paper-line)',
                   }}
                 >
-                  {currentQuestion.topicName}
+                  {toText(currentQuestion.topicName)}
                 </span>
               )}
             </div>
@@ -629,7 +860,16 @@ export const CbtExamRoom: React.FC = () => {
                 }}
                 title="Read question and options aloud using browser speech"
               >
-                <span>{isSpeaking ? '⏹' : '🔊'}</span>
+                {isSpeaking ? (
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true">
+                    <rect x="5" y="5" width="14" height="14" rx="2" />
+                  </svg>
+                ) : (
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                    <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+                  </svg>
+                )}
                 <span>{isSpeaking ? 'Stop Audio' : 'Read Aloud'}</span>
               </button>
 
@@ -655,7 +895,9 @@ export const CbtExamRoom: React.FC = () => {
                 }}
                 title={isCurrentBookmarked ? 'Remove question from bookmarks' : 'Save question to bookmarks'}
               >
-                <span>{isCurrentBookmarked ? '★' : '☆'}</span>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill={isCurrentBookmarked ? '#d97706' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                </svg>
                 <span>{isCurrentBookmarked ? 'Bookmarked' : 'Bookmark'}</span>
               </button>
 
@@ -678,10 +920,51 @@ export const CbtExamRoom: React.FC = () => {
                   gap: '6px',
                 }}
               >
-                🚩 {currentAnswer.markedForReview ? 'Flagged' : 'Flag'}
+                <svg width="13" height="13" viewBox="0 0 24 24" fill={currentAnswer.markedForReview ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+                  <line x1="4" y1="22" x2="4" y2="15" />
+                </svg>
+                <span>{currentAnswer.markedForReview ? 'Flagged' : 'Flag'}</span>
               </button>
             </div>
           </div>
+
+          {/* Section Instruction if present */}
+          {Boolean((currentQuestion as any).instruction || (currentQuestion as any).instructions) && (
+            <div
+              style={{
+                fontSize: '13.5px',
+                color: 'var(--ink-soft)',
+                fontStyle: 'italic',
+                backgroundColor: 'var(--paper)',
+                padding: '8px 12px',
+                borderRadius: '3px',
+                borderLeft: '3px solid var(--rust)',
+                lineHeight: 1.5,
+              }}
+            >
+              {renderRichText((currentQuestion as any).instruction || (currentQuestion as any).instructions)}
+            </div>
+          )}
+
+          {/* Reading Comprehension Passage if present */}
+          {Boolean((currentQuestion as any).passage || (currentQuestion as any).context) && (
+            <div
+              style={{
+                backgroundColor: 'var(--paper)',
+                border: '1px solid var(--paper-line)',
+                borderLeft: '4px solid var(--rust)',
+                padding: '14px 18px',
+                borderRadius: '4px',
+                fontSize: '15px',
+                lineHeight: 1.7,
+                color: 'var(--ink)',
+                fontFamily: "var(--font-serif, Georgia, serif)",
+              }}
+            >
+              {renderRichText((currentQuestion as any).passage || (currentQuestion as any).context)}
+            </div>
+          )}
 
           {/* Question Diagram / Image (if available) */}
           {currentQuestion.imageUrl && (
@@ -702,15 +985,16 @@ export const CbtExamRoom: React.FC = () => {
               color: 'var(--ink)',
               fontFamily: "var(--font-sans)",
               whiteSpace: 'pre-wrap',
+              fontWeight: 500,
             }}
           >
-            {currentQuestion.questionText}
+            {renderRichText(currentQuestion.questionText)}
           </div>
 
           {/* Options List */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {(['A', 'B', 'C', 'D'] as const).map((opt) => {
-              const optionText = (currentQuestion as any)[`option${opt}`];
+              const optionValue = (currentQuestion as any)[`option${opt}`];
               const isSelected = currentAnswer.selectedOption === opt;
 
               return (
@@ -721,7 +1005,7 @@ export const CbtExamRoom: React.FC = () => {
                   style={{
                     textAlign: 'left',
                     padding: '14px 18px',
-                    borderRadius: '3px',
+                    borderRadius: '4px',
                     backgroundColor: isSelected ? 'var(--rust-soft)' : 'var(--paper)',
                     border: isSelected ? '2px solid var(--rust)' : '1px solid var(--paper-line)',
                     color: 'var(--ink)',
@@ -729,7 +1013,7 @@ export const CbtExamRoom: React.FC = () => {
                     display: 'flex',
                     alignItems: 'center',
                     gap: '14px',
-                    fontSize: '15px',
+                    fontSize: '15.5px',
                     fontFamily: "var(--font-sans)",
                     transition: 'all 0.15s ease',
                   }}
@@ -747,13 +1031,16 @@ export const CbtExamRoom: React.FC = () => {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
+                      flexShrink: 0,
                     }}
                   >
                     {opt}
                   </span>
-                  <span style={{ flex: 1 }}>{optionText}</span>
+                  <span style={{ flex: 1, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                    {renderRichText(optionValue)}
+                  </span>
                   {isSelected && (
-                    <span style={{ color: 'var(--rust)', fontSize: '16px', fontWeight: 700 }}>✓</span>
+                    <span style={{ color: 'var(--rust)', fontSize: '16px', fontWeight: 700, flexShrink: 0 }}>✓</span>
                   )}
                 </button>
               );
@@ -821,7 +1108,13 @@ export const CbtExamRoom: React.FC = () => {
               </button>
 
               <span style={{ fontSize: '12px', fontFamily: "var(--font-sans)", color: 'var(--ink-soft)' }}>
-                {saveAnswer.isPending ? 'Autosaving answer...' : 'Answer saved to server ✓'}
+                {saveAnswer.isPending
+                  ? 'Saving to server...'
+                  : saveAnswer.isError
+                  ? '⚠️ Network issue. Option re-selection will retry.'
+                  : currentAnswer.selectedOption || currentAnswer.isSkipped
+                  ? 'Answer synced with server ✓'
+                  : ''}
               </span>
             </div>
 
@@ -888,7 +1181,8 @@ export const CbtExamRoom: React.FC = () => {
           {/* Palette Grid */}
           <div className="cbt-qnav-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(38px, 1fr))', gap: '6px', marginBottom: '20px' }}>
             {questions.map((q, idx) => {
-              const ans = answersMap[q._id];
+              const qPaletteId = toText(q._id);
+              const ans = answersMap[qPaletteId];
               const isCurrent = idx === currentIndex;
               const hasAnswered = ans && ans.selectedOption !== null;
               const isSkipped = ans && ans.isSkipped && ans.selectedOption === null;
@@ -918,7 +1212,7 @@ export const CbtExamRoom: React.FC = () => {
 
               return (
                 <button
-                  key={q._id}
+                  key={qPaletteId || idx}
                   type="button"
                   onClick={() => setCurrentIndex(idx)}
                   style={{

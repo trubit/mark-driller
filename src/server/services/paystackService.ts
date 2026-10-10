@@ -55,23 +55,24 @@ export class PaystackService {
   ): Promise<PaystackInitializeResult> {
     const { email, amountKobo, reference, plan, callbackUrl, metadata } = options;
 
+    const clientBaseUrl = env.CLIENT_URL || (env.NODE_ENV === 'production' ? 'https://markdriller.ng' : 'http://localhost:3009');
+
     if (this.isMockKey(env.PAYSTACK_SECRET_KEY)) {
       if (env.NODE_ENV === 'production') {
         throw new Error('FATAL SECURITY ERROR: Mock Paystack keys and transaction simulation are forbidden in production.');
       }
       // Offline / Test environment simulated response
       return {
-        authorizationUrl: `${env.CLIENT_URL || 'http://localhost:3009'}/pricing?mock_checkout=true&ref=${reference}`,
+        authorizationUrl: `${clientBaseUrl}/pricing?mock_checkout=true&ref=${reference}`,
         accessCode: `mock_code_${reference}`,
         reference,
       };
     }
-
     const payload = {
       email,
       amount: amountKobo,
       reference,
-      callback_url: callbackUrl || `${env.CLIENT_URL || 'http://localhost:3009'}/pricing`,
+      callback_url: callbackUrl || `${clientBaseUrl}/pricing`,
       metadata: {
         ...metadata,
         plan,

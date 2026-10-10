@@ -42,7 +42,6 @@
     "test:otp": "tsx scripts/verify-otp-email-delivery.ts",
     "test:landing": "tsx scripts/verify-landing-redesign.ts"
   },
-
   "keywords": [
     "mark-driller",
     "exam-prep",
@@ -58,6 +57,7 @@
   "author": "Mark Driller Team",
   "license": "ISC",
   "dependencies": {
+    "@babel/parser": "^7.29.9",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
     "@mui/icons-material": "^6.4.5",

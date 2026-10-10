@@ -33,6 +33,8 @@ import { EmailVerificationModal } from './components/EmailVerificationModal.js';
 import { ForgotPasswordModal } from './components/ForgotPasswordModal.js';
 import { NotificationCenter } from './components/NotificationCenter.js';
 import { ConfirmationDialog } from './components/ConfirmationDialog.js';
+import { ErrorBoundary } from './components/ErrorBoundary.js';
+import { CbtDirectRouter } from './components/CbtDirectRouter.js';
 import { useAuthStore } from './store/useAuthStore.js';
 import { useAppStore } from './store/useAppStore.js';
 
@@ -68,8 +70,7 @@ export const App: React.FC = () => {
             <Route path="/pricing" element={<Navigate to="/" replace />} />
             <Route path="/blog" element={<Navigate to="/" replace />} />
             <Route path="/contact" element={<Navigate to="/" replace />} />
-            <Route path="/cbt" element={<Navigate to="/" replace />} />
-            <Route path="/cbt-practice" element={<Navigate to="/" replace />} />
+            <Route path="/cbt-practice" element={<Navigate to="/portal/cbt" replace />} />
             <Route path="/novels" element={<Navigate to="/" replace />} />
             <Route path="/novel-jamb" element={<Navigate to="/" replace />} />
             <Route path="/login" element={<Navigate to="/" state={{ openLogin: true }} replace />} />
@@ -253,7 +254,12 @@ export const App: React.FC = () => {
               path="/cbt/:attemptId/result"
               element={
                 <ProtectedRoute allowedRoles={['STUDENT', 'ADMIN']}>
-                  <CbtResultView />
+                  <ErrorBoundary
+                    fallbackTitle="Result Slip Display Notice"
+                    fallbackMessage="We encountered an issue displaying this examination result slip. You can refresh the view or return to your student dashboard."
+                  >
+                    <CbtResultView />
+                  </ErrorBoundary>
                 </ProtectedRoute>
               }
             />
@@ -263,6 +269,14 @@ export const App: React.FC = () => {
           {/* 3. CBT EXAMINATION ROOM — Distraction-Free Simulation     */}
           {/*    Standalone interface with dedicated exam timer & desk  */}
           {/* ======================================================== */}
+          <Route
+            path="/cbt"
+            element={
+              <ProtectedRoute allowedRoles={['STUDENT', 'ADMIN']}>
+                <CbtDirectRouter />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/cbt/:attemptId"
             element={

@@ -4,6 +4,28 @@ import { useCbtResultQuery, type SubjectBreakdownItem } from '../api/cbt.js';
 import { useAuthStore } from '../store/useAuthStore.js';
 import { BrandLoader } from './BrandLoader.js';
 
+// Safe string extraction utility to prevent 'Objects are not valid as a React child' errors
+const toText = (val: unknown, fallback = ''): string => {
+  if (val === null || val === undefined) return fallback;
+  if (typeof val === 'string') return val;
+  if (typeof val === 'number') return String(val);
+  if (typeof val === 'object') {
+    const obj = val as Record<string, any>;
+    if (typeof obj.name === 'string') return obj.name;
+    if (typeof obj.title === 'string') return obj.title;
+    if (typeof obj.shortCode === 'string') return obj.shortCode;
+    if (typeof obj.code === 'string') return obj.code;
+    if (typeof obj._id === 'string') return obj._id;
+    if (typeof obj.id === 'string') return obj.id;
+    try {
+      return JSON.stringify(val);
+    } catch {
+      return fallback;
+    }
+  }
+  return String(val);
+};
+
 type QuestionFilter = 'ALL' | 'INCORRECT' | 'CORRECT' | 'SKIPPED' | 'UNANSWERED';
 
 export const CbtResultView: React.FC = () => {
@@ -390,10 +412,10 @@ export const CbtResultView: React.FC = () => {
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '13.5px', color: 'var(--color-text-muted)' }}>
                     <div>
-                      <strong style={{ color: 'var(--color-text)' }}>Exam Board:</strong> {attempt.examShortCode} ({attempt.examName || 'National Examination'})
+                      <strong style={{ color: 'var(--color-text)' }}>Exam Board:</strong> {toText(attempt.examShortCode, 'EXAM')} ({toText(attempt.examName, 'National Examination')})
                     </div>
                     <div>
-                      <strong style={{ color: 'var(--color-text)' }}>Curriculum Subject:</strong> {attempt.subjectName}
+                      <strong style={{ color: 'var(--color-text)' }}>Curriculum Subject:</strong> {toText(attempt.subjectName, 'Subject')}
                     </div>
                     <div>
                       <strong style={{ color: 'var(--color-text)' }}>Test Sitting Date:</strong> {submissionDate} at {submissionTime} ({timeSpentDisplay})

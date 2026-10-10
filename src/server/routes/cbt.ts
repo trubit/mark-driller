@@ -33,6 +33,43 @@ router.get('/trial-status', async (req: AuthenticatedRequest, res: Response, nex
   }
 });
 
+// GET /api/cbt/active — Get current student's active IN_PROGRESS attempt if any
+router.get('/active', async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const userId = req.user!._id;
+    const nowTime = new Date();
+
+    // Auto-close expired attempts first
+    await ExamAttempt.updateMany(
+      { userId, status: 'IN_PROGRESS', endTime: { $lte: nowTime } },
+      { $set: { status: 'COMPLETED' } }
+    );
+
+    const activeAttempt = await ExamAttempt.findOne({
+      userId,
+      status: 'IN_PROGRESS',
+      endTime: { $gt: nowTime },
+    }).sort({ createdAt: -1 });
+
+    if (!activeAttempt) {
+      res.status(200).json({ success: true, data: null });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        attemptId: activeAttempt._id.toString(),
+        mode: activeAttempt.mode,
+        endTime: activeAttempt.endTime,
+        allocatedDurationSeconds: activeAttempt.allocatedDurationSeconds,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 const startCbtSchema = z.object({
   examId: z.string().min(1, 'Exam ID is required'),
   subjectId: z.string().optional(),
@@ -296,6 +333,101 @@ router.post('/start', requireCbtEntitlement(), async (req: AuthenticatedRequest,
       return;
     }
 
+    // Auto-close any expired IN_PROGRESS attempts for this user
+    const nowTime = new Date();
+    await ExamAttempt.updateMany(
+      { userId, status: 'IN_PROGRESS', endTime: { $lte: nowTime } },
+      { $set: { status: 'COMPLETED' } }
+    );
+
+    // Idempotent Resumption: If user already has an active, unexpired attempt, return it directly
+    const existingActiveAttempt = await ExamAttempt.findOne({
+      userId,
+      status: 'IN_PROGRESS',
+      endTime: { $gt: nowTime },
+    })
+      .populate('examId', 'name shortCode')
+      .populate('subjectId', 'name code');
+
+    if (existingActiveAttempt) {
+      const fallbackEnd = existingActiveAttempt.endTime || new Date(existingActiveAttempt.startTime.getTime() + existingActiveAttempt.allocatedDurationSeconds * 1000);
+      const endMs = new Date(fallbackEnd).getTime();
+      const remainingSeconds = Math.max(0, Math.floor((endMs - Date.now()) / 1000));
+
+      const sourceQuestions: any[] =
+        existingActiveAttempt.questionSnapshot && existingActiveAttempt.questionSnapshot.length > 0
+          ? existingActiveAttempt.questionSnapshot.map((s: any) => ({
+              _id: s.questionId ? s.questionId.toString() : '',
+              year: s.year,
+              questionNumber: s.questionNumber,
+              questionText: typeof s.questionText === 'string' ? s.questionText : '',
+              optionA: typeof s.optionA === 'string' ? s.optionA : '',
+              optionB: typeof s.optionB === 'string' ? s.optionB : '',
+              optionC: typeof s.optionC === 'string' ? s.optionC : '',
+              optionD: typeof s.optionD === 'string' ? s.optionD : '',
+              difficulty: typeof s.difficulty === 'string' ? s.difficulty : 'MEDIUM',
+              topicName: typeof s.topicName === 'string' ? s.topicName : 'General Curriculum',
+              subjectId: s.subjectId ? s.subjectId.toString() : '',
+              subjectName: typeof s.subjectName === 'string' ? s.subjectName : 'Subject',
+              subjectCode: typeof s.subjectCode === 'string' ? s.subjectCode : 'SUB',
+              imageUrl: typeof s.imageUrl === 'string' ? s.imageUrl : '',
+            }))
+          : await Question.find({ _id: { $in: existingActiveAttempt.assignedQuestions } })
+              .populate('topicId', 'name')
+              .populate('subjectId', 'name code')
+              .lean();
+
+      const cleansedQuestions = sourceQuestions.map((q: any) => ({
+        _id: q._id ? q._id.toString() : '',
+        year: q.year || 2024,
+        questionNumber: q.questionNumber || 1,
+        questionText: typeof q.questionText === 'string' ? q.questionText : '',
+        optionA: typeof q.optionA === 'string' ? q.optionA : '',
+        optionB: typeof q.optionB === 'string' ? q.optionB : '',
+        optionC: typeof q.optionC === 'string' ? q.optionC : '',
+        optionD: typeof q.optionD === 'string' ? q.optionD : '',
+        difficulty: typeof q.difficulty === 'string' ? q.difficulty : 'MEDIUM',
+        topicName: typeof q.topicName === 'string' ? q.topicName : ((q.topicId as any)?.name || 'General Curriculum'),
+        subjectId: q.subjectId?._id ? q.subjectId._id.toString() : (q.subjectId ? q.subjectId.toString() : ''),
+        subjectName: typeof q.subjectName === 'string' ? q.subjectName : ((q.subjectId as any)?.name || 'Subject'),
+        subjectCode: typeof q.subjectCode === 'string' ? q.subjectCode : ((q.subjectId as any)?.code || 'SUB'),
+        imageUrl: typeof q.imageUrl === 'string' ? q.imageUrl : '',
+      }));
+
+      const safeAnswers = (existingActiveAttempt.answers || []).map((ans: any) => ({
+        questionId: ans.questionId ? ans.questionId.toString() : '',
+        selectedOption: ans.selectedOption || null,
+        isSkipped: Boolean(ans.isSkipped),
+        markedForReview: Boolean(ans.markedForReview),
+      }));
+
+      res.status(200).json({
+        success: true,
+        data: {
+          attemptId: existingActiveAttempt._id,
+          status: existingActiveAttempt.status,
+          mode: existingActiveAttempt.mode,
+          allocatedDurationSeconds: existingActiveAttempt.allocatedDurationSeconds,
+          remainingSeconds,
+          startTime: existingActiveAttempt.startTime,
+          endTime: existingActiveAttempt.endTime,
+          examName: (existingActiveAttempt.examId as any)?.name || 'Examination',
+          examShortCode: (existingActiveAttempt.examId as any)?.shortCode || 'EXAM',
+          subjectName: existingActiveAttempt.isMultiSubject
+            ? 'Combined Multi-Subject Mock'
+            : ((existingActiveAttempt.subjectId as any)?.name || 'Subject'),
+          subjectCode: existingActiveAttempt.isMultiSubject
+            ? 'MULTI'
+            : ((existingActiveAttempt.subjectId as any)?.code || 'SUB'),
+          isMultiSubject: Boolean(existingActiveAttempt.isMultiSubject),
+          questions: cleansedQuestions,
+          answers: safeAnswers,
+          resumed: true,
+        },
+      });
+      return;
+    }
+
     const { isPro, plan } = req.user!.role === 'ADMIN'
       ? { isPro: true, plan: 'ADMIN' }
       : await checkStudentSubscription(userId);
@@ -471,6 +603,7 @@ router.post('/start', requireCbtEntitlement(), async (req: AuthenticatedRequest,
         success: true,
         data: {
           attemptId: attempt._id,
+          status: attempt.status,
           mode: attempt.mode,
           allocatedDurationSeconds,
           remainingSeconds: allocatedDurationSeconds,
@@ -774,22 +907,56 @@ router.get('/:attemptId', async (req: AuthenticatedRequest, res: Response, next:
 
     const isInProgress = attempt.status === 'IN_PROGRESS';
 
-    const cleansedQuestions = sourceQuestions.map((q) => ({
-      _id: q._id,
-      year: q.year,
-      questionNumber: q.questionNumber,
-      questionText: q.questionText,
-      optionA: q.optionA,
-      optionB: q.optionB,
-      optionC: q.optionC,
-      optionD: q.optionD,
-      difficulty: q.difficulty,
-      topicName: q.topicName || (q.topicId as any)?.name,
-      subjectId: q.subjectId?._id || q.subjectId,
-      subjectName: q.subjectName || (q.subjectId as any)?.name,
-      subjectCode: q.subjectCode || (q.subjectId as any)?.code,
-      imageUrl: q.imageUrl || '',
-      ...(!isInProgress ? { correctAnswer: q.correctAnswer, explanation: q.explanation } : {}),
+    const cleansedQuestions = sourceQuestions.map((q) => {
+      const qId = q._id ? q._id.toString() : '';
+      const tName = typeof q.topicName === 'string'
+        ? q.topicName
+        : (q.topicId && typeof (q.topicId as any).name === 'string' ? (q.topicId as any).name : 'General Curriculum');
+      const sId = q.subjectId?._id ? q.subjectId._id.toString() : (q.subjectId ? q.subjectId.toString() : '');
+      const sName = typeof q.subjectName === 'string'
+        ? q.subjectName
+        : (q.subjectId && typeof (q.subjectId as any).name === 'string' ? (q.subjectId as any).name : 'Subject');
+      const sCode = typeof q.subjectCode === 'string'
+        ? q.subjectCode
+        : (q.subjectId && typeof (q.subjectId as any).code === 'string' ? (q.subjectId as any).code : 'SUB');
+
+      return {
+        _id: qId,
+        year: q.year || 2024,
+        questionNumber: q.questionNumber || 1,
+        questionText: typeof q.questionText === 'string' ? q.questionText : '',
+        optionA: typeof q.optionA === 'string' ? q.optionA : '',
+        optionB: typeof q.optionB === 'string' ? q.optionB : '',
+        optionC: typeof q.optionC === 'string' ? q.optionC : '',
+        optionD: typeof q.optionD === 'string' ? q.optionD : '',
+        difficulty: typeof q.difficulty === 'string' ? q.difficulty : 'MEDIUM',
+        topicName: tName,
+        subjectId: sId,
+        subjectName: sName,
+        subjectCode: sCode,
+        imageUrl: typeof q.imageUrl === 'string' ? q.imageUrl : '',
+        ...(!isInProgress ? { correctAnswer: q.correctAnswer, explanation: q.explanation } : {}),
+      };
+    });
+
+    if (cleansedQuestions.length === 0) {
+      res.status(404).json({
+        success: false,
+        error: {
+          code: 'NO_QUESTIONS_FOUND',
+          message: 'This examination session does not contain any questions. Please configure a new CBT mock test.',
+        },
+      });
+      return;
+    }
+
+    const sanitizedAnswers = (attempt.answers || []).map((ans: any) => ({
+      questionId: ans.questionId ? ans.questionId.toString() : '',
+      selectedOption: ans.selectedOption || null,
+      isSkipped: Boolean(ans.isSkipped),
+      markedForReview: Boolean(ans.markedForReview),
+      isCorrect: ans.isCorrect,
+      timeSpentSeconds: ans.timeSpentSeconds || 0,
     }));
 
     res.status(200).json({
@@ -802,13 +969,13 @@ router.get('/:attemptId', async (req: AuthenticatedRequest, res: Response, next:
         remainingSeconds,
         startTime: attempt.startTime,
         endTime: attempt.endTime,
-        examName: (attempt.examId as any)?.name,
-        examShortCode: (attempt.examId as any)?.shortCode,
-        subjectName: (attempt.subjectId as any)?.name,
-        subjectCode: (attempt.subjectId as any)?.code,
+        examName: typeof (attempt.examId as any)?.name === 'string' ? (attempt.examId as any).name : 'Examination',
+        examShortCode: typeof (attempt.examId as any)?.shortCode === 'string' ? (attempt.examId as any).shortCode : 'EXAM',
+        subjectName: typeof (attempt.subjectId as any)?.name === 'string' ? (attempt.subjectId as any).name : (attempt.isMultiSubject ? 'Combined Subjects' : 'Subject'),
+        subjectCode: typeof (attempt.subjectId as any)?.code === 'string' ? (attempt.subjectId as any).code : (attempt.isMultiSubject ? 'MULTI' : 'SUB'),
         isMultiSubject: Boolean(attempt.isMultiSubject),
         questions: cleansedQuestions,
-        answers: attempt.answers,
+        answers: sanitizedAnswers,
         score: attempt.score,
         maxScore: attempt.maxScore,
         percentage: attempt.percentage,
@@ -1037,10 +1204,14 @@ router.get('/:attemptId/result', async (req: AuthenticatedRequest, res: Response
           mode: attempt.mode,
           startTime: attempt.startTime,
           submittedAt: attempt.submittedAt,
-          examName: (attempt.examId as any)?.name,
-          examShortCode: (attempt.examId as any)?.shortCode,
-          subjectName: (attempt.subjectId as any)?.name,
-          subjectCode: (attempt.subjectId as any)?.code,
+          examName: typeof (attempt.examId as any)?.name === 'string' ? (attempt.examId as any).name : 'National Examination',
+          examShortCode: typeof (attempt.examId as any)?.shortCode === 'string' ? (attempt.examId as any).shortCode : 'EXAM',
+          subjectName: attempt.isMultiSubject
+            ? 'Combined Multi-Subject Simulation'
+            : (typeof (attempt.subjectId as any)?.name === 'string' ? (attempt.subjectId as any).name : 'Subject'),
+          subjectCode: attempt.isMultiSubject
+            ? 'MULTI'
+            : (typeof (attempt.subjectId as any)?.code === 'string' ? (attempt.subjectId as any).code : 'SUB'),
         },
         reviewedQuestions,
       },

@@ -1,4 +1,5 @@
 import { Router, Response, NextFunction } from 'express';
+import { Types } from 'mongoose';
 import { Result } from '../models/Result.js';
 import { authenticateToken, requireVerified, AuthenticatedRequest } from '../middleware/auth.js';
 
@@ -57,7 +58,13 @@ router.get(
     try {
       const userId = req.user!._id;
 
-      const results = await Result.find({ userId })
+      const filter: Record<string, any> = { userId };
+      const rawExamId = req.query.examId;
+      if (typeof rawExamId === 'string' && Types.ObjectId.isValid(rawExamId)) {
+        filter.examId = new Types.ObjectId(rawExamId);
+      }
+
+      const results = await Result.find(filter)
         .populate('examId', 'name shortCode')
         .populate('subjectId', 'name code')
         .sort({ createdAt: 1 })
