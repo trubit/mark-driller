@@ -40,15 +40,13 @@ export const Hero: React.FC = () => {
       {/* Layer 3: Foreground layered content */}
       <div className="wrap hero-foreground-content">
         <div className="hero-eyebrow-container">
-          <span className="hero-flag" aria-hidden="true">🇳🇬</span>
           <span className="hero-eyebrow-text">
             NIGERIA'S FOREMOST CBT EXAM PRACTICE PLATFORM
           </span>
         </div>
 
         <h1 className="hero-headline">
-          Learn smarter.<br />
-          Drill deeper.<br />
+          Learn smarter. Drill deeper.<br />
           Hit the <span className="hero-accent">mark.</span>
         </h1>
 

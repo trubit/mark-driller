@@ -40,67 +40,76 @@ export const Navbar: React.FC = () => {
           <BrandLogo size="md" />
         </Link>
 
-        <div className="nav-links">
-          {isAuthenticated && (
-            <Link to="/dashboard" style={{ color: 'var(--rust)', fontWeight: 700 }}>
-              📊 Dashboard
-            </Link>
-          )}
-          <button type="button" className="nav-link-btn" onClick={() => scrollToSection('offers')}>What We Offer</button>
-          <button type="button" className="nav-link-btn" onClick={() => scrollToSection('exam-boards')}>Examinations</button>
-          <button type="button" className="nav-link-btn" onClick={() => scrollToSection('how-it-works')}>How It Works</button>
-          <button type="button" className="nav-link-btn" onClick={() => scrollToSection('experience')}>Exam Simulator</button>
-          <button type="button" className="nav-link-btn" onClick={() => scrollToSection('performance')}>Analytics</button>
+        {/* Middle & Right: Unified Desktop Row (Reference Layout) */}
+        <div className="nav-desktop-group">
+          <div className="nav-links">
+            {isAuthenticated && (
+              <Link to="/dashboard" style={{ color: 'var(--rust)', fontWeight: 700 }}>
+                📊 Dashboard
+              </Link>
+            )}
+            <button type="button" className="nav-link-btn" onClick={() => scrollToSection('offers')}>What We Offer</button>
+            <button type="button" className="nav-link-btn" onClick={() => scrollToSection('exam-boards')}>Examinations</button>
+            <button type="button" className="nav-link-btn" onClick={() => scrollToSection('how-it-works')}>How It Works</button>
+            <button type="button" className="nav-link-btn" onClick={() => scrollToSection('experience')}>Exam Simulator</button>
+            <button type="button" className="nav-link-btn" onClick={() => scrollToSection('performance')}>Analytics</button>
+          </div>
+
+          <div className="nav-auth-group">
+            {isAuthenticated && user ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                {user.role === 'ADMIN' ? (
+                  <Link
+                    to="/admin"
+                    className="btn-custom btn-custom-primary nav-btn-compact"
+                  >
+                    🛡️ Admin Portal
+                  </Link>
+                ) : (
+                  <Link
+                    to="/dashboard"
+                    className="btn-custom btn-custom-ghost nav-btn-compact"
+                  >
+                    👤 {user.fullName ? user.fullName.split(' ')[0] : 'Student'}
+                  </Link>
+                )}
+                <button
+                  type="button"
+                  className="nav-login"
+                  onClick={handleLogout}
+                >
+                  Log out
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <button
+                  type="button"
+                  className="nav-login"
+                  onClick={() => openAuthModal('login')}
+                >
+                  Log in
+                </button>
+                <button
+                  type="button"
+                  className="btn-custom btn-custom-primary nav-btn-compact"
+                  onClick={() => openAuthModal('signup')}
+                >
+                  Get started
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Far Right: Existing Theme Toggle */}
+          <div className="nav-theme-slot" aria-label="Theme switcher">
+            <ThemeToggle />
+          </div>
         </div>
 
-        <div className="nav-cta" style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+        {/* Mobile & Tablet Controls */}
+        <div className="nav-mobile-controls">
           <ThemeToggle />
-
-          {isAuthenticated && user ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              {user.role === 'ADMIN' ? (
-                <Link
-                  to="/admin"
-                  className="btn-custom btn-custom-primary"
-                  style={{ fontSize: '13px', padding: '7px 14px' }}
-                >
-                  🛡️ Admin Portal
-                </Link>
-              ) : (
-                <Link
-                  to="/dashboard"
-                  className="btn-custom btn-custom-ghost"
-                  style={{ fontSize: '13px', padding: '7px 12px' }}
-                >
-                  👤 {user.fullName ? user.fullName.split(' ')[0] : 'Student'}
-                </Link>
-              )}
-              <button
-                type="button"
-                className="nav-login"
-                onClick={handleLogout}
-              >
-                Log out
-              </button>
-            </div>
-          ) : (
-            <>
-              <button
-                type="button"
-                className="nav-login"
-                onClick={() => openAuthModal('login')}
-              >
-                Log in
-              </button>
-              <button
-                type="button"
-                className="btn-custom btn-custom-primary"
-                onClick={() => openAuthModal('signup')}
-              >
-                Get started
-              </button>
-            </>
-          )}
           <button
             type="button"
             className="menu-toggle-btn"
