@@ -37,57 +37,59 @@ export const Hero: React.FC = () => {
         <div className="hero-gradient-overlay" />
       </div>
 
-      {/* Layer 3: Foreground layered content */}
-      <div className="wrap hero-foreground-content">
-        <div className="hero-eyebrow-container">
-          <span className="hero-eyebrow-text">
-            NIGERIA'S FOREMOST CBT EXAM PRACTICE PLATFORM
-          </span>
-        </div>
-
-        <h1 className="hero-headline">
-          Learn smarter. Drill deeper.<br />
-          Hit the <span className="hero-accent">mark.</span>
-        </h1>
-
-        <p className="hero-lede">
-          Curriculum-verified past questions, step-by-step solutions, and timed CBT simulations for <strong>JAMB/UTME</strong>, <strong>WAEC/SSCE</strong>, <strong>NECO</strong>, and university <strong>Post-UTME</strong>.
-        </p>
-
-        {/* Primary and Secondary Action CTAs */}
-        <div className="hero-actions">
-          <button
-            type="button"
-            className="btn-custom btn-custom-accent btn-custom-lg"
-            onClick={() => openAuthModal('signup')}
-          >
-            Start practising free →
-          </button>
-          <button
-            type="button"
-            className="btn-custom btn-custom-ghost-light btn-custom-lg"
-            onClick={handleExploreBoardsClick}
-            aria-label="Log in to explore examination boards"
-          >
-            Explore Examination Boards ↓
-          </button>
-        </div>
-
-        {/* Authenticated Platform Capability Badges */}
-        <div className="hero-trust-badges">
-          <div className="hero-badge-item">
-            <span className="badge-check" aria-hidden="true">✓</span>
-            <span>{totalQuestions} PAST QUESTIONS</span>
+      {/* Layer 3: Foreground layered content aligned with Navbar container */}
+      <div className="wrap hero-wrap hero__inner">
+        <div className="hero-foreground-content">
+          <div className="hero-eyebrow-container">
+            <span className="hero-eyebrow-text">
+              NIGERIA'S FOREMOST CBT EXAM PRACTICE PLATFORM
+            </span>
           </div>
-          <span className="badge-divider" aria-hidden="true">·</span>
-          <div className="hero-badge-item">
-            <span className="badge-check" aria-hidden="true">✓</span>
-            <span>EXAM-STANDARD CBT ENGINE</span>
+
+          <h1 className="hero-headline">
+            Learn smarter. Drill deeper.<br />
+            Hit the <span className="hero-accent">mark.</span>
+          </h1>
+
+          <p className="hero-lede">
+            Curriculum-verified past questions, step-by-step solutions, and timed CBT simulations for <strong>JAMB/UTME</strong>, <strong>WAEC/SSCE</strong>, <strong>NECO</strong>, and university <strong>Post-UTME</strong>.
+          </p>
+
+          {/* Primary and Secondary Action CTAs */}
+          <div className="hero-actions">
+            <button
+              type="button"
+              className="btn-custom btn-custom-accent btn-custom-lg"
+              onClick={() => openAuthModal('signup')}
+            >
+              Start practising free →
+            </button>
+            <button
+              type="button"
+              className="btn-custom btn-custom-ghost-light btn-custom-lg"
+              onClick={handleExploreBoardsClick}
+              aria-label="Log in to explore examination boards"
+            >
+              Explore Examination Boards ↓
+            </button>
           </div>
-          <span className="badge-divider" aria-hidden="true">·</span>
-          <div className="hero-badge-item">
-            <span className="badge-check" aria-hidden="true">✓</span>
-            <span>FREE TO START · NO CARD REQUIRED</span>
+
+          {/* Authenticated Platform Capability Badges */}
+          <div className="hero-trust-badges">
+            <div className="hero-badge-item">
+              <span className="badge-check" aria-hidden="true">✓</span>
+              <span>{totalQuestions} PAST QUESTIONS</span>
+            </div>
+            <span className="badge-divider" aria-hidden="true">·</span>
+            <div className="hero-badge-item">
+              <span className="badge-check" aria-hidden="true">✓</span>
+              <span>EXAM-STANDARD CBT ENGINE</span>
+            </div>
+            <span className="badge-divider" aria-hidden="true">·</span>
+            <div className="hero-badge-item">
+              <span className="badge-check" aria-hidden="true">✓</span>
+              <span>FREE TO START · NO CARD REQUIRED</span>
+            </div>
           </div>
         </div>
       </div>

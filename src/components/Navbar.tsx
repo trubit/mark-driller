@@ -35,7 +35,7 @@ export const Navbar: React.FC = () => {
 
   return (
     <header className="site-header">
-      <nav className="wrap nav-container">
+      <nav className="wrap nav-container site-header__inner">
         <Link to="/" className="logo" aria-label="Mark Driller home" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center' }}>
           <BrandLogo size="md" />
         </Link>
