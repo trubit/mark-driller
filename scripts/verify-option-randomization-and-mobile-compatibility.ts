@@ -34,7 +34,21 @@ async function runComprehensiveVerification() {
   let allQuestions: any[] = [];
   if (totalQuestions >= 4000) {
     assert(totalQuestions >= 4000, 'Database contains accredited question dataset (>= 4,000)');
-    allQuestions = await Question.find({}).lean();
+    // Fetch with projection to minimize network bandwidth over TLS and prevent SSL MAC / buffer errors
+    let retries = 3;
+    while (retries > 0) {
+      try {
+        allQuestions = await Question.find({})
+          .select('_id optionA optionB optionC optionD correctAnswer')
+          .lean();
+        break;
+      } catch (err) {
+        retries--;
+        console.warn(`⚠️ Transient fetch error (${(err as Error).message}), retrying... (${retries} attempts left)`);
+        if (retries === 0) throw err;
+        await new Promise((res) => setTimeout(res, 1000));
+      }
+    }
   } else {
     console.log('ℹ️ Running in CI/headless test environment. Synthesizing representative question dataset for verification...');
     for (let i = 0; i < 1000; i++) {

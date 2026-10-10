@@ -114,15 +114,22 @@ export const Navbar: React.FC = () => {
             type="button"
             className="menu-toggle-btn"
             aria-label="Toggle navigation menu"
+            aria-expanded={mobileMenuOpen}
+            aria-controls="public-mobile-drawer"
             onClick={() => setMobileMenuOpen(true)}
           >
-            ☰
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <rect y="3" width="20" height="2.2" rx="1.1" fill="currentColor" />
+              <rect y="8.9" width="20" height="2.2" rx="1.1" fill="currentColor" />
+              <rect y="14.8" width="20" height="2.2" rx="1.1" fill="currentColor" />
+            </svg>
           </button>
         </div>
       </nav>
 
       {/* Mobile Offcanvas Navigation */}
       <Offcanvas
+        id="public-mobile-drawer"
         show={mobileMenuOpen}
         onHide={() => setMobileMenuOpen(false)}
         placement="end"

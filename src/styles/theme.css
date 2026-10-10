@@ -556,22 +556,34 @@ nav.wrap.nav-container,
 
 .menu-toggle-btn {
   display: none;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
   background: transparent;
   border: 1.5px solid var(--paper-line);
   border-radius: var(--radius);
-  padding: 6px 10px;
+  padding: 0;
   cursor: pointer;
   color: var(--ink);
   font-family: var(--font-sans);
   font-weight: 600;
   font-size: 18px;
   line-height: 1;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
 }
 
 .menu-toggle-btn:hover {
   background: var(--surface-hover);
   border-color: var(--ink);
+  transform: translateY(-1px);
+}
+
+.menu-toggle-btn:active {
+  transform: translateY(0);
 }
 
 .menu-toggle-btn:focus-visible {
@@ -1272,6 +1284,11 @@ footer.site-footer {
   }
   .nav-mobile-controls {
     display: inline-flex !important;
+  }
+  .menu-toggle-btn {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
   }
 }
 
@@ -2544,7 +2561,7 @@ button[aria-label="Open global quick search"] > span:first-child {
   }
 }
 
-/* Screens under 768px (tablets / phones) — hide wide search text pill to give breathing room */
+/* Screens under 768px (tablets / phones) — optimize header density to prioritize hamburger menu */
 @media (max-width: 768px) {
   .portal-search-btn-desktop {
     display: none !important;
@@ -2553,12 +2570,35 @@ button[aria-label="Open global quick search"] > span:first-child {
   .portal-search-shortcut {
     display: none !important;
   }
+  .portal-actions-cluster .theme-toggle-pill {
+    display: none !important;
+  }
+  .portal-user-meta {
+    display: none !important;
+  }
 }
 
 /* Small smartphones: <= 480px — protect brand logo & hamburger menu alignment */
 @media (max-width: 480px) {
-  .portal-user-meta {
+  .nav-mobile-controls .theme-pill-label {
     display: none !important;
+  }
+  .nav-mobile-controls .theme-toggle-pill {
+    padding: 6px 9px !important;
+  }
+  .portal-actions-cluster {
+    gap: 6px !important;
+  }
+}
+
+/* Ultra-compact smartphones: <= 360px — ensure zero clipping for logo & hamburger button */
+@media (max-width: 360px) {
+  nav.wrap.nav-container,
+  .nav-container {
+    gap: 6px !important;
+  }
+  .nav-mobile-controls {
+    gap: 6px !important;
   }
 }
 

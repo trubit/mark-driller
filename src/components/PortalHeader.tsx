@@ -651,7 +651,7 @@ export const PortalHeader: React.FC<PortalHeaderProps> = ({
           {/* ======================================================== */}
           {/* RIGHT: Quick Search, Notifications, Theme & Account Menu */}
           {/* ======================================================== */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(4px, 1vw, 10px)', flexShrink: 0 }}>
+          <div className="portal-actions-cluster" style={{ display: 'flex', alignItems: 'center', gap: 'clamp(4px, 1vw, 10px)', flexShrink: 0 }}>
             {/* Desktop Quick Search Button */}
             <button
               type="button"
@@ -725,6 +725,8 @@ export const PortalHeader: React.FC<PortalHeaderProps> = ({
               className="portal-menu-btn"
               onClick={() => setMobileMenuOpen(true)}
               aria-label="Open student portal navigation drawer"
+              aria-expanded={mobileMenuOpen}
+              aria-controls="portal-mobile-drawer"
             >
               <svg width="22" height="22" viewBox="0 0 20 20" fill="none" aria-hidden="true">
                 <rect y="3" width="20" height="2.2" rx="1.1" fill="currentColor" />
@@ -746,6 +748,7 @@ export const PortalHeader: React.FC<PortalHeaderProps> = ({
       {/* MOBILE & TABLET OFFCANVAS NAVIGATION DRAWER              */}
       {/* ======================================================== */}
       <Offcanvas
+        id="portal-mobile-drawer"
         show={mobileMenuOpen}
         onHide={() => setMobileMenuOpen(false)}
         placement="end"
